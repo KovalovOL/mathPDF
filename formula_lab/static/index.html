@@ -35,6 +35,11 @@
     <section id="practice-pane" class="pane" aria-label="Study workspace">
       <div class="tabs-bar"><div id="set-tabs" class="tab-list" role="tablist" aria-label="Study sets"></div></div>
       <div class="pane-toolbar"><span id="set-status" class="muted">Study material</span><div class="result-actions"><button id="save-set" class="small secondary" disabled>Save</button><button id="export-set" class="small secondary" disabled>Download PDF</button></div></div>
+      <div id="generation-progress" class="generation-progress" role="status" aria-live="polite" hidden>
+        <span class="generation-spinner" aria-hidden="true"></span>
+        <div class="generation-progress-copy"><strong id="generation-progress-label">Generating study material…</strong><span>Checking source formulas and completing your set. You can keep reading.</span></div>
+        <span id="generation-elapsed" class="generation-elapsed" aria-hidden="true">0:00</span>
+      </div>
       <div id="item-tabs" class="item-tabs tab-list" role="tablist" aria-label="Study items" hidden></div>
       <div id="practice-content" class="practice-content"><p class="empty-state">Generate a study set to start practicing.</p></div>
       <div id="study-notes" class="study-notes" hidden></div>
@@ -50,7 +55,7 @@
     <form id="generate-form">
       <div class="dialog-header"><h2 id="generation-heading">Generate study material</h2><button type="button" class="icon-button close-dialog" data-dialog="generation-dialog" aria-label="Close generation settings">×</button></div>
       <div class="dialog-body">
-        <div class="form-grid"><label>Mode<select id="mode"><option value="flashcards">Flashcards</option><option value="problems">Problems</option></select></label><label>Items<input id="count" type="number" value="4" min="1" max="10" required></label></div>
+        <div class="form-grid"><label>Mode<select id="mode"><option value="flashcards">Flashcards</option><option value="problems">Problems</option></select></label><label>Items<input id="count" type="number" value="4" min="1" max="50" required></label></div>
         <h3>Source PDF</h3><label for="source-document">Document</label><select id="source-document" required></select>
         <div id="source-range" class="range-controls"><label>Pages<select id="source-scope"><option value="range">Page range</option><option value="all">Entire PDF</option></select></label><label>From<input id="source-from" type="number" min="1" value="1" required></label><label>To<input id="source-to" type="number" min="1" value="1" required></label></div>
         <div class="context-heading"><h3>Additional context</h3><button id="add-context" type="button" class="small secondary">+ Add files</button></div>

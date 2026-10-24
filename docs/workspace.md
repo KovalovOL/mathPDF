@@ -18,6 +18,8 @@ Startup and the Docker image require no PDF. Shared legacy source-inspection HTT
 
 All these APIs require a live session; unsafe methods also require the trusted application Origin. Generation drafts are not saved automatically. Saved sets survive restart. Document tabs retain their preview instances and reading positions while the workspace is open. Browser preferences are scoped by account ID.
 
+Home displays responsive file cards with the first PDF page, an image thumbnail, or an opening plain-text/Markdown excerpt. Previews load near the viewport with at most two concurrent jobs using the existing owner-protected file endpoint. PDF resources are destroyed after rendering, image bitmaps are released, and queued requests are canceled when the library reloads or closes. Original file bytes are not stored in a separate thumbnail service. Preview failure leaves the file's workspace link and download action available.
+
 File-tab close controls remove previews, not stored documents. **Open** lists saved files, including closed ones. The open saved-file tab list persists in browser local storage. New files appear immediately as unsaved upload tabs; confirmation is required to close and cancel an unfinished or failed upload. Failed uploads retain the local file for **Retry upload** while the page is open. Leaving the browser page with pending uploads triggers the browser's unsaved-change warning. A request already committed by the server can remain in the library after cancellation.
 
 ## Generation request
@@ -38,11 +40,23 @@ Reading always exposes the entire PDF. Only the generation dialog chooses what i
 }
 ```
 
-`pages: null` selects an entire PDF. The service allows up to six context files, 100 PDF pages across all selected files, 40 MB of combined selected bytes, and 1–10 generated items. It validates all selections before the provider request. Page subsets are copied into in-memory PDFs; no formula catalog or full-text extraction is required.
+`pages: null` selects an entire PDF. The service allows up to six context files, 100 PDF pages across all selected files, 40 MB of combined selected bytes, and 1–50 requested items. It validates all selections before the provider request. Page subsets are copied into in-memory PDFs; no formula catalog or full-text extraction is required.
 
 `comment` is optional, defaults to an empty string, and is limited to 4,000 characters. It is independent of context attachments. `prompts/comment.md` supplies its instruction text; the runtime comment is inserted as a JSON string and cannot relax source, citation, or schema requirements. The generated and saved canonical set retains the trimmed `comment`. Existing saved sets remain readable with the empty default.
 
-`StudyProvider.generate(documents, system, task)` receives provider-independent input documents. The OpenAI adapter sends PDF/text files as file inputs and images as image inputs. External prompt resources distinguish the primary source from context examples and supply per-file original-page mappings. Formula citations include the primary document ID and original page; citation scope is validated. Optional line ranges remain model-reported.
+`StudyProvider.generate(documents, system, task, count=...)` receives provider-independent input documents and an expected batch size. The OpenAI adapter sends PDF/text files as file inputs and images as image inputs. External prompt resources distinguish the primary source from context examples and supply per-file original-page mappings. Formula citations include the primary document ID and original page; citation scope is validated. Optional line ranges remain model-reported.
+
+### Exact generation counts and recovery
+
+A successful response contains exactly the requested number of items, including requests for 15 flashcards. The service requests batches of at most five. Each OpenAI completed-batch schema has equal minimum and maximum array lengths; a separate `insufficient_source` branch permits honest failure. This follows the supported array bounds and nested unions in [OpenAI Structured Outputs](https://developers.openai.com/api/docs/guides/structured-outputs).
+
+Candidates are validated individually. Every item needs a source-cited math block; flashcard questions need one on the front. New generation rejects delimited math embedded in prose, invalid source pages, and exact repeated question content. Accepted items are retained while replacements are requested. `prompts/continuation.md` contains all continuation/repair instructions and accepted-item reference data. Original formula checks remain in place; the service does not invent missing formulas or citations to satisfy a count.
+
+Generation permits `ceil(requested_count / 5) + 3` provider calls and a 600-second deadline. Incomplete/schema responses can be retried within this budget. Credentials, usage limits, and other API failures remain user-facing service errors. Insufficient source or exhausted recovery returns an actionable error and opens no partial set. Successful metadata records `requested_count`, `generation_attempts`, provider/model, and hashes for all prompt resources. Existing saved short sets remain readable and exportable; this policy applies to new generation.
+
+Question fingerprints catch exact content repeats with superficial spacing/case differences, not semantic paraphrases. Source transcription and mathematical correctness still need human review. More calls can increase latency and cost; the model and API key configuration remain unchanged.
+
+While generating, the study pane shows a spinner, the requested count/type, and elapsed time. Existing sets and the PDF remain readable. The status has no invented percentage, respects reduced-motion preferences, and is removed with its timer after success or failure. The browser warns before leaving an active generation. Errors do not replace existing sets or open partial drafts.
 
 ## Practice
 

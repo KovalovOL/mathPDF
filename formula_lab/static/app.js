@@ -316,7 +316,7 @@ function renderPractice() {
   notes.append(...(result?.notes || []).map(note => el('p', '', note)));
   $('study-notes').replaceChildren(notes);
   if (!result?.items.length) {
-    $('practice-content').append(el('p', 'empty-state', result ? 'No study items were generated. Try different source pages.' : 'Generate a study set to start practicing.'));
+    $('practice-content').append(el('p', 'empty-state', result ? 'No study items were generated. Try different source pages.' : generationActive ? 'Your study set will appear here when it is ready.' : 'Generate a study set to start practicing.'));
     return;
   }
   record.itemIndex = Math.min(record.itemIndex || 0, result.items.length - 1);
@@ -422,13 +422,15 @@ function selectionRequest() {
   }
   if (context.length > 6) throw new Error('Attach up to 6 context files per request.');
   if (totalPages > 100) throw new Error('Select up to 100 PDF pages across the source and context files.');
-  return {document_id: source.id, pages, context, comment: $('context-comment').value.trim(), mode: $('mode').value, count: Number($('count').value)};
+  const count = Number($('count').value), maximum = config?.max_items || Number($('count').max);
+  if (!Number.isInteger(count) || count < 1 || count > maximum) throw new Error(`Choose between 1 and ${maximum} items.`);
+  return {document_id: source.id, pages, context, comment: $('context-comment').value.trim(), mode: $('mode').value, count};
 }
 function updateGenerationSummary() {
   try {
     const selection = selectionRequest(); const doc = documents.get(selection.document_id);
     const count = selection.pages?.length || doc.page_count;
-    $('generation-summary').textContent = `${count} source ${count === 1 ? 'page' : 'pages'} · ${selection.context.length} context ${selection.context.length === 1 ? 'file' : 'files'}`;
+    $('generation-summary').textContent = `${selection.count} ${selection.mode === 'flashcards' ? 'flashcards' : 'problems'} · ${count} source ${count === 1 ? 'page' : 'pages'} · ${selection.context.length} context ${selection.context.length === 1 ? 'file' : 'files'}`;
     $('generation-summary').className = 'selection-summary';
   } catch (error) {$('generation-summary').textContent = error.message; $('generation-summary').className = 'selection-summary error';}
 }
@@ -477,14 +479,27 @@ async function generate(event) {
   catch (error) {$('generation-error').textContent = error.message; $('generation-error').hidden = false; return;}
   generationActive = true; $('generation-dialog').close();
   $('open-generation').disabled = true; $('open-generation').textContent = 'Generating…';
-  message('Generating your study set…', false, 0);
+  message('');
+  const word = request.mode === 'flashcards' ? 'flashcard' : 'problem';
+  $('generation-progress-label').textContent = `Generating ${request.count} ${word}${request.count === 1 ? '' : 's'}…`;
+  $('generation-progress').hidden = false; $('practice-content').setAttribute('aria-busy', 'true');
+  if (!sets.get(activeSetId)?.data) renderPractice();
+  const started = performance.now();
+  function updateElapsed() {
+    const seconds = Math.floor((performance.now() - started) / 1000);
+    $('generation-elapsed').textContent = `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
+  }
+  updateElapsed(); const timer = setInterval(updateElapsed, 1000);
   try {
     const data = await api('/api/study/generate', {method: 'POST', body: JSON.stringify(request)});
+    if (data.items.length !== request.count) throw new Error('The complete requested set was not returned. Please try again.');
     sets.set(data.id, {id: data.id, title: data.title, data, saved: false, itemIndex: 0, flipped: false});
     await openSet(data.id);
     message(`Created ${data.items.length} ${data.mode === 'flashcards' ? 'flashcards' : 'problems'}.`);
   } finally {
+    clearInterval(timer); $('generation-progress').hidden = true; $('practice-content').setAttribute('aria-busy', 'false');
     generationActive = false; updateGenerationAvailability(); $('open-generation').textContent = 'Generate study set';
+    if (!sets.get(activeSetId)?.data) renderPractice();
   }
 }
 async function saveSet(event) {
@@ -600,7 +615,7 @@ $('save-form').addEventListener('submit', saveSet);
 $('export-set').addEventListener('click', () => action(exportSet));
 $('open-saved').addEventListener('click', () => action(showSaved));
 addEventListener('beforeunload', event => {
-  if (pendingUploads.size || [...sets.values()].some(record => !record.saved)) {event.preventDefault(); event.returnValue = '';}
+  if (generationActive || pendingUploads.size || [...sets.values()].some(record => !record.saved)) {event.preventDefault(); event.returnValue = '';}
 });
 document.querySelectorAll('.close-dialog').forEach(control => control.addEventListener('click', () => {
   if (control.dataset.dialog === 'save-dialog' && saveIntent) saveIntent.cancelled = true;
@@ -610,7 +625,7 @@ action(async () => {
   const user = await MathPDFSession.ready;
   preferencePrefix = `mathpdf-${user.id}-`;
   const [loadedDocuments, configuration, saved] = await Promise.all([api('/api/documents'), api('/api/generation/config'), api('/api/study-sets')]);
-  config = configuration; loadedDocuments.forEach(doc => documents.set(doc.id, doc));
+  config = configuration; $('count').max = config.max_items; loadedDocuments.forEach(doc => documents.set(doc.id, doc));
   updateGenerationAvailability();
   let storedFiles;
   try {storedFiles = JSON.parse(preference('open-files'));} catch {}

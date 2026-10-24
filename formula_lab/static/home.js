@@ -1,6 +1,8 @@
 /* Account-owned files and saved sets. Names are always inserted as text. */
 const home = id => document.getElementById(id);
 let uploading = false;
+let previews;
+const previewModule = import('/static/file-previews.js').catch(() => null);
 function node(tag, className, text) {
   const element = document.createElement(tag); element.className = className;
   if (text !== undefined) element.textContent = text;
@@ -20,13 +22,24 @@ function row(title, metadata, url) {
 }
 function chooseFiles() {if (!uploading) home('library-file-input').click();}
 async function loadLibrary() {
-  const [files, sets] = await Promise.all([MathPDFSession.api('/api/documents'), MathPDFSession.api('/api/study-sets')]);
+  const [files, sets, previewRenderer] = await Promise.all([MathPDFSession.api('/api/documents'), MathPDFSession.api('/api/study-sets'), previewModule]);
+  previews?.destroy();
+  previews = previewRenderer?.createFilePreviews({request: MathPDFSession.request, userId: MathPDFSession.user.id,
+    onAuthFailure: () => MathPDFSession.api('/api/me').catch(() => {})});
   home('files-count').textContent = String(files.length); home('sets-count').textContent = String(sets.length);
+  home('library-files').classList.toggle('file-library', files.length > 0);
   home('library-files').replaceChildren(...files.map(file => {
-    const entry = row(file.filename, fileMetadata(file), `/workspace?${new URLSearchParams({document: file.id})}`);
+    const entry = node('article', 'file-card');
+    const link = node('a', 'file-card-link'); link.href = `/workspace?${new URLSearchParams({document: file.id})}`;
+    const preview = node('div', 'file-preview', previews ? 'Loading preview…' : 'Preview unavailable');
+    const details = node('div', 'file-card-details');
+    details.append(node('span', 'library-item-title', file.filename), node('span', 'library-item-meta', fileMetadata(file)));
+    link.append(preview, details); entry.append(link);
+    const footer = node('div', 'file-card-footer');
     const download = node('a', 'library-download', 'Download');
     download.href = `/api/documents/${encodeURIComponent(file.id)}/file?download=true`;
-    download.setAttribute('aria-label', `Download ${file.filename}`); entry.append(download); return entry;
+    download.setAttribute('aria-label', `Download ${file.filename}`); footer.append(download); entry.append(footer);
+    previews?.observe(preview, file); return entry;
   }));
   if (!files.length) {
     const empty = node('div', 'library-empty');
@@ -64,4 +77,5 @@ home('library-file-input').addEventListener('change', async () => {
   finally {uploading = false; home('upload-files').disabled = false;}
 });
 addEventListener('beforeunload', event => {if (uploading) {event.preventDefault(); event.returnValue = '';}});
+addEventListener('pagehide', () => previews?.destroy());
 MathPDFSession.ready.then(async () => {await loadLibrary(); home('upload-files').disabled = false;}).catch(showError);

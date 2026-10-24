@@ -13,7 +13,7 @@ APP_BASE_URL=http://127.0.0.1:8765 uv run formula-lab --port 8765
 
 Set `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` in the environment or ignored project `.env`; `.env.example` contains placeholders. Register `http://127.0.0.1:8765/auth/google/callback` for a development Google web client. See [Google setup and authentication](docs/authentication.md).
 
-Open [http://127.0.0.1:8765](http://127.0.0.1:8765) and sign in with Google. Home shows your own files and saved study sets. A fresh account starts empty with **Upload PDF**. Selecting a file or set opens the existing reading workspace. `--data-dir` changes the persistent location; the default is `.formula-lab/`. The server binds to localhost. No startup PDF or anonymous development bypass is provided.
+Open [http://127.0.0.1:8765](http://127.0.0.1:8765) and sign in with Google. Home shows your own files with first-page previews and saved study sets. A fresh account starts empty with **Upload PDF**. Selecting a file or set opens the existing reading workspace. `--data-dir` changes the persistent location; the default is `.formula-lab/`. The server binds to localhost. No startup PDF or anonymous development bypass is provided.
 
 Set `OPENAI_API_KEY` or the existing `OPENAI_KEY` in the server environment or project `.env`. `OPENAI_MODEL` defaults to `gpt-4.1-mini`; it must support the input modalities and structured output used by the application. Restart the server after changing credentials or model. Only submitting **Generate** sends documents to the provider.
 
@@ -21,7 +21,7 @@ Set `OPENAI_API_KEY` or the existing `OPENAI_KEY` in the server environment or p
 
 1. Sign in with Google. Home lists your files and saved sets; use **Upload files** to add PDFs, TXT/Markdown, or PNG/JPEG/WebP files. Choose a file to read the complete document by scrolling, page navigation, or zooming. **Add files** adds context from the workspace. Tabs retain reading positions; close them with **×** and reopen files through **Open**. Closing unfinished or failed uploads asks for confirmation; failed uploads can be retried. Click **mathPDF** to return home. The top-right account menu provides **Sign out**.
 2. Drag the divider horizontally to adjust the document and practice panes. Fit width retains the top reading position and keeps the previous canvas visible while a sharper replacement renders. Keyboard users can focus the divider and use Left/Right or Home/End.
-3. Open **Generate study set**. Choose a source PDF, flashcards or problems, and an item count. Choose **Entire PDF** or inclusive **From / To** pages. Set both endpoints to the same page for a single page.
+3. Open **Generate study set**. Choose a source PDF, flashcards or problems, and 1–50 items. Successful generation returns exactly that count, with automatic replacement of missing/invalid items within bounded attempts. A spinner and elapsed timer remain visible while you wait. Insufficient source material produces an actionable error instead of a partial set. Choose **Entire PDF** or inclusive **From / To** pages. Set both endpoints to the same page for a single page.
 4. Enable any additional context files. Each PDF has an independent page range; text and images are included in full. Optionally enter a plain-text **Comment** (up to 4,000 characters), with or without attachments, to describe the desired style, difficulty, or focus. Formulas remain grounded in the selected source pages.
 5. Each generation opens a separate set tab. Inner tabs select cards or problems. Click a card, press Space/Enter, or use **Flip card** to turn it over. Problems have a solution section. Formula references navigate to the original document page.
 6. Click **Save** to name and persist a set in SQLite. Close a set tab with **×**. Unsaved sets offer **Save and close**, **Close without saving**, or **Cancel**; saving must succeed before the tab closes. Saved sets remain available through **Saved sets**, and closed tabs stay closed after reload.
@@ -31,7 +31,7 @@ Set `OPENAI_API_KEY` or the existing `OPENAI_KEY` in the server environment or p
 
 - PDF, UTF-8 TXT/MD, PNG, JPEG, WebP; 25 MB per upload, 1 MB for text, 40 megapixels for images.
 - Up to six optional context files, 100 selected PDF pages across all attachments, and 40 MB of combined selected input per generation.
-- One to ten items per set; one concurrent generation and one concurrent PDF export per process.
+- One to fifty requested items per set, with exactly that count on successful generation; one concurrent generation and one concurrent PDF export per process.
 - PDFs must be readable and unencrypted. Version one targets printed digital notes; handwriting/OCR is outside the current scope.
 
 ## Storage

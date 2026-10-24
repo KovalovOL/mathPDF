@@ -15,7 +15,7 @@ from starlette.concurrency import run_in_threadpool
 from .auth import Authentication, AuthConfig, FLOW_SECONDS, LoginError, SESSION_SECONDS, safe_next
 from .pdf_export import ExportError, export_pdf
 from .providers import OpenAIProvider
-from .study import GenerateRequest, GenerationError, StudyProvider, StudySet, generate_study, validate_study
+from .study import MAX_ITEMS, GenerateRequest, GenerationError, StudyProvider, StudySet, generate_study, validate_study
 from .workspace import MAX_UPLOAD_BYTES, Workspace
 
 
@@ -141,7 +141,7 @@ def create_app(data_dir: Path = Path(".formula-lab"), provider: StudyProvider | 
 
     @app.get("/api/generation/config")
     def generation_config():
-        return {"configured": app.state.provider is not None, "max_pages": 100, "max_items": 10,
+        return {"configured": app.state.provider is not None, "max_pages": 100, "max_items": MAX_ITEMS,
                 "max_context_files": 6, "max_upload_mb": 25, "default_document_id": None}
 
     @app.get("/api/documents")

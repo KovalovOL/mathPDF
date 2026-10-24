@@ -3,7 +3,9 @@
 import hashlib
 import io
 import json
-from asyncio import to_thread
+import math
+import re
+from asyncio import timeout, to_thread
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -14,6 +16,12 @@ from uuid import uuid4
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from pypdf import PdfReader, PdfWriter
 from .workspace import Document, Workspace
+
+
+MAX_ITEMS = 50
+BATCH_SIZE = 5
+EXTRA_ATTEMPTS = 3
+GENERATION_SECONDS = 600
 
 
 class StrictModel(BaseModel):
@@ -69,7 +77,7 @@ class StudyItem(StrictModel):
 
 
 class GeneratedContent(StrictModel):
-    items: list[StudyItem] = Field(max_length=10)
+    items: list[StudyItem] = Field(max_length=MAX_ITEMS)
     notes: list[str] = Field(max_length=10)
 
 
@@ -84,7 +92,7 @@ class GenerateRequest(StrictModel):
     context: list[ContextSelection] = Field(default_factory=list, max_length=6)
     comment: str = Field(default="", max_length=4000)
     mode: Literal["flashcards", "problems"]
-    count: int = Field(default=4, ge=1, le=10)
+    count: int = Field(default=4, ge=1, le=MAX_ITEMS)
 
 
 class ContextSnapshot(StrictModel):
@@ -117,21 +125,32 @@ class ProviderResult(StrictModel):
     content: GeneratedContent
     provider: str
     model: str
+    insufficient_source: bool = False
 
 
 class StudyProvider(Protocol):
-    async def generate(self, documents: list[InputDocument], system: str, task: str) -> ProviderResult: ...
+    async def generate(self, documents: list[InputDocument], system: str, task: str,
+                       *, count: int) -> ProviderResult: ...
 
 
 class GenerationError(Exception):
     """A safe, user-facing provider failure, without credentials or request bodies."""
 
 
+class RetryableGenerationError(GenerationError):
+    def __init__(self, code: str, message: str):
+        super().__init__(message)
+        self.code = code
+
+
 PROMPTS = Path(__file__).parent / "prompts"
 
 
-def load_prompts(request: GenerateRequest, documents: list[InputDocument]) -> tuple[str, str, dict[str, str]]:
-    names = ["study-system.md", f"{request.mode}.md", "context.md", "attachment-label.md", "comment.md"]
+def load_prompts(request: GenerateRequest, documents: list[InputDocument], *,
+                 accepted: list[StudyItem] | None = None, feedback: list[str] | None = None,
+                 total_count: int | None = None) -> tuple[str, str, dict[str, str]]:
+    names = ["study-system.md", f"{request.mode}.md", "context.md", "attachment-label.md", "comment.md",
+             "continuation.md"]
     resources = {name: (PROMPTS / name).read_text(encoding="utf-8") for name in names}
     source = documents[0]
     mapping = ", ".join(f"{index + 1} -> {page}" for index, page in enumerate(source.pages))
@@ -146,6 +165,10 @@ def load_prompts(request: GenerateRequest, documents: list[InputDocument]) -> tu
     task += "\n\n" + Template(resources["context.md"]).substitute(attachments=json.dumps(metadata, ensure_ascii=False))
     if request.comment.strip():
         task += "\n\n" + Template(resources["comment.md"]).substitute(comment=json.dumps(request.comment.strip(), ensure_ascii=False))
+    task += "\n\n" + Template(resources["continuation.md"]).substitute(
+        total_count=total_count or request.count, batch_count=request.count,
+        accepted=json.dumps([item.model_dump(mode="json") for item in accepted or []], ensure_ascii=False),
+        feedback=json.dumps(feedback or []))
     hashes = {name: hashlib.sha256(text.encode()).hexdigest() for name, text in resources.items()}
     return resources[names[0]], task, hashes
 
@@ -201,30 +224,97 @@ def prepare_documents(workspace: Workspace, request: GenerateRequest, owner_id: 
     return result
 
 
+def validate_item(item: StudyItem, mode: str, document_id: str, pages: list[int], *, strict_blocks: bool = False):
+    maths = [block for block in item.question + item.answer if isinstance(block, MathBlock)]
+    if not maths:
+        raise RetryableGenerationError("missing_formula", "A study item is missing its source formula.")
+    if mode == "flashcards" and not any(isinstance(block, MathBlock) for block in item.question):
+        raise RetryableGenerationError("missing_question_formula", "A flashcard question is missing its formula.")
+    if strict_blocks and any(isinstance(block, TextBlock) and any(marker in block.text for marker in ("\\(", "\\[", "$"))
+                             for block in item.question + item.answer):
+        raise RetryableGenerationError("math_in_text", "Mathematical expressions need formatted math blocks.")
+    for block in maths:
+        if block.source.document_id is None:
+            block.source.document_id = document_id
+        if block.source.page not in pages or block.source.document_id != document_id:
+            raise RetryableGenerationError("invalid_source", "A formula references pages outside the selected source.")
+
+
 def validate_study(content: GeneratedContent, mode: str, document_id: str, pages: list[int]):
     for item in content.items:
-        maths = [block for block in item.question + item.answer if isinstance(block, MathBlock)]
-        if not maths or (mode == "flashcards" and not any(isinstance(block, MathBlock) for block in item.question)):
-            raise GenerationError("The provider returned an item without the required formula.")
-        for block in maths:
-            if block.source.document_id is None:
-                block.source.document_id = document_id
-            if block.source.page not in pages or block.source.document_id != document_id:
-                raise GenerationError("A formula cites material outside the selected source pages.")
+        validate_item(item, mode, document_id, pages)
     if not content.items and not any(note.strip() for note in content.notes):
         raise GenerationError("The provider returned no study material or explanation.")
+
+
+def question_fingerprint(item: StudyItem) -> str:
+    # Ignore titles/citations and superficial spacing when rejecting exact repeats.
+    blocks = [(block.kind, " ".join(block.text.casefold().split())) if isinstance(block, TextBlock)
+              else (block.kind, re.sub(r"\s+", "", block.latex)) for block in item.question]
+    return hashlib.sha256(json.dumps(blocks, ensure_ascii=False).encode()).hexdigest()
+
+
+async def collect_study(documents: list[InputDocument], request: GenerateRequest,
+                        provider: StudyProvider) -> tuple[GeneratedContent, dict]:
+    accepted: list[StudyItem] = []
+    notes: list[str] = []
+    feedback: list[str] = []
+    seen = set()
+    source = documents[0]
+    limit = math.ceil(request.count / BATCH_SIZE) + EXTRA_ATTEMPTS
+    for attempt in range(1, limit + 1):
+        batch_count = min(BATCH_SIZE, request.count - len(accepted))
+        batch = request.model_copy(update={"count": batch_count})
+        system, task, hashes = load_prompts(batch, documents, accepted=accepted,
+                                          feedback=feedback, total_count=request.count)
+        try:
+            result = await provider.generate(documents, system, task, count=batch_count)
+        except RetryableGenerationError as error:
+            feedback = [error.code]
+            continue
+        if result.insufficient_source:
+            raise GenerationError(f"The selected pages could not support all {request.count} items. "
+                                  "Choose more source pages or request fewer items.")
+        feedback = []
+        if len(result.content.items) > batch_count:
+            feedback = ["wrong_count"]
+            continue
+        for item in result.content.items:
+            try:
+                validate_item(item, request.mode, source.document.id, source.pages, strict_blocks=True)
+            except RetryableGenerationError as error:
+                feedback.append(error.code)
+                continue
+            fingerprint = question_fingerprint(item)
+            if fingerprint in seen:
+                feedback.append("duplicate_question")
+                continue
+            seen.add(fingerprint)
+            accepted.append(item)
+        if len(result.content.items) < batch_count:
+            feedback.append("wrong_count")
+        for note in result.content.notes:
+            if note.strip() and note not in notes and len(notes) < 10:
+                notes.append(note)
+        if len(accepted) == request.count:
+            content = GeneratedContent(items=accepted, notes=notes)
+            validate_study(content, request.mode, source.document.id, source.pages)
+            return content, {"provider": result.provider, "model": result.model, "prompt_hashes": hashes,
+                             "requested_count": request.count, "generation_attempts": attempt}
+    raise GenerationError(f"We couldn't complete all {request.count} valid items. "
+                          "No partial set was created. Try again, select more pages, or request fewer items.")
 
 
 async def generate_study(workspace: Workspace, owner_id: str, request: GenerateRequest,
                          provider: StudyProvider) -> StudySet:
     documents = await to_thread(prepare_documents, workspace, request, owner_id)
-    system, task, hashes = load_prompts(request, documents)
-    result = await provider.generate(documents, system, task)
-    content = result.content
-    if len(content.items) > request.count:
-        raise GenerationError("The provider returned more items than requested. Generate again.")
+    try:
+        async with timeout(GENERATION_SECONDS):
+            content, metadata = await collect_study(documents, request, provider)
+    except TimeoutError:
+        raise GenerationError(f"Generation timed out before all {request.count} items were ready. "
+                              "Try again with fewer items or fewer source pages.") from None
     source = documents[0]
-    validate_study(content, request.mode, source.document.id, source.pages)
     label = "Flashcards" if request.mode == "flashcards" else "Problems"
     selection = str(source.pages[0]) if len(source.pages) == 1 else f"{source.pages[0]}–{source.pages[-1]}"
     return StudySet(
@@ -233,7 +323,7 @@ async def generate_study(workspace: Workspace, owner_id: str, request: GenerateR
         comment=request.comment.strip(),
         context_documents=[ContextSnapshot(document=entry.document, pages=entry.pages) for entry in documents[1:]],
         **content.model_dump(),
-        metadata={"provider": result.provider, "model": result.model, "prompt_hashes": hashes,
+        metadata={**metadata,
                   "source_check": "unchecked", "line_references": "model-reported",
                   "created_at": datetime.now(timezone.utc).isoformat()},
     )

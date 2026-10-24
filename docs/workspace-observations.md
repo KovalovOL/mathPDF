@@ -2,6 +2,17 @@
 
 Date: 2026-10-24. These are manual implementation observations, not automated regression coverage.
 
+## Library previews and exact generation counts (2026-10-24)
+
+- The old mode prompts explicitly asked for "up to" a count and the system prompt permitted fewer items; the service only rejected excess items. These paths were replaced with exact-count generation for 1–50 items, batches of at most five, and bounded repair/top-up calls.
+- Reviewed the completed-batch response schema's equal array bounds and separate insufficient-source branch against the installed SDK and official Structured Outputs documentation. Per-item formula/citation checks retain valid items and request replacements for invalid candidates; exact repeated question content is rejected. Final success requires the requested count. No partial draft is returned after failure.
+- All new continuation/repair instructions are external prompt resources and included in prompt hashes. Source documents still pass owner checks before preparation. Existing saved sets keep their canonical shape and remain supported; newly generated sets add requested-count and attempt metadata.
+- Reviewed the generation status panel, CSS animation/reduced-motion rule, elapsed timer, finally cleanup, and existing-set preservation. The frontend count input and API configuration both permit 50 and therefore accept 15. The client also refuses to open a mismatched-count response.
+- Home now uses file cards with lazy first-page PDF canvases, image thumbnails, and plain-text excerpts. Reviewed the two-job queue, account-bound original-file requests, bitmap/document cleanup, aborted requests on disposal, and fallbacks retaining open/download links. Original study formula rendering is unchanged.
+- Python compilation, JavaScript/module syntax checks, strict OpenSpec validation, and whitespace checks passed. No automated tests, paid model requests, or test fixtures were added or run. No authenticated session was available in the connected browser; it displayed the production Google sign-in page. Authenticated preview appearance, the live waiting animation, and a real 15-item model request were not exercised in this revision.
+
+The implementation enforces exact successful counts; it cannot guarantee that an external provider will always complete a request. Insufficient source, refusals, usage limits, or exhausted recovery produce errors instead of short sets. Duplicate checking is exact-content based and does not prove semantic uniqueness or mathematical correctness. Earlier observations below describe historical behavior, including successful short sets, that is superseded by this revision.
+
 ## Google authentication and personal library (2026-10-24)
 
 - Started the account-aware application with the local loopback origin after stopping the old process. The authorized legacy migration produced owned document/set schemas and removed all three old managed uploads and old saved sets. Read-only inspection showed zero users, sessions, documents, sets, and managed binaries. The repository's `main.pdf` remains present.

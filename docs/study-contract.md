@@ -19,21 +19,21 @@ A set contains its ID/title, primary document identity, selected original pages,
 
 A text block is `{"kind":"text","text":"Identify this expression."}`. All prose is rendered as text. For an intentional quiz variation, original_latex and change are supplied together; the answer can display the unmodified expression and explain the change. The model's response schema is derived from Pydantic through the OpenAI SDK.
 
-The service rejects citations outside the selected primary document/pages, missing question formulas on flashcards, and more items than requested. Empty output needs an explanation. Line ranges must be ordered and either have both endpoints or neither. Schema/scope checks do not prove citation accuracy or mathematical correctness.
+New generation accepts 1–50 requested items and succeeds only with exactly that many validated questions. Small provider batches use a completed-result schema with exact array bounds or an explicit insufficient-source result. Invalid/missing items are replaced within a finite attempt/time budget; there is no successful partial output. Exact question repeats, missing source formulas, flashcards without front-side formulas, and out-of-selection citations are rejected. Line ranges must be ordered and either have both endpoints or neither. Existing saved sets remain readable. Schema/scope checks do not prove citation accuracy or mathematical correctness.
 
 ## Rendering boundary
 
 `window.MathPDF.renderBlocks(container, blocks, options)` renders every block; `renderMath(container, latex, display)` typesets a single expression. Options control editing, source navigation/labels, and whether citations are links. The renderer is independent of provider and document preparation code. It uses locally served KaTeX HTML plus accessibility MathML, strict errors, disabled trusted HTML commands, and bounded expansion. Invalid math is reported locally while other blocks remain available.
 
-The print worker uses the same renderer and fonts with editing disabled and text citations. It waits for fonts and verifies layout before printing. Study formula screenshots are never used. PDF.js canvases belong only to the original document reader.
+The print worker uses the same renderer and fonts with editing disabled and text citations. It waits for fonts and verifies layout before printing. Study formula screenshots are never used. PDF.js canvases preview original PDF pages in the reader and library; study mathematics remains editable typeset text.
 
 ## Prompt boundary
 
-All natural-language LLM instructions are loaded from `formula_lab/prompts/`: system instructions, mode-specific templates, context-role instructions, and per-attachment labels. Runtime values supply selected-page mapping and file metadata. Prompt content hashes accompany each result. Provider adapters add no hidden instruction text.
+All natural-language LLM instructions are loaded from `formula_lab/prompts/`: system instructions, mode-specific templates, context-role instructions, per-attachment labels, comments, and continuation/repair instructions. Runtime values supply selected-page mapping, file metadata, accepted items, batch counts, and rejection codes. Prompt content hashes accompany each result. Provider adapters add no hidden instruction text.
 
 ## Historical diagnostic routes
 
-With an explicit `--pdf` argument, `GET /api/pages/{page}/formulas` returns all heuristic source-font candidates for that diagnostic PDF without saving them. These source-inspection routes are enabled only for that optional startup mode, separate from generation and absent from the normal workspace UI. Normal startup requires no PDF. Explicit-save/review/variant/export APIs continue to support older local diagnostic records in the optional mode. No exhaustive formula extraction or storage pass is required by generation.
+Shared diagnostic HTTP routes and the `--pdf` startup option were removed when mandatory Google authentication was introduced. Offline diagnostic Python modules remain separate from the owned document library. No exhaustive formula extraction or storage pass is required by generation.
 
 ## Primary references
 
