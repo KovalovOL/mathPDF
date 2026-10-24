@@ -1,6 +1,6 @@
 # mathPDF
 
-A local mathematics study workspace with document tabs, complete PDF browsing, context attachments, flip cards, saved study sets, and formatted PDF downloads. The interface and documentation are English.
+A personal mathematics study platform with Google sign-in, an account library, complete PDF browsing, context attachments, flip cards, saved study sets, and formatted PDF downloads. The interface and documentation are English.
 
 ## Run
 
@@ -8,16 +8,18 @@ Requires Python 3.12+ and [uv](https://docs.astral.sh/uv/).
 
 ```sh
 uv sync
-uv run formula-lab --port 8765
+APP_BASE_URL=http://127.0.0.1:8765 uv run formula-lab --port 8765
 ```
 
-Open <http://127.0.0.1:8765>. A fresh workspace starts with **Upload PDF** and contains no sample document. `--data-dir` changes the persistent workspace location; the default is `.formula-lab/`. The server binds to localhost. Optional `--pdf /path/to/document.pdf` enables the older source-inspection diagnostics and explicitly imports that file; normal use and the Docker image require no startup PDF.
+Set `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` in the environment or ignored project `.env`; `.env.example` contains placeholders. Register `http://127.0.0.1:8765/auth/google/callback` for a development Google web client. See [Google setup and authentication](docs/authentication.md).
+
+Open [http://127.0.0.1:8765](http://127.0.0.1:8765) and sign in with Google. Home shows your own files and saved study sets. A fresh account starts empty with **Upload PDF**. Selecting a file or set opens the existing reading workspace. `--data-dir` changes the persistent location; the default is `.formula-lab/`. The server binds to localhost. No startup PDF or anonymous development bypass is provided.
 
 Set `OPENAI_API_KEY` or the existing `OPENAI_KEY` in the server environment or project `.env`. `OPENAI_MODEL` defaults to `gpt-4.1-mini`; it must support the input modalities and structured output used by the application. Restart the server after changing credentials or model. Only submitting **Generate** sends documents to the provider.
 
 ## Workflow
 
-1. Start with **Upload PDF**, then read the complete document by scrolling, page navigation, or zooming. **Add files** accepts more PDFs, TXT/Markdown, or PNG/JPEG/WebP files. File tabs retain reading positions when switching. Close tabs with **×** and reopen saved files through **Open**. Closing unfinished or failed uploads asks for confirmation; failed uploads can be retried.
+1. Sign in with Google. Home lists your files and saved sets; use **Upload files** to add PDFs, TXT/Markdown, or PNG/JPEG/WebP files. Choose a file to read the complete document by scrolling, page navigation, or zooming. **Add files** adds context from the workspace. Tabs retain reading positions; close them with **×** and reopen files through **Open**. Closing unfinished or failed uploads asks for confirmation; failed uploads can be retried. Click **mathPDF** to return home. The top-right account menu provides **Sign out**.
 2. Drag the divider horizontally to adjust the document and practice panes. Fit width retains the top reading position and keeps the previous canvas visible while a sharper replacement renders. Keyboard users can focus the divider and use Left/Right or Home/End.
 3. Open **Generate study set**. Choose a source PDF, flashcards or problems, and an item count. Choose **Entire PDF** or inclusive **From / To** pages. Set both endpoints to the same page for a single page.
 4. Enable any additional context files. Each PDF has an independent page range; text and images are included in full. Optionally enter a plain-text **Comment** (up to 4,000 characters), with or without attachments, to describe the desired style, difficulty, or focus. Formulas remain grounded in the selected source pages.
@@ -36,9 +38,9 @@ Set `OPENAI_API_KEY` or the existing `OPENAI_KEY` in the server environment or p
 
 `.formula-lab/workspace.sqlite3` stores document metadata and explicitly saved sets. `.formula-lab/documents/` stores managed original files. Save preserves question/answer blocks, TeX, source references, context selections, the generation comment, quiz originals, and provider/prompt metadata. Unsaved sets remain browser drafts; leaving the page warns about pending uploads or unsaved sets. Closing a saved file or study-set tab retains its stored record. Open saved-file and study-set tab lists are remembered locally.
 
-On upgrade, a one-time migration hides the former bundled sample from the file library by its exact content hash. Its stored source remains available to older saved-set citations. Uploading that PDF explicitly makes it available in the library again. Other documents, saved sets, and diagnostic records are retained.
+Every file and saved set belongs to its authenticated owner. All reads, downloads, generation attachments, updates, and exports enforce ownership on the backend. Identical files uploaded by different accounts receive separate records. Browser preferences are scoped by account ID.
 
-The current workspace is local and has no account system. Google identity and private Garage storage remain part of the broader application plan.
+On the first ownership upgrade, the application deletes pre-authentication managed uploads and saved sets, as explicitly requested by the project owner. Later restarts preserve owned data. Repository PDFs outside the managed upload directory are untouched. Storage remains local; Garage integration is future work.
 
 ## PDF export setup
 
@@ -60,16 +62,17 @@ Document tabs + continuous PDF viewer
     -> explicit SQLite save / Chromium PDF export
 ```
 
-- `formula_lab/workspace.py`: document/file adapter and SQLite repository.
+- `formula_lab/auth.py`: Google identity, one-use OAuth transactions, and revocable server-side sessions.
+- `formula_lab/workspace.py`: owner-scoped document/file adapter and SQLite repository.
 - `formula_lab/study.py`: canonical study schema, selected-page preparation, prompts/hashes, source-scope validation.
 - `formula_lab/providers.py`: OpenAI adapter for PDF/text/image attachments.
 - `formula_lab/prompts/`: all LLM instruction text and templates.
 - `formula_lab/static/math-renderer.js`: reusable TeX to HTML/MathML rendering.
 - `formula_lab/static/pdf-viewer.js`: continuous lazy document preview.
 - `formula_lab/pdf_export.py` and `static/print.*`: isolated print document and PDF worker.
-- `formula_lab/app.py`: local FastAPI routes.
+- `formula_lab/app.py`: authenticated FastAPI routes, origin checks, and private response handling.
 
-[Workspace behavior and API](docs/workspace.md) describes the request contract, persistence, controls, and export. [The earlier fidelity report](docs/fidelity-report.md) concerns the separate source-font diagnostic experiment. Legacy source-font extraction, explicit-save, review, variant, and export APIs remain available, but the normal UI has no formula catalog.
+[Workspace behavior and API](docs/workspace.md) describes the request contract, persistence, controls, and export. [The earlier fidelity report](docs/fidelity-report.md) concerns the separate source-font diagnostic experiment. Its Python modules remain as offline tooling; shared legacy diagnostic HTTP endpoints are no longer exposed by the web application.
 
 ## VPS deployment
 
@@ -82,18 +85,20 @@ Add these **repository secrets** under **Settings → Secrets and variables → 
 | `VPS_HOST` | VPS hostname or IP, using SSH port 22 |
 | `VPS_USER` | SSH user with write access to `/opt/mathPDF` and permission to run Docker |
 | `VPS_SSH_KEY` | Complete private SSH key authorized on the VPS |
-| `APP_ENV` | Complete multiline `.env` contents, including the OpenAI API key |
+| `APP_ENV` | Complete multiline `.env` contents, including Google client credentials and the OpenAI API key |
 
-Example `APP_ENV` (replace the key):
+Example `APP_ENV` (replace the placeholders):
 
 ```dotenv
 OPENAI_KEY=your-api-key
 OPENAI_MODEL=gpt-4.1-mini
+GOOGLE_CLIENT_ID=your-web-client-id.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=your-client-secret
 ```
 
 The VPS needs Docker with the Compose plugin, `rsync`, and the existing Traefik attached to `traefik-public`, with entrypoint `websecure` and certificate resolver `myresolver`. The domain `mathpdf.site` is fixed in `docker-compose.yaml`; point its DNS records at the VPS. Compose joins the [existing external network](https://docs.docker.com/reference/compose-file/networks/#external) and configures [Traefik's Docker labels](https://doc.traefik.io/traefik/routing/providers/docker/) to route HTTPS to container port 8765.
 
-SQLite, uploaded files, and saved sets persist in `/opt/mathPDF/.formula-lab`. Deployment excludes that directory and `.env` from file synchronization; `.env` is replaced separately from the secret with permissions `600`. The image includes Chromium for PDF export, installs Python dependencies from `uv.lock`, and serves the existing frontend assets. The current workspace has no user authentication; it is accessible at the configured domain.
+SQLite, uploaded files, and saved sets persist in `/opt/mathPDF/.formula-lab`. Deployment excludes that directory and `.env` from file synchronization; `.env` is replaced separately from the secret with permissions `600`. The image includes Chromium for PDF export and installs dependencies from `uv.lock`. Google sign-in is mandatory; the production callback is fixed by the default origin to `https://mathpdf.site/auth/google/callback`. Omit the local `APP_BASE_URL` override on the VPS. Missing Google credentials leave private content protected and sign-in unavailable.
 
 ## Local frontend assets
 

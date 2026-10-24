@@ -2,20 +2,21 @@
 
 ## Documents and storage
 
-The workspace starts with an empty library and an Upload PDF action. It accepts PDF, UTF-8 TXT/Markdown, PNG, JPEG, and WebP uploads. Generation is enabled after a PDF is available. Each file is limited to 25 MB; text files to 1 MB; images to 40 megapixels. PDF uploads must be readable and unencrypted. Original filenames are display metadata; managed binaries use content hashes and opaque document IDs.
+Google sign-in is mandatory. `/` is the personal library; selecting an owned file opens `/workspace?document=<id>`, and selecting a saved set opens `/workspace?set=<id>` with its source PDF. The library starts empty and offers Upload files. It accepts PDF, UTF-8 TXT/Markdown, PNG, JPEG, and WebP uploads. Generation is enabled after a PDF is available. Each file is limited to 25 MB; text files to 1 MB; images to 40 megapixels. PDF uploads must be readable and unencrypted. Original filenames are display metadata; managed binaries use content hashes and opaque document IDs.
 
-`Workspace` is the local storage adapter. SQLite metadata and saved sets live at `<data-dir>/workspace.sqlite3`; binaries live at `<data-dir>/documents/`. The default data directory is `.formula-lab/`. A one-time schema migration adds a hidden-document flag and hides the former bundled sample by its exact SHA-256. Managed file and metadata lookup by ID still serves historical saved-set citations. Explicitly uploading the same PDF clears the hidden flag. The application has no Google identity or Garage integration yet.
+`Workspace` is the local storage adapter. SQLite users, sessions, document metadata, and saved sets live at `<data-dir>/workspace.sqlite3`; binaries live at `<data-dir>/documents/<owner-id>/`. The default data directory is `.formula-lab/`. Every repository read/write requires the authenticated owner; duplicate hashes are unique per account. Foreign IDs return generic not-found responses, including when used as generation context or export sources. A saved-set upsert cannot overwrite another owner's identifier. The user-authorized ownership migration deletes old unowned managed uploads and saved sets once. Owned data survives subsequent restarts. Garage integration remains future work.
 
-The normal startup and Docker image require no PDF. Supplying optional `--pdf` explicitly imports that file and enables legacy source-inspection routes. `GET /api/generation/config` returns a nullable `default_document_id`; normal generation sends the uploaded primary document's ID, and missing source selection produces an upload-first error.
+Startup and the Docker image require no PDF. Shared legacy source-inspection HTTP routes and the `--pdf` option have been removed from the web application. `GET /api/generation/config` returns `default_document_id: null`; generation requires an owned primary document ID. See [authentication setup](authentication.md) for Google credentials, session behavior, and local configuration.
 
-- `GET /api/documents`: list document metadata.
+- `GET /api/me`: the current account's ID, name, and email.
+- `GET /api/documents`: list the current account's document metadata.
 - `POST /api/documents`: upload one multipart `file`.
 - `GET /api/documents/{id}/file`: preview a managed file; `?download=true` returns an attachment.
-- `GET /api/study-sets`: list explicitly saved sets.
+- `GET /api/study-sets`: list the current account's explicitly saved sets.
 - `GET /api/study-sets/{id}`: load the canonical saved set.
 - `POST /api/study-sets`: save or update a validated set with its source/context snapshots, editable math, quiz originals, and generation metadata.
 
-Generation drafts are not saved automatically. Saved sets survive restart. Document tabs retain their preview instances and reading positions while the workspace is open.
+All these APIs require a live session; unsafe methods also require the trusted application Origin. Generation drafts are not saved automatically. Saved sets survive restart. Document tabs retain their preview instances and reading positions while the workspace is open. Browser preferences are scoped by account ID.
 
 File-tab close controls remove previews, not stored documents. **Open** lists saved files, including closed ones. The open saved-file tab list persists in browser local storage. New files appear immediately as unsaved upload tabs; confirmation is required to close and cancel an unfinished or failed upload. Failed uploads retain the local file for **Retry upload** while the page is open. Leaving the browser page with pending uploads triggers the browser's unsaved-change warning. A request already committed by the server can remain in the library after cancellation.
 

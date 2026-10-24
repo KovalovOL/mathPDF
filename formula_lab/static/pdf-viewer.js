@@ -166,7 +166,8 @@ function syncViewport(settled = false) {
   });
 }
 try {
-  pdf = await getDocument({url: documentId ? `/api/documents/${encodeURIComponent(documentId)}/file` : '/source.pdf',
+  if (!documentId) throw new Error('No document selected.');
+  pdf = await getDocument({url: `/api/documents/${encodeURIComponent(documentId)}/file`,
     cMapUrl: '/static/vendor/pdfjs/cmaps/', cMapPacked: true,
     standardFontDataUrl: '/static/vendor/pdfjs/standard_fonts/', wasmUrl: '/static/vendor/pdfjs/wasm/',
     isEvalSupported: false}).promise;
@@ -204,6 +205,7 @@ try {
   });
   announce();
   jump(Number(query.get('page') || 1));
-} catch {
+} catch (error) {
+  if (error.status === 401) parent.postMessage({type: 'session-expired'}, location.origin);
   status.hidden = false; status.textContent = 'Unable to preview this PDF. Download it to view the document.';
 }

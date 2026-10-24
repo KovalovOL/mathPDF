@@ -5,6 +5,7 @@ const pendingUploads = new Map();
 let openDocumentIds = [];
 let activeDocumentId, activeSetId, config, generationActive = false, setEpoch = 0, saveIntent;
 let statusTimer, practiceObserver, viewportNotice, viewportSettled = false, splitRatio = .5;
+let preferencePrefix;
 
 function el(tag, className, text) {
   const item = document.createElement(tag);
@@ -25,18 +26,14 @@ function message(text, error = false, duration = 6000) {
   if (duration && text && !error) statusTimer = setTimeout(() => {$('message').hidden = true;}, duration);
 }
 async function api(path, options = {}) {
-  const headers = options.body instanceof FormData ? {} : {'Content-Type': 'application/json'};
-  const response = await fetch(path, {...options, headers: {...headers, ...options.headers}});
-  let data;
-  try { data = await response.json(); } catch { throw new Error('The server returned an unreadable response.'); }
-  if (!response.ok) throw new Error(typeof data.detail === 'string' ? data.detail : 'Invalid request. Check your file and page selections.');
-  return data;
+  return MathPDFSession.api(path, options);
 }
 async function action(operation) {try {await operation();} catch (error) {message(error.message, true, 10000);}}
 function preference(key, value) {
+  if (!preferencePrefix) return;
   try {
-    if (value === undefined) return localStorage.getItem(`mathpdf-${key}`);
-    localStorage.setItem(`mathpdf-${key}`, String(value));
+    if (value === undefined) return localStorage.getItem(`${preferencePrefix}${key}`);
+    localStorage.setItem(`${preferencePrefix}${key}`, String(value));
   } catch {}
 }
 function fileUrl(id, download = false) {return `/api/documents/${encodeURIComponent(id)}/file${download ? '?download=true' : ''}`;}
@@ -120,7 +117,7 @@ async function openDocument(id, targetPage) {
       const image = el('img', 'image-preview'); image.alt = doc.filename; image.src = fileUrl(id); view.append(image);
     } else {
       const preview = el('pre', 'text-preview', 'Loading file…'); view.append(preview);
-      fetch(fileUrl(id)).then(response => {
+      MathPDFSession.request(fileUrl(id)).then(response => {
         if (!response.ok) throw new Error('This file could not be loaded.');
         return response.text();
       }).then(text => {preview.textContent = text;}).catch(error => {preview.textContent = error.message;});
@@ -182,6 +179,10 @@ async function showFiles() {
 }
 window.addEventListener('message', event => {
   const data = event.data;
+  if (event.origin === location.origin && data?.type === 'session-expired' &&
+      [...views.values()].some(view => event.source === view.querySelector('iframe')?.contentWindow)) {
+    action(() => MathPDFSession.api('/api/me')); return;
+  }
   if (event.origin !== location.origin || !data || data.type !== 'pdf-page') return;
   const view = views.get(data.documentId), doc = documents.get(data.documentId);
   if (!view || event.source !== view.querySelector('iframe')?.contentWindow || !doc ||
@@ -507,7 +508,7 @@ async function exportSet() {
   const record = sets.get(activeSetId); if (!record?.data) return;
   $('export-set').disabled = true; $('export-set').textContent = 'Exporting…'; message('Formatting your PDF…', false, 0);
   try {
-    const response = await fetch('/api/study/export.pdf', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(record.data)});
+    const response = await MathPDFSession.request('/api/study/export.pdf', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(record.data)});
     if (!response.ok) {
       const error = await response.json(); throw new Error(typeof error.detail === 'string' ? error.detail : 'This set could not be exported.');
     }
@@ -606,21 +607,32 @@ document.querySelectorAll('.close-dialog').forEach(control => control.addEventLi
   $(control.dataset.dialog).close();
 }));
 action(async () => {
+  const user = await MathPDFSession.ready;
+  preferencePrefix = `mathpdf-${user.id}-`;
   const [loadedDocuments, configuration, saved] = await Promise.all([api('/api/documents'), api('/api/generation/config'), api('/api/study-sets')]);
   config = configuration; loadedDocuments.forEach(doc => documents.set(doc.id, doc));
   updateGenerationAvailability();
   let storedFiles;
   try {storedFiles = JSON.parse(preference('open-files'));} catch {}
   openDocumentIds = Array.isArray(storedFiles) ? [...new Set(storedFiles.filter(id => documents.has(id)))] : [...documents.keys()];
-  const initial = openDocumentIds.includes(preference('active-file')) ? preference('active-file') : openDocumentIds[0];
+  const selection = new URLSearchParams(location.search);
+  const selectedDocument = selection.get('document');
+  if (selectedDocument && documents.has(selectedDocument) && !openDocumentIds.includes(selectedDocument)) openDocumentIds.push(selectedDocument);
+  const initial = documents.has(selectedDocument) ? selectedDocument : openDocumentIds.includes(preference('active-file')) ? preference('active-file') : openDocumentIds[0];
   if (initial) await openDocument(initial); else showEmptyDocuments();
   let storedSets;
   try {storedSets = JSON.parse(preference('open-study-sets'));} catch {}
   const savedById = new Map(saved.map(meta => [meta.id, meta]));
   const openSaved = Array.isArray(storedSets) ? [...new Set(storedSets)].filter(id => savedById.has(id)) : saved.map(meta => meta.id);
+  const requestedSet = selection.get('set');
+  if (savedById.has(requestedSet) && !openSaved.includes(requestedSet)) openSaved.push(requestedSet);
   for (const id of openSaved) sets.set(id, {...savedById.get(id), saved: true, data: null, itemIndex: 0});
-  const selectedSet = sets.has(preference('active-study-set')) ? preference('active-study-set') : openSaved[0];
+  const selectedSet = sets.has(requestedSet) ? requestedSet : sets.has(preference('active-study-set')) ? preference('active-study-set') : openSaved[0];
   if (selectedSet) await openSet(selectedSet); else {renderSetTabs(); renderPractice();}
+  if (requestedSet && sets.get(requestedSet)?.data) {
+    const source = sets.get(requestedSet).data.document;
+    await openDocument(source.id, sets.get(requestedSet).data.pages[0]);
+  }
   const storedRatio = Number(preference('split-ratio')); resizePanes(storedRatio > 0 && storedRatio < 1 ? storedRatio : .5);
-  if (!config.configured) message('Set the OpenAI API key on the server to enable generation.', true, 10000);
+  if (!config.configured) message('Generation is currently unavailable. You can still read files and open saved sets.', true, 10000);
 });

@@ -7,12 +7,13 @@
   <link rel="stylesheet" href="/static/style.css">
   <script src="/static/vendor/katex/katex.min.js" defer></script>
   <script src="/static/math-renderer.js" defer></script>
+  <script src="/static/account.js" defer></script>
   <script src="/static/app.js" defer></script>
 </head>
 <body>
   <header class="app-header">
-    <h1>mathPDF</h1>
-    <div class="header-actions"><button id="open-saved" class="secondary">Saved sets</button><button id="open-generation" disabled>Generate study set</button></div>
+    <h1><a class="brand" href="/" aria-label="mathPDF library">mathPDF</a></h1>
+    <div class="header-actions"><button id="open-saved" class="secondary">Saved sets</button><button id="open-generation" disabled>Generate study set</button><div id="account"></div></div>
   </header>
   <div id="message" class="status-message" role="status" aria-live="polite" hidden></div>
   <main id="workspace" class="workspace">

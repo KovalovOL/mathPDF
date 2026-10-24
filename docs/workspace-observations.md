@@ -2,6 +2,17 @@
 
 Date: 2026-10-24. These are manual implementation observations, not automated regression coverage.
 
+## Google authentication and personal library (2026-10-24)
+
+- Started the account-aware application with the local loopback origin after stopping the old process. The authorized legacy migration produced owned document/set schemas and removed all three old managed uploads and old saved sets. Read-only inspection showed zero users, sessions, documents, sets, and managed binaries. The repository's `main.pdf` remains present.
+- Reloading `/` redirected the browser to the English sign-in page. Direct navigation to `/static/index.html` also redirected to login; private HTML cannot bypass the entry route. Navigating to `/api/documents` showed `{"detail":"Sign in to continue."}`. The middleware's unauthenticated API response is HTTP 401.
+- The sign-in page uses the existing white/gray/blue style. Local Google credentials are absent, so the button is disabled with an availability message. The project owner confirmed that production client credentials were added to GitHub's `APP_ENV` secret before push.
+- Reviewed all application repository calls for required server-supplied owner IDs, including source/context preparation, preview/download, saved-set retrieval/upsert, and export validation. Reviewed callback state/PKCE/nonce handling, official ID-token verification, cookie attributes, session expiry/revocation, and unsafe request origin checks. These are code-review observations, not evidence of a completed Google exchange or cross-account runtime exercise.
+- Home/library markup and account UI provide uploads, file downloads, saved-set links, and sign-out. Workspace URLs select an owned file or set and restore a selected set's source PDF. Browser preferences include the account ID. Stale account-bound API requests are rejected after an account switch; restored browser-history pages reload.
+- Python compilation, JavaScript syntax checks, dependency resolution, strict OpenSpec validation, and diff whitespace checks succeeded. No automated tests or live LLM requests were added or run for this change.
+
+Live Google sign-in, authenticated library interactions, two-account isolation in a running browser, and production deployment were not exercised locally. The library/workspace integration was reviewed in code. Local live sign-in additionally requires a registered loopback callback and local Google credentials. Earlier observations below describe previous revisions and their former unowned data, which the authorized migration has now removed.
+
 - The supplied 59-page PDF is available as a complete continuous document. The reader showed lazily rendered pages, and a page-7 jump kept all other pages accessible.
 - Generation settings opened after reading, with an independent single-page range (7–7), mode/count, and context-file controls.
 - The exported PDF was added locally as `Study examples.pdf`. Its tab opened as a two-page document, and switching back restored the primary document at page 7. Generation settings independently selected primary pages 5–7 and only page 2 of the example. This selection was canceled without another model request.

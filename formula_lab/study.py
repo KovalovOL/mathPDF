@@ -167,11 +167,11 @@ def selected_pdf(path: Path, pages: list[int]) -> bytes:
     return data
 
 
-def prepare_documents(workspace: Workspace, request: GenerateRequest, default_id: str | None) -> list[InputDocument]:
-    source_id = request.document_id or default_id
+def prepare_documents(workspace: Workspace, request: GenerateRequest, owner_id: str) -> list[InputDocument]:
+    source_id = request.document_id
     if source_id is None:
         raise ValueError("Upload a PDF and choose it as the primary source.")
-    source = workspace.document(source_id)
+    source = workspace.document(source_id, owner_id)
     if source.media_type != "application/pdf":
         raise ValueError("Choose a PDF as the primary source.")
     entries = [(source, request.pages, "source")]
@@ -180,11 +180,11 @@ def prepare_documents(workspace: Workspace, request: GenerateRequest, default_id
         if context.document_id in used:
             raise ValueError("Include each file only once in a generation request.")
         used.add(context.document_id)
-        entries.append((workspace.document(context.document_id), context.pages, "context"))
+        entries.append((workspace.document(context.document_id, owner_id), context.pages, "context"))
     result = []
     total_pages = 0
     for document, pages, role in entries:
-        path = workspace.path(document.id)
+        path = workspace.path(document.id, owner_id)
         if document.page_count is not None:
             pages = pages if pages is not None else list(range(1, document.page_count + 1))
             total_pages += len(pages)
@@ -215,9 +215,9 @@ def validate_study(content: GeneratedContent, mode: str, document_id: str, pages
         raise GenerationError("The provider returned no study material or explanation.")
 
 
-async def generate_study(workspace: Workspace, default_id: str | None, request: GenerateRequest,
+async def generate_study(workspace: Workspace, owner_id: str, request: GenerateRequest,
                          provider: StudyProvider) -> StudySet:
-    documents = await to_thread(prepare_documents, workspace, request, default_id)
+    documents = await to_thread(prepare_documents, workspace, request, owner_id)
     system, task, hashes = load_prompts(request, documents)
     result = await provider.generate(documents, system, task)
     content = result.content
