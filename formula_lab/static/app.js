@@ -3,7 +3,7 @@ const $ = id => document.getElementById(id);
 const documents = new Map(), views = new Map(), reading = new Map(), sets = new Map(), contextChoices = new Map();
 const pendingUploads = new Map();
 let openDocumentIds = [];
-let activeDocumentId, activeSetId, config, generationActive = false, setEpoch = 0, savingId;
+let activeDocumentId, activeSetId, config, generationActive = false, setEpoch = 0, saveIntent;
 let statusTimer, practiceObserver, viewportNotice, viewportSettled = false, splitRatio = .5;
 
 function el(tag, className, text) {
@@ -49,6 +49,12 @@ function makeTab(text, selected, operation, unsaved = false) {
   if (unsaved) {const mark = el('span', 'unsaved-mark'); mark.setAttribute('aria-label', 'Unsaved'); tab.append(mark);}
   return tab;
 }
+function closableTab(text, selected, operation, closeOperation, unsaved = false) {
+  const wrapper = el('div', 'closable-tab'); wrapper.setAttribute('role', 'presentation');
+  const tab = makeTab(text, selected, operation, unsaved);
+  const close = button('×', 'tab-close', closeOperation, `Close ${text}`); close.title = `Close ${text}`;
+  wrapper.append(tab, close); return wrapper;
+}
 function wireTabs(container) {
   container.addEventListener('keydown', event => {
     if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
@@ -64,13 +70,11 @@ function wireTabs(container) {
 function renderDocumentTabs() {
   $('document-tabs').replaceChildren(...openDocumentIds.map(id => {
     const doc = documents.get(id) || pendingUploads.get(id);
-    const wrapper = el('div', 'file-tab'); wrapper.setAttribute('role', 'presentation');
-    const tab = makeTab(doc.filename, id === activeDocumentId, () => action(() => openDocument(id)), pendingUploads.has(id));
-    tab.setAttribute('aria-controls', `document-view-${id}`);
-    const close = button('×', 'tab-close', () => action(() => closeDocument(id)), `Close ${doc.filename}`);
-    close.title = `Close ${doc.filename}`; wrapper.append(tab, close); return wrapper;
+    const wrapper = closableTab(doc.filename, id === activeDocumentId, () => action(() => openDocument(id)),
+      () => action(() => closeDocument(id)), pendingUploads.has(id));
+    wrapper.querySelector('[role="tab"]').setAttribute('aria-controls', `document-view-${id}`); return wrapper;
   }));
-  $('document-tabs').querySelector('[aria-selected="true"]')?.closest('.file-tab').scrollIntoView({block: 'nearest', inline: 'nearest'});
+  $('document-tabs').querySelector('[aria-selected="true"]')?.closest('.closable-tab').scrollIntoView({block: 'nearest', inline: 'nearest'});
   preference('open-files', JSON.stringify(openDocumentIds.filter(id => documents.has(id))));
 }
 function updateDocumentToolbar() {
@@ -140,7 +144,8 @@ function showEmptyDocuments() {
   for (const view of views.values()) view.hidden = true;
   $('document-views').querySelector('.document-empty')?.remove();
   const empty = el('div', 'document-empty');
-  empty.append(el('p', '', 'No open files.'), button('Open saved files', 'secondary', () => action(showFiles)));
+  empty.append(el('p', '', documents.size ? 'No open files.' : 'Upload a PDF to start studying.'), button('Upload PDF', '', chooseFiles));
+  if (documents.size) empty.append(button('Open saved files', 'secondary', () => action(showFiles)));
   $('document-views').append(empty); renderDocumentTabs(); updateDocumentToolbar();
 }
 async function closeDocument(id) {
@@ -166,6 +171,7 @@ async function closeDocument(id) {
 }
 async function showFiles() {
   const loaded = await api('/api/documents'); loaded.forEach(doc => documents.set(doc.id, doc));
+  updateGenerationAvailability();
   $('files-list').replaceChildren(...loaded.map(doc => {
     const entry = button('', '', () => action(async () => {$('files-dialog').close(); await openDocument(doc.id);}));
     entry.append(el('span', '', doc.filename), el('small', '', openDocumentIds.includes(doc.id) ? 'Open' : doc.page_count ? `${doc.page_count} pages` : 'Saved'));
@@ -185,12 +191,51 @@ window.addEventListener('message', event => {
 });
 
 function renderSetTabs() {
-  $('set-tabs').replaceChildren(...[...sets.values()].map(record =>
-    makeTab(record.title, record.id === activeSetId, () => action(() => openSet(record.id)), !record.saved)));
+  $('set-tabs').replaceChildren(...[...sets.values()].map(record => {
+    const wrapper = closableTab(record.title, record.id === activeSetId, () => action(() => openSet(record.id)),
+      () => action(() => closeSet(record.id)), !record.saved);
+    wrapper.querySelector('[role="tab"]').setAttribute('aria-controls', 'practice-content'); return wrapper;
+  }));
+  $('set-tabs').querySelector('[aria-selected="true"]')?.closest('.closable-tab').scrollIntoView({block: 'nearest', inline: 'nearest'});
+  preference('open-study-sets', JSON.stringify([...sets.values()].filter(record => record.saved).map(record => record.id)));
+  preference('active-study-set', activeSetId || '');
+}
+async function removeSetTab(id) {
+  const ids = [...sets.keys()], index = ids.indexOf(id); if (index < 0) return;
+  sets.delete(id);
+  if (activeSetId === id) {
+    ++setEpoch; activeSetId = null;
+    const next = [...sets.keys()][Math.min(index, sets.size - 1)];
+    if (next) await openSet(next); else renderPractice();
+    renderSetTabs(); $('set-tabs').querySelector('[aria-selected="true"]')?.focus();
+  } else renderSetTabs();
+}
+async function closeSet(id) {
+  const record = sets.get(id); if (!record) return;
+  if (!record.saved) {
+    const dialog = $('close-set-dialog'); dialog.returnValue = '';
+    $('close-set-message').textContent = `“${record.title}” has not been saved.`;
+    dialog.showModal();
+    const choice = await new Promise(resolve => dialog.addEventListener('close', () => resolve(dialog.returnValue), {once: true}));
+    if (choice === 'save') {openSaveDialog(id, true); return;}
+    if (choice !== 'discard') return;
+  }
+  await removeSetTab(id);
+}
+function openSaveDialog(id, closeAfterSave = false) {
+  const record = sets.get(id); if (!record?.data) return;
+  saveIntent = {id, closeAfterSave, cancelled: false};
+  $('set-name').value = record.title; $('save-error').hidden = true;
+  $('confirm-save').textContent = closeAfterSave ? 'Save and close' : 'Save';
+  $('save-dialog').showModal();
 }
 function sourceOptions(result) {
   return {editable: false,
-    onSource: ref => action(() => openDocument(ref.document_id || result.document.id, ref.page)),
+    onSource: ref => action(() => {
+      const id = ref.document_id || result.document.id;
+      if (!documents.has(id) && id === result.document.id) documents.set(id, result.document);
+      updateGenerationAvailability(); return openDocument(id, ref.page);
+    }),
     sourceUrl: ref => `${fileUrl(ref.document_id || result.document.id)}#page=${ref.page}`,
     sourceLabel: ref => `Source · page ${ref.page}`};
 }
@@ -318,6 +363,7 @@ async function saveUpload(id) {
   try {
     const doc = await api('/api/documents', {method: 'POST', body, signal: pending.controller.signal});
     documents.set(doc.id, doc);
+    updateGenerationAvailability();
     if (!pendingUploads.has(id)) return;
     pending.savedId = doc.id;
     const selected = activeDocumentId === id;
@@ -332,6 +378,11 @@ async function saveUpload(id) {
   } finally {pending.controller = null;}
 }
 function sourceDocument() {return documents.get($('source-document').value);}
+function updateGenerationAvailability() {
+  const hasPdf = [...documents.values()].some(doc => doc.page_count);
+  $('open-generation').disabled = generationActive || !hasPdf;
+  $('open-generation').title = hasPdf ? '' : 'Upload a PDF to generate study material.';
+}
 function updateSourceChoices() {
   const selected = $('source-document').value;
   $('source-document').replaceChildren(...[...documents.values()].filter(doc => doc.page_count).map(doc => new Option(doc.filename, doc.id)));
@@ -414,7 +465,7 @@ function renderContextChoices() {
 function openGeneration() {
   updateSourceChoices();
   if (documents.get(activeDocumentId)?.page_count) $('source-document').value = activeDocumentId;
-  else if (!sourceDocument()) $('source-document').value = config.default_document_id;
+  if (!sourceDocument()) {message('Upload a PDF to generate study material.'); return;}
   sourceChanged(); $('generation-error').hidden = true;
   $('generation-dialog').showModal();
 }
@@ -432,17 +483,24 @@ async function generate(event) {
     await openSet(data.id);
     message(`Created ${data.items.length} ${data.mode === 'flashcards' ? 'flashcards' : 'problems'}.`);
   } finally {
-    generationActive = false; $('open-generation').disabled = false; $('open-generation').textContent = 'Generate study set';
+    generationActive = false; updateGenerationAvailability(); $('open-generation').textContent = 'Generate study set';
   }
 }
 async function saveSet(event) {
-  event.preventDefault(); const record = sets.get(savingId); if (!record?.data) return;
+  event.preventDefault(); const intent = saveIntent, record = sets.get(intent?.id); if (!record?.data) return;
   $('confirm-save').disabled = true;
   try {
     const result = await api('/api/study-sets', {method: 'POST', body: JSON.stringify({...record.data, title: $('set-name').value.trim()})});
     record.data = result; record.title = result.title; record.saved = true;
-    $('save-dialog').close(); renderSetTabs(); if (record.id === activeSetId) renderPractice(); message('Study set saved.');
-  } catch (error) {$('save-error').hidden = false; $('save-error').textContent = error.message;}
+    const close = intent.closeAfterSave && !intent.cancelled;
+    if (saveIntent === intent && $('save-dialog').open) $('save-dialog').close();
+    if (close) await removeSetTab(record.id);
+    else {renderSetTabs(); if (record.id === activeSetId) renderPractice();}
+    message('Study set saved.');
+  } catch (error) {
+    if (saveIntent === intent && $('save-dialog').open) {$('save-error').hidden = false; $('save-error').textContent = error.message;}
+    else message(error.message, true);
+  }
   finally {$('confirm-save').disabled = false;}
 }
 async function exportSet() {
@@ -519,6 +577,7 @@ function chooseFiles() {
   $('file-input').click();
 }
 $('add-files').addEventListener('click', chooseFiles);
+$('upload-pdf').addEventListener('click', chooseFiles);
 $('open-files').addEventListener('click', () => action(showFiles));
 $('add-context').addEventListener('click', chooseFiles);
 $('file-input').addEventListener('change', () => {const files = [...$('file-input').files]; $('file-input').value = ''; action(() => uploadFiles(files));});
@@ -534,27 +593,34 @@ $('source-document').addEventListener('change', sourceChanged);
 $('source-scope').addEventListener('change', () => {updateRangeDisabled(); updateGenerationSummary();});
 for (const input of [$('source-from'), $('source-to'), $('mode'), $('count')]) input.addEventListener('input', updateGenerationSummary);
 $('generate-form').addEventListener('submit', event => action(() => generate(event)));
-$('save-set').addEventListener('click', () => {
-  savingId = activeSetId; const record = sets.get(savingId); if (!record?.data) return;
-  $('set-name').value = record.title; $('save-error').hidden = true; $('save-dialog').showModal();
-});
+$('save-set').addEventListener('click', () => openSaveDialog(activeSetId));
+$('save-dialog').addEventListener('cancel', () => {if (saveIntent) saveIntent.cancelled = true;});
 $('save-form').addEventListener('submit', saveSet);
 $('export-set').addEventListener('click', () => action(exportSet));
 $('open-saved').addEventListener('click', () => action(showSaved));
 addEventListener('beforeunload', event => {
-  if (pendingUploads.size) {event.preventDefault(); event.returnValue = '';}
+  if (pendingUploads.size || [...sets.values()].some(record => !record.saved)) {event.preventDefault(); event.returnValue = '';}
 });
-document.querySelectorAll('.close-dialog').forEach(control => control.addEventListener('click', () => $(control.dataset.dialog).close()));
+document.querySelectorAll('.close-dialog').forEach(control => control.addEventListener('click', () => {
+  if (control.dataset.dialog === 'save-dialog' && saveIntent) saveIntent.cancelled = true;
+  $(control.dataset.dialog).close();
+}));
 action(async () => {
   const [loadedDocuments, configuration, saved] = await Promise.all([api('/api/documents'), api('/api/generation/config'), api('/api/study-sets')]);
   config = configuration; loadedDocuments.forEach(doc => documents.set(doc.id, doc));
+  updateGenerationAvailability();
   let storedFiles;
   try {storedFiles = JSON.parse(preference('open-files'));} catch {}
   openDocumentIds = Array.isArray(storedFiles) ? [...new Set(storedFiles.filter(id => documents.has(id)))] : [...documents.keys()];
   const initial = openDocumentIds.includes(preference('active-file')) ? preference('active-file') : openDocumentIds[0];
   if (initial) await openDocument(initial); else showEmptyDocuments();
-  for (const meta of saved) sets.set(meta.id, {...meta, saved: true, data: null, itemIndex: 0});
-  if (saved.length) await openSet(saved[0].id); else renderPractice();
+  let storedSets;
+  try {storedSets = JSON.parse(preference('open-study-sets'));} catch {}
+  const savedById = new Map(saved.map(meta => [meta.id, meta]));
+  const openSaved = Array.isArray(storedSets) ? [...new Set(storedSets)].filter(id => savedById.has(id)) : saved.map(meta => meta.id);
+  for (const id of openSaved) sets.set(id, {...savedById.get(id), saved: true, data: null, itemIndex: 0});
+  const selectedSet = sets.has(preference('active-study-set')) ? preference('active-study-set') : openSaved[0];
+  if (selectedSet) await openSet(selectedSet); else {renderSetTabs(); renderPractice();}
   const storedRatio = Number(preference('split-ratio')); resizePanes(storedRatio > 0 && storedRatio < 1 ? storedRatio : .5);
   if (!config.configured) message('Set the OpenAI API key on the server to enable generation.', true, 10000);
 });

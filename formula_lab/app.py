@@ -36,12 +36,13 @@ class SignChange(BaseModel):
     replacement: str = Field(max_length=2)
 
 
-def create_app(pdf_path: Path, data_dir: Path, provider: StudyProvider | None = None) -> FastAPI:
+def create_app(pdf_path: Path | None = None, data_dir: Path = Path(".formula-lab"),
+               provider: StudyProvider | None = None) -> FastAPI:
     load_dotenv(Path.cwd() / ".env", override=False)
-    source = PdfSource(pdf_path, data_dir)
-    store = FormulaStore(data_dir, source.sha256)
     workspace = Workspace(data_dir)
-    default_document = workspace.add_document(source.path.name, source.path.read_bytes())
+    source = PdfSource(pdf_path, data_dir) if pdf_path is not None else None
+    store = FormulaStore(data_dir, source.sha256) if source is not None else None
+    default_document = workspace.add_document(source.path.name, source.path.read_bytes()) if source is not None else None
     app = FastAPI(title="mathPDF", docs_url="/api/docs", redoc_url=None)
     app.state.source, app.state.store = source, store
     app.state.workspace = workspace
@@ -72,12 +73,15 @@ def create_app(pdf_path: Path, data_dir: Path, provider: StudyProvider | None = 
 
     @app.get("/api/document")
     def document():
+        if source is None:
+            raise HTTPException(404, "Source inspection is not enabled. Use the document library to upload a PDF.")
         return {"filename":source.path.name,"sha256":source.sha256,"page_count":source.page_count}
 
     @app.get("/api/generation/config")
     def generation_config():
         return {"configured": app.state.provider is not None, "max_pages": 100, "max_items": 10,
-                "max_context_files": 6, "max_upload_mb": 25, "default_document_id": default_document.id}
+                "max_context_files": 6, "max_upload_mb": 25,
+                "default_document_id": default_document.id if default_document is not None else None}
 
     @app.get("/api/documents")
     def documents():
@@ -147,67 +151,69 @@ def create_app(pdf_path: Path, data_dir: Path, provider: StudyProvider | None = 
         if generation_lock.locked():
             raise HTTPException(409, "A generation request is already running. Wait for it to finish.")
         async with generation_lock:
-            return await generate_study(workspace, default_document.id, request, app.state.provider)
+            return await generate_study(workspace, default_document.id if default_document is not None else None,
+                                        request, app.state.provider)
 
-    @app.get("/source.pdf")
-    def source_file():
-        return FileResponse(source.path,media_type="application/pdf",filename=source.path.name,
-                            content_disposition_type="inline")
+    if source is not None:
+        @app.get("/source.pdf")
+        def source_file():
+            return FileResponse(source.path,media_type="application/pdf",filename=source.path.name,
+                                content_disposition_type="inline")
 
-    @app.get("/fonts/{filename}")
-    def font_file(filename: str):
-        if not re.fullmatch(r"pdf_[a-f0-9]{20}\.otf", filename):
-            raise HTTPException(404,"Font not found")
-        path=source.registry.directory/filename
-        if not path.is_file():
-            raise HTTPException(404,"Font not found")
-        return FileResponse(path,media_type="font/otf")
+        @app.get("/fonts/{filename}")
+        def font_file(filename: str):
+            if not re.fullmatch(r"pdf_[a-f0-9]{20}\.otf", filename):
+                raise HTTPException(404,"Font not found")
+            path=source.registry.directory/filename
+            if not path.is_file():
+                raise HTTPException(404,"Font not found")
+            return FileResponse(path,media_type="font/otf")
 
-    @app.get("/api/pages/{number}")
-    def page(number: int):
-        return source.page(number)
+        @app.get("/api/pages/{number}")
+        def page(number: int):
+            return source.page(number)
 
-    @app.get("/api/pages/{number}/formulas")
-    def page_formulas(number: int):
-        page = source.page(number)
-        return {"page": number, "warnings": page.warnings, "formulas": [
-            source.select(number, candidate.bbox, f"Formula {index + 1}")
-            for index, candidate in enumerate(page.candidates)
-        ]}
+        @app.get("/api/pages/{number}/formulas")
+        def page_formulas(number: int):
+            page = source.page(number)
+            return {"page": number, "warnings": page.warnings, "formulas": [
+                source.select(number, candidate.bbox, f"Formula {index + 1}")
+                for index, candidate in enumerate(page.candidates)
+            ]}
 
-    @app.post("/api/preview")
-    def preview(selection: Selection):
-        return source.select(selection.page,selection.bbox,selection.title)
+        @app.post("/api/preview")
+        def preview(selection: Selection):
+            return source.select(selection.page,selection.bbox,selection.title)
 
-    @app.get("/api/formulas")
-    def formulas():
-        return store.list()
+        @app.get("/api/formulas")
+        def formulas():
+            return store.list()
 
-    @app.post("/api/formulas",status_code=201)
-    def save_formula(selection: Selection):
-        return store.add(source.select(selection.page,selection.bbox,selection.title))
+        @app.post("/api/formulas",status_code=201)
+        def save_formula(selection: Selection):
+            return store.add(source.select(selection.page,selection.bbox,selection.title))
 
-    @app.get("/api/formulas/{identifier}")
-    def formula(identifier: str):
-        return store.get(identifier)
+        @app.get("/api/formulas/{identifier}")
+        def formula(identifier: str):
+            return store.get(identifier)
 
-    @app.post("/api/formulas/{identifier}/variants",status_code=201)
-    def sign_variant(identifier: str,change: SignChange):
-        return store.add(replace_sign(store.get(identifier),change.node_id,change.replacement))
+        @app.post("/api/formulas/{identifier}/variants",status_code=201)
+        def sign_variant(identifier: str,change: SignChange):
+            return store.add(replace_sign(store.get(identifier),change.node_id,change.replacement))
 
-    @app.patch("/api/formulas/{identifier}/review")
-    def review(identifier: str,review: Review):
-        record=store.get(identifier)
-        if review.state=="accepted" and record.warnings:
-            raise ValueError("Resolve extraction warnings before accepting this formula")
-        return store.review(identifier,review)
+        @app.patch("/api/formulas/{identifier}/review")
+        def review(identifier: str,review: Review):
+            record=store.get(identifier)
+            if review.state=="accepted" and record.warnings:
+                raise ValueError("Resolve extraction warnings before accepting this formula")
+            return store.review(identifier,review)
 
-    @app.get("/api/export")
-    def export():
-        result={"schema_version":1,"document":document(),
-                "formulas":[f.model_dump(mode="json") for f in store.list()]}
-        return Response(json.dumps(result,ensure_ascii=False,indent=2),media_type="application/json",
-                        headers={"Content-Disposition":f'attachment; filename="formulas-{source.sha256[:8]}.json"'})
+        @app.get("/api/export")
+        def export():
+            result={"schema_version":1,"document":document(),
+                    "formulas":[f.model_dump(mode="json") for f in store.list()]}
+            return Response(json.dumps(result,ensure_ascii=False,indent=2),media_type="application/json",
+                            headers={"Content-Disposition":f'attachment; filename="formulas-{source.sha256[:8]}.json"'})
 
     app.mount("/static",StaticFiles(directory=static),name="static")
     return app
@@ -216,7 +222,7 @@ def create_app(pdf_path: Path, data_dir: Path, provider: StudyProvider | None = 
 def main():
     import uvicorn
     parser=argparse.ArgumentParser(description="Generate study material and render editable mathematics locally")
-    parser.add_argument("--pdf",type=Path,default=Path("main.pdf"))
+    parser.add_argument("--pdf",type=Path,default=None,help="Optional PDF for legacy source inspection")
     parser.add_argument("--data-dir",type=Path,default=Path(".formula-lab"))
     parser.add_argument("--host",default="127.0.0.1")
     parser.add_argument("--port",type=int,default=8765)

@@ -167,8 +167,11 @@ def selected_pdf(path: Path, pages: list[int]) -> bytes:
     return data
 
 
-def prepare_documents(workspace: Workspace, request: GenerateRequest, default_id: str) -> list[InputDocument]:
-    source = workspace.document(request.document_id or default_id)
+def prepare_documents(workspace: Workspace, request: GenerateRequest, default_id: str | None) -> list[InputDocument]:
+    source_id = request.document_id or default_id
+    if source_id is None:
+        raise ValueError("Upload a PDF and choose it as the primary source.")
+    source = workspace.document(source_id)
     if source.media_type != "application/pdf":
         raise ValueError("Choose a PDF as the primary source.")
     entries = [(source, request.pages, "source")]
@@ -212,7 +215,7 @@ def validate_study(content: GeneratedContent, mode: str, document_id: str, pages
         raise GenerationError("The provider returned no study material or explanation.")
 
 
-async def generate_study(workspace: Workspace, default_id: str, request: GenerateRequest,
+async def generate_study(workspace: Workspace, default_id: str | None, request: GenerateRequest,
                          provider: StudyProvider) -> StudySet:
     documents = await to_thread(prepare_documents, workspace, request, default_id)
     system, task, hashes = load_prompts(request, documents)

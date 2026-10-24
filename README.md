@@ -8,21 +8,21 @@ Requires Python 3.12+ and [uv](https://docs.astral.sh/uv/).
 
 ```sh
 uv sync
-uv run formula-lab --pdf main.pdf --port 8765
+uv run formula-lab --port 8765
 ```
 
-Open <http://127.0.0.1:8765>. `--pdf` imports a startup document into the workspace. `--data-dir` changes the persistent workspace location; the default is `.formula-lab/`. The server binds to localhost.
+Open <http://127.0.0.1:8765>. A fresh workspace starts with **Upload PDF** and contains no sample document. `--data-dir` changes the persistent workspace location; the default is `.formula-lab/`. The server binds to localhost. Optional `--pdf /path/to/document.pdf` enables the older source-inspection diagnostics and explicitly imports that file; normal use and the Docker image require no startup PDF.
 
 Set `OPENAI_API_KEY` or the existing `OPENAI_KEY` in the server environment or project `.env`. `OPENAI_MODEL` defaults to `gpt-4.1-mini`; it must support the input modalities and structured output used by the application. Restart the server after changing credentials or model. Only submitting **Generate** sends documents to the provider.
 
 ## Workflow
 
-1. Read the complete PDF by scrolling, page navigation, or zooming. Click **Add files** to add PDFs, TXT/Markdown, or PNG/JPEG/WebP files. File tabs retain reading positions when switching. Close tabs with **×** and reopen saved files through **Open**. Closing unfinished or failed uploads asks for confirmation; failed uploads can be retried.
+1. Start with **Upload PDF**, then read the complete document by scrolling, page navigation, or zooming. **Add files** accepts more PDFs, TXT/Markdown, or PNG/JPEG/WebP files. File tabs retain reading positions when switching. Close tabs with **×** and reopen saved files through **Open**. Closing unfinished or failed uploads asks for confirmation; failed uploads can be retried.
 2. Drag the divider horizontally to adjust the document and practice panes. Fit width retains the top reading position and keeps the previous canvas visible while a sharper replacement renders. Keyboard users can focus the divider and use Left/Right or Home/End.
 3. Open **Generate study set**. Choose a source PDF, flashcards or problems, and an item count. Choose **Entire PDF** or inclusive **From / To** pages. Set both endpoints to the same page for a single page.
 4. Enable any additional context files. Each PDF has an independent page range; text and images are included in full. Optionally enter a plain-text **Comment** (up to 4,000 characters), with or without attachments, to describe the desired style, difficulty, or focus. Formulas remain grounded in the selected source pages.
 5. Each generation opens a separate set tab. Inner tabs select cards or problems. Click a card, press Space/Enter, or use **Flip card** to turn it over. Problems have a solution section. Formula references navigate to the original document page.
-6. Click **Save** to name and persist a set in SQLite. Saved sets reopen after reload and are also available through **Saved sets**.
+6. Click **Save** to name and persist a set in SQLite. Close a set tab with **×**. Unsaved sets offer **Save and close**, **Close without saving**, or **Cancel**; saving must succeed before the tab closes. Saved sets remain available through **Saved sets**, and closed tabs stay closed after reload.
 7. Click **Download PDF** to export the current set, whether or not it is saved. The PDF includes questions and a separate answer section with formatted mathematical text.
 
 ## Supported files and limits
@@ -34,7 +34,9 @@ Set `OPENAI_API_KEY` or the existing `OPENAI_KEY` in the server environment or p
 
 ## Storage
 
-`.formula-lab/workspace.sqlite3` stores document metadata and explicitly saved sets. `.formula-lab/documents/` stores managed original files. Save preserves question/answer blocks, TeX, source references, context selections, the generation comment, quiz originals, and provider/prompt metadata. Unsaved sets remain browser drafts and are lost on reload. Closing a saved file tab does not delete it. The open saved-file tab list is remembered locally. The original startup PDF and old diagnostic records are preserved.
+`.formula-lab/workspace.sqlite3` stores document metadata and explicitly saved sets. `.formula-lab/documents/` stores managed original files. Save preserves question/answer blocks, TeX, source references, context selections, the generation comment, quiz originals, and provider/prompt metadata. Unsaved sets remain browser drafts; leaving the page warns about pending uploads or unsaved sets. Closing a saved file or study-set tab retains its stored record. Open saved-file and study-set tab lists are remembered locally.
+
+On upgrade, a one-time migration hides the former bundled sample from the file library by its exact content hash. Its stored source remains available to older saved-set citations. Uploading that PDF explicitly makes it available in the library again. Other documents, saved sets, and diagnostic records are retained.
 
 The current workspace is local and has no account system. Google identity and private Garage storage remain part of the broader application plan.
 

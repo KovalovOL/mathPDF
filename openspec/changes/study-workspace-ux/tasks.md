@@ -27,3 +27,9 @@
 - [x] 5.2 Add accessible close controls to file tabs, saved-file reopening, and confirmation before closing unsaved uploads.
 - [x] 5.3 Add an optional additional-context comment to the generation UI, request, external prompt, and saved study-set snapshot.
 - [x] 5.4 Preserve PDF reading position and rendered canvases during Fit width resizing; update documentation and inspect the workspace manually.
+
+## 6. Upload-first startup and study-set closing
+
+- [x] 6.1 Remove required sample-PDF startup and container seeding; add empty-library upload guidance and retire the legacy seeded sample while preserving saved citations.
+- [x] 6.2 Add study-set close controls, save/discard/cancel handling for drafts, saved-set reopening, and persisted open-tab state.
+- [x] 6.3 Update documentation, manually inspect the revised workspace, and validate artifacts before the requested commit and push.

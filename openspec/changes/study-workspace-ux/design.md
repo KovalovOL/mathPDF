@@ -14,7 +14,9 @@ The existing FastAPI application serves one configured PDF, single-page PDF.js p
 
 ### Use a persistent local document repository
 
-Store document metadata and study-set JSON in SQLite, with uploaded binaries in a managed local directory behind repository methods. Import the startup PDF into this workspace without modifying the original. Use opaque document IDs and content hashes, validate PDF/image/text content, and retain original names for display. Keep files across restarts. This is a local adapter pending the broader authenticated Garage integration.
+Store document metadata and study-set JSON in SQLite, with uploaded binaries in a managed local directory behind repository methods. Start with an empty library and an Upload PDF action. A source PDF is optional and explicitly supplied with `--pdf` only for legacy inspection. The production image includes no startup PDF. Use opaque document IDs and content hashes, validate PDF/image/text content, and retain original names for display. Keep files across restarts. This is a local adapter pending the broader authenticated Garage integration.
+
+Migrate existing databases once to hide the old bundled sample by its exact content hash. Retain its managed binary and metadata so saved study-set citations still work. Explicitly uploading that PDF restores it to the visible library. The migration leaves other uploads and saved sets available. Generation requires a selected uploaded PDF; the default source ID may be null.
 
 Support PDF, UTF-8 TXT/MD, PNG, JPEG, and WebP, as confirmed by the user. Preview PDFs in PDF.js, text as escaped text, and images through the managed file endpoint. Add bounded uploads and combined generation payload limits without requiring formula extraction.
 
@@ -40,7 +42,7 @@ Keep the layout English and functional. Put generation options in a dialog, and 
 
 Generated sets remain independent in top-level result tabs. Inner item tabs select individual problems or cards. Flashcards have front/back faces with a CSS three-dimensional flip, pointer/keyboard controls, accessible hidden-side handling, and next/previous navigation. Source links and editable controls do not accidentally trigger a flip. Problems use an ordinary reading view and an expandable solution.
 
-Unsaved generation results remain drafts in browser memory. Explicit Save persists the canonical set, including source/context references, TeX, original quiz variants, and prompt metadata. Saved sets appear after reload. Closing a tab does not delete its database record.
+Unsaved generation results remain drafts in browser memory. Explicit Save persists the canonical set, including source/context references, TeX, original quiz variants, and prompt metadata. Study-set tabs have sibling close controls like file tabs. Closing a draft offers Save and close, Close without saving, and Cancel. Saving must succeed before a requested close completes; cancelling a dialog or a failed save keeps the draft open. Closing a saved set removes its open tab while its database record remains available through Saved sets. Persist the open saved-set IDs and active set locally so closed tabs stay closed after reload.
 
 ### Print PDFs with the same mathematical renderer
 

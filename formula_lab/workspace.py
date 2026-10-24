@@ -15,6 +15,8 @@ from pypdf import PdfReader
 
 
 MAX_UPLOAD_BYTES = 25 * 1024 * 1024
+# Content identity of the PDF automatically seeded by earlier application versions.
+LEGACY_SAMPLE_SHA256 = "9e2c6389508da9cd771a0c52ceb06ee621bc2a5d410c99ca96668b5718b9d9b3"
 MEDIA_TYPES = {".pdf": "application/pdf", ".txt": "text/plain", ".md": "text/markdown",
                ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
                ".webp": "image/webp"}
@@ -41,7 +43,8 @@ class Workspace:
                 CREATE TABLE IF NOT EXISTS documents (
                     id TEXT PRIMARY KEY, filename TEXT NOT NULL, sha256 TEXT UNIQUE NOT NULL,
                     media_type TEXT NOT NULL, page_count INTEGER, size INTEGER NOT NULL,
-                    stored_name TEXT NOT NULL, created_at TEXT NOT NULL
+                    stored_name TEXT NOT NULL, created_at TEXT NOT NULL,
+                    hidden INTEGER NOT NULL DEFAULT 0
                 );
                 CREATE TABLE IF NOT EXISTS study_sets (
                     id TEXT PRIMARY KEY, title TEXT NOT NULL, mode TEXT NOT NULL,
@@ -49,6 +52,11 @@ class Workspace:
                     created_at TEXT NOT NULL, updated_at TEXT NOT NULL
                 );
             """)
+            columns = {row["name"] for row in connection.execute("PRAGMA table_info(documents)")}
+            if "hidden" not in columns:
+                connection.execute("BEGIN IMMEDIATE")
+                connection.execute("ALTER TABLE documents ADD COLUMN hidden INTEGER NOT NULL DEFAULT 0")
+                connection.execute("UPDATE documents SET hidden=1 WHERE sha256=?", (LEGACY_SAMPLE_SHA256,))
 
     @contextmanager
     def connection(self):
@@ -103,6 +111,7 @@ class Workspace:
         with self.connection() as connection:
             row = connection.execute("SELECT * FROM documents WHERE sha256=?", (digest,)).fetchone()
             if row:
+                connection.execute("UPDATE documents SET hidden=0 WHERE id=?", (row["id"],))
                 return Document.model_validate(dict(row))
             identifier = uuid4().hex
             stored_name = f"{digest}{suffix}"
@@ -112,14 +121,16 @@ class Workspace:
                 temporary.write_bytes(data)
                 temporary.replace(path)
             now = datetime.now(timezone.utc).isoformat()
-            connection.execute("INSERT INTO documents VALUES (?,?,?,?,?,?,?,?)",
+            connection.execute("""INSERT INTO documents
+                               (id,filename,sha256,media_type,page_count,size,stored_name,created_at)
+                               VALUES (?,?,?,?,?,?,?,?)""",
                                (identifier, filename, digest, media_type, page_count, len(data), stored_name, now))
         return Document(id=identifier, filename=filename, sha256=digest, media_type=media_type,
                         page_count=page_count, size=len(data))
 
     def documents(self) -> list[Document]:
         with self.connection() as connection:
-            rows = connection.execute("SELECT * FROM documents ORDER BY created_at, id").fetchall()
+            rows = connection.execute("SELECT * FROM documents WHERE hidden=0 ORDER BY created_at, id").fetchall()
         return [Document.model_validate(dict(row)) for row in rows]
 
     def document(self, identifier: str) -> Document:

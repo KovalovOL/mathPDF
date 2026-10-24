@@ -15,9 +15,8 @@ RUN apt-get update \
 
 COPY pyproject.toml uv.lock ./
 COPY formula_lab ./formula_lab
-COPY main.pdf ./main.pdf
 RUN uv sync --frozen --no-dev --no-editable --no-cache
 
 EXPOSE 8765
 
-CMD ["formula-lab", "--host", "0.0.0.0", "--port", "8765", "--pdf", "/app/main.pdf", "--data-dir", "/app/.formula-lab"]
+CMD ["formula-lab", "--host", "0.0.0.0", "--port", "8765", "--data-dir", "/app/.formula-lab"]

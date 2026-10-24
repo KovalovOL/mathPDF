@@ -28,3 +28,12 @@ The example is model-generated and remains unchecked source material in its meta
 - After the learner reported intermittent blank previews that recovered on interaction, added explicit outer-workspace viewport notifications, a final two-frame layout/visible-page redraw, and a delayed missing-canvas recheck. Repeated divider drags then showed the PDF after release without moving into, clicking, or scrolling the PDF.
 
 No automated tests or additional live model requests were run for these refinements. Unfinished-upload cancellation, upload-completion races, and cross-browser repaint behavior have code paths but were not exhaustively exercised manually. The intermittent repaint report was not reproduced in the controlled preview; the extra synchronization removes dependence on pointer/scroll events rather than establishing coverage across browsers.
+
+## Upload-first startup and study-set closing (2026-10-24)
+
+- Started the application without `--pdf` against a separate empty data directory. The workspace displayed Upload PDF, no document tabs, no placeholder PDF toolbar, and disabled generation until a PDF is available.
+- Restarted the existing local workspace without a source argument. The migration hid the former bundled sample from Open saved files; Vectors.pdf and Study examples.pdf remained available, and saved study sets were retained.
+- Closed a saved Vectors flashcard set, reloaded, and observed that its tab remained closed. It was still listed in Saved sets and reopened successfully.
+- Opened a source link from an older saved card. The retained sample document opened at page 7 even though it was hidden from the file library.
+- Study-set tabs display independent close buttons. Draft closing offers Save and close, Close without saving, and Cancel. Save cancellation/failure and save-before-close ordering were inspected in code; no additional paid generation was used to create a draft for manual inspection.
+- JavaScript syntax checking and Python AST parsing completed successfully. No automated tests or live model requests were added or run for this change. Browser-specific save-dialog races and failed-save behavior were not exhaustively exercised manually.

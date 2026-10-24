@@ -6,6 +6,17 @@ Provides a document and practice workspace for exploring source material before 
 
 ## ADDED Requirements
 
+### Requirement: Start with an upload prompt
+The application SHALL start without a required or automatically imported bundled PDF. An empty library SHALL show an Upload PDF action, and generation SHALL require a selected PDF. Existing installations SHALL hide the old bundled sample from the library through a one-time content-hash migration while retaining citation sources for saved sets.
+
+#### Scenario: First launch
+- **WHEN** the application starts with an empty data directory and no source argument
+- **THEN** it serves the workspace with an upload prompt and no sample document
+
+#### Scenario: Upgrade an existing installation
+- **WHEN** the old bundled sample exists in the document database
+- **THEN** it is hidden from the file library while other uploads and saved study-set sources remain accessible
+
 ### Requirement: Browse complete documents in tabs
 The workspace SHALL display available source and context files as tabs and SHALL let the learner browse every PDF page without selecting a generation range first.
 
@@ -79,6 +90,22 @@ The workspace SHALL retain multiple generated sets in tabs and SHALL let the lea
 #### Scenario: Generate another set
 - **WHEN** generation completes while another set is open
 - **THEN** a new set tab appears and the earlier set remains available
+
+#### Scenario: Close a saved study set
+- **WHEN** the learner closes a saved set tab
+- **THEN** it closes without deleting the saved set, remains closed after reload, and can be reopened through Saved sets
+
+#### Scenario: Save a draft before closing
+- **WHEN** the learner closes an unsaved set and chooses Save and close
+- **THEN** the workspace offers naming and closes the set only after a successful save
+
+#### Scenario: Cancel or discard a draft close
+- **WHEN** the learner closes an unsaved set
+- **THEN** Cancel retains the draft and Close without saving explicitly discards it
+
+#### Scenario: Saving fails
+- **WHEN** saving a set before closing fails
+- **THEN** the workspace reports the error and retains the open draft
 
 ### Requirement: Save study sets across restarts
 The workspace SHALL explicitly save a study set's items, editable mathematics, source references, context selections, and generation metadata to persistent storage and SHALL restore saved sets after restart.

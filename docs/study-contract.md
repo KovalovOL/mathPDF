@@ -33,7 +33,7 @@ All natural-language LLM instructions are loaded from `formula_lab/prompts/`: sy
 
 ## Historical diagnostic routes
 
-`GET /api/pages/{page}/formulas` returns all heuristic source-font candidates for the startup PDF without saving them. It is separate from generation and absent from the normal workspace UI. Explicit-save/review/variant/export APIs continue to support older local diagnostic records. No exhaustive formula extraction or storage pass is required by generation.
+With an explicit `--pdf` argument, `GET /api/pages/{page}/formulas` returns all heuristic source-font candidates for that diagnostic PDF without saving them. These source-inspection routes are enabled only for that optional startup mode, separate from generation and absent from the normal workspace UI. Normal startup requires no PDF. Explicit-save/review/variant/export APIs continue to support older local diagnostic records in the optional mode. No exhaustive formula extraction or storage pass is required by generation.
 
 ## Primary references
 

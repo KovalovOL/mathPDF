@@ -2,9 +2,11 @@
 
 ## Documents and storage
 
-The workspace imports the startup PDF and accepts PDF, UTF-8 TXT/Markdown, PNG, JPEG, and WebP uploads. Each file is limited to 25 MB; text files to 1 MB; images to 40 megapixels. PDF uploads must be readable and unencrypted. Original filenames are display metadata; managed binaries use content hashes and opaque document IDs.
+The workspace starts with an empty library and an Upload PDF action. It accepts PDF, UTF-8 TXT/Markdown, PNG, JPEG, and WebP uploads. Generation is enabled after a PDF is available. Each file is limited to 25 MB; text files to 1 MB; images to 40 megapixels. PDF uploads must be readable and unencrypted. Original filenames are display metadata; managed binaries use content hashes and opaque document IDs.
 
-`Workspace` is the local storage adapter. SQLite metadata and saved sets live at `<data-dir>/workspace.sqlite3`; binaries live at `<data-dir>/documents/`. The default data directory is `.formula-lab/`. The original startup file and old diagnostic records are preserved. The application remains local and has no Google identity or Garage integration yet.
+`Workspace` is the local storage adapter. SQLite metadata and saved sets live at `<data-dir>/workspace.sqlite3`; binaries live at `<data-dir>/documents/`. The default data directory is `.formula-lab/`. A one-time schema migration adds a hidden-document flag and hides the former bundled sample by its exact SHA-256. Managed file and metadata lookup by ID still serves historical saved-set citations. Explicitly uploading the same PDF clears the hidden flag. The application has no Google identity or Garage integration yet.
+
+The normal startup and Docker image require no PDF. Supplying optional `--pdf` explicitly imports that file and enables legacy source-inspection routes. `GET /api/generation/config` returns a nullable `default_document_id`; normal generation sends the uploaded primary document's ID, and missing source selection produces an upload-first error.
 
 - `GET /api/documents`: list document metadata.
 - `POST /api/documents`: upload one multipart `file`.
@@ -44,6 +46,8 @@ Reading always exposes the entire PDF. Only the generation dialog chooses what i
 ## Practice
 
 Top-level tabs retain multiple generated or saved sets. Item tabs select individual problems/cards. Flashcards have front/back faces, a physical flip transition, pointer/Space/Enter controls, and previous/next navigation. The hidden face is inert and excluded from accessibility navigation. Links do not trigger a flip. Problems have a separate solution section.
+
+Each top-level study-set tab has a separate close button. Closing a saved set removes its tab and keeps it available through Saved sets. Closing a draft offers Save and close, Close without saving, and Cancel. Save and close opens the naming dialog; only a successful save closes the draft, while cancellation or failure keeps it open. The open saved-set IDs and active set are remembered locally, so closing persists after reload. The browser warns before leaving with unsaved study sets or pending uploads.
 
 A draggable vertical separator changes the panes' widths horizontally. Arrow keys adjust the focused separator, and Home/End move to its limits. The divider ratio is remembered locally. PDF pages render lazily near the viewport. Explicit page heights let the reader capture its top page/relative position before a width change, update geometry, and restore that position before painting. Browser scroll anchoring is disabled. The old canvas stays visible during resizing; replacement canvases render offscreen after resizing settles and swap in only when ready. The outer workspace explicitly signals viewport changes and drag completion; the reader measures again over two animation frames, redraws visible pages, and rechecks for missing canvases without waiting for pointer or scroll input. Distant canvases are released after layout stabilizes. Narrow screens stack the document and practice panes.
 

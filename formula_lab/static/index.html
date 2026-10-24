@@ -12,13 +12,13 @@
 <body>
   <header class="app-header">
     <h1>mathPDF</h1>
-    <div class="header-actions"><button id="open-saved" class="secondary">Saved sets</button><button id="open-generation">Generate study set</button></div>
+    <div class="header-actions"><button id="open-saved" class="secondary">Saved sets</button><button id="open-generation" disabled>Generate study set</button></div>
   </header>
   <div id="message" class="status-message" role="status" aria-live="polite" hidden></div>
   <main id="workspace" class="workspace">
     <section id="document-pane" class="pane" aria-label="Documents">
       <div class="tabs-bar"><div id="document-tabs" class="tab-list" role="tablist" aria-label="Files"></div><button id="open-files" class="tab-action" title="Open saved files">Open</button><button id="add-files" class="tab-action">+ Add files</button></div>
-      <div id="document-toolbar" class="pane-toolbar">
+      <div id="document-toolbar" class="pane-toolbar" hidden>
         <div id="pdf-controls" class="pdf-controls">
           <button id="previous-page" class="icon-button" aria-label="Previous PDF page">‹</button>
           <form id="page-form"><label for="page">Page</label><input id="page" type="number" min="1" value="1" aria-label="Current PDF page"><span id="page-count">/ 1</span></form>
@@ -28,7 +28,7 @@
         <span id="file-type" class="muted" hidden></span>
         <a id="download-file" class="toolbar-link" download>Download</a>
       </div>
-      <div id="document-views" class="document-views"></div>
+      <div id="document-views" class="document-views"><div class="document-empty"><p>Upload a PDF to start studying.</p><button id="upload-pdf">Upload PDF</button></div></div>
     </section>
     <div id="splitter" class="splitter" role="separator" tabindex="0" aria-label="Resize document and study panes" aria-orientation="vertical" aria-valuemin="25" aria-valuemax="75" aria-valuenow="50" aria-controls="document-pane practice-pane"></div>
     <section id="practice-pane" class="pane" aria-label="Study workspace">
@@ -43,6 +43,7 @@
 
   <dialog id="files-dialog" aria-labelledby="files-heading"><div class="dialog-header"><h2 id="files-heading">Open saved files</h2><button type="button" class="icon-button close-dialog" data-dialog="files-dialog" aria-label="Close saved files">×</button></div><div id="files-list" class="dialog-body saved-list"></div></dialog>
   <dialog id="close-file-dialog" aria-labelledby="close-file-heading"><div class="dialog-header"><h2 id="close-file-heading">File not saved</h2></div><div class="dialog-body"><p id="close-file-message"></p></div><form method="dialog" class="dialog-footer"><button value="keep" class="secondary" autofocus>Keep open</button><button value="discard">Close file</button></form></dialog>
+  <dialog id="close-set-dialog" aria-labelledby="close-set-heading"><div class="dialog-header"><h2 id="close-set-heading">Save before closing?</h2></div><div class="dialog-body"><p id="close-set-message"></p></div><form method="dialog" class="dialog-footer close-set-actions"><button value="cancel" class="secondary">Cancel</button><button value="discard" class="secondary">Close without saving</button><button value="save" autofocus>Save and close</button></form></dialog>
 
   <dialog id="generation-dialog" aria-labelledby="generation-heading">
     <form id="generate-form">
