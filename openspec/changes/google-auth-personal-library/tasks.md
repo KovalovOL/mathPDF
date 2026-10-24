@@ -9,7 +9,7 @@
 
 - [x] 2.1 Add dependencies and implement browser-bound Google OAuth/OIDC transactions, verified identities, and revocable hashed sessions; verify dependency resolution, syntax, and callback/session error paths by code review.
 - [x] 2.2 Require authentication and trusted-origin mutations throughout FastAPI, remove shared diagnostic HTTP routes, and document environment/callback setup; observe anonymous login/API behavior and review route coverage.
-- [ ] 2.3 Accept the existing deployment's ClientID and ClientSecter credential names as compatibility aliases, document precedence, and observe sign-in availability after redeployment without printing secrets.
+- [x] 2.3 Accept the existing deployment's ClientID and ClientSecter credential names as compatibility aliases, document precedence, and observe sign-in availability after redeployment without printing secrets.
 
 ## 3. Personal library and workspace
 

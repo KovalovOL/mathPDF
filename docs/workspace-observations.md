@@ -15,6 +15,8 @@ Live Google sign-in, authenticated library interactions, two-account isolation i
 
 Production follow-up: the initial deployment of `0a32c9e` completed successfully, and the domain served the protected login page. Sign-in availability remained false. The owner's configuration screenshot established a naming mismatch: `ClientID` / `ClientSecter` instead of the documented `GOOGLE_*` names. Compatibility aliases were added without copying credential values into code or documentation. A new push triggers redeployment; the connector cannot rerun Actions jobs with its current permissions.
 
+Deployment of `30a5dfd` then completed successfully ([Actions run](https://github.com/KovalovOL/mathPDF/actions/runs/40126337920)). Reloading `https://mathpdf.site/` displayed the protected sign-in page with an enabled Continue with Google link and no missing-configuration message. A screenshot was saved to `artifacts/ui/google-sign-in-live.png` (ignored by Git). This confirms deployed credential availability, not successful token exchange or authenticated library operation; no Google account sign-in was completed.
+
 - The supplied 59-page PDF is available as a complete continuous document. The reader showed lazily rendered pages, and a page-7 jump kept all other pages accessible.
 - Generation settings opened after reading, with an independent single-page range (7–7), mode/count, and context-file controls.
 - The exported PDF was added locally as `Study examples.pdf`. Its tab opened as a two-page document, and switching back restored the primary document at page 7. Generation settings independently selected primary pages 5–7 and only page 2 of the example. This selection was canceled without another model request.
