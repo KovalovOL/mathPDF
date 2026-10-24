@@ -71,7 +71,7 @@ Document tabs + continuous PDF viewer
 
 ## VPS deployment
 
-The single GitHub Actions job in `.github/workflows/deploy.yml` deploys pushes to `master` and also supports manual runs. It syncs the repository to `/opt/mathPDF`, writes `.env` directly on the VPS from `APP_ENV`, and runs `docker compose up -d --build`. All deployment commands are inline in the workflow.
+The single GitHub Actions job in `.github/workflows/deploy.yml` deploys pushes to `main` and also supports manual runs. It syncs the repository to `/opt/mathPDF`, writes `.env` directly on the VPS from `APP_ENV`, and runs `docker compose up -d --build`. All deployment commands are inline in the workflow.
 
 Add these **repository secrets** under **Settings → Secrets and variables → Actions → Secrets**:
 
