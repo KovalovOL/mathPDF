@@ -13,6 +13,8 @@ Date: 2026-10-24. These are manual implementation observations, not automated re
 
 Live Google sign-in, authenticated library interactions, two-account isolation in a running browser, and production deployment were not exercised locally. The library/workspace integration was reviewed in code. Local live sign-in additionally requires a registered loopback callback and local Google credentials. Earlier observations below describe previous revisions and their former unowned data, which the authorized migration has now removed.
 
+Production follow-up: the initial deployment of `0a32c9e` completed successfully, and the domain served the protected login page. Sign-in availability remained false. The owner's configuration screenshot established a naming mismatch: `ClientID` / `ClientSecter` instead of the documented `GOOGLE_*` names. Compatibility aliases were added without copying credential values into code or documentation. A new push triggers redeployment; the connector cannot rerun Actions jobs with its current permissions.
+
 - The supplied 59-page PDF is available as a complete continuous document. The reader showed lazily rendered pages, and a page-7 jump kept all other pages accessible.
 - Generation settings opened after reading, with an independent single-page range (7–7), mode/count, and context-file controls.
 - The exported PDF was added locally as `Study examples.pdf`. Its tab opened as a two-page document, and switching back restored the primary document at page 7. Generation settings independently selected primary pages 5–7 and only page 2 of the example. This selection was canceled without another model request.

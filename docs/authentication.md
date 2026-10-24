@@ -9,6 +9,8 @@ GOOGLE_CLIENT_ID=your-web-client-id.apps.googleusercontent.com
 GOOGLE_CLIENT_SECRET=your-client-secret
 ```
 
+Existing deployments may use `ClientID` and `ClientSecter` (or `ClientSecret`) instead. These are supported compatibility aliases; the `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` values take precedence when set. Keep credential values out of logs and version control.
+
 The workflow writes `.env` on `/opt/mathPDF` before recreating the container. The production origin defaults to `https://mathpdf.site`; no domain environment variable is needed. Register this exact **Authorized redirect URI** for the Google web client:
 
 ```text

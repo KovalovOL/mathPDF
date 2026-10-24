@@ -24,6 +24,8 @@ References: [Google OpenID Connect](https://developers.google.com/identity/openi
 
 Default origin is `https://mathpdf.site`, yielding the registered `/auth/google/callback`. An optional `APP_BASE_URL` supports loopback HTTP development; arbitrary HTTP origins are rejected. Credentials come from `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`. No credentials means unavailable sign-in, never anonymous access.
 
+The owner's existing `APP_ENV` uses `ClientID` and `ClientSecter`, as shown during deployment troubleshooting. Accept these as compatibility aliases (also accepting `ClientSecret`), with the documented `GOOGLE_*` names taking precedence. Never log credential values.
+
 Middleware denies private requests without a live session. Public routes are login, OAuth entry/callback, and non-private static assets. Private HTML remains guarded even under `/static`. Unsafe methods require a matching trusted Origin and reject cross-site fetches. Private responses disable caching; OAuth responses use no-referrer. Disable application access logs containing callback query codes. Remove shared legacy diagnostic HTTP endpoints from this app.
 
 ### Owner-scoped repository

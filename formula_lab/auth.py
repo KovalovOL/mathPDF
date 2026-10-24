@@ -66,8 +66,11 @@ class AuthConfig:
                 or parsed.password is not None or parsed.path or parsed.query or parsed.fragment
                 or (parsed.scheme == "http" and parsed.hostname not in {"localhost", "127.0.0.1", "::1"})):
             raise ValueError("APP_BASE_URL must be an HTTPS origin or a loopback HTTP origin.")
-        return cls(os.getenv("GOOGLE_CLIENT_ID", "").strip(),
-                   os.getenv("GOOGLE_CLIENT_SECRET", "").strip(), base)
+        # Compatibility with the names already used in the owner's APP_ENV.
+        client_id = os.getenv("GOOGLE_CLIENT_ID", "").strip() or os.getenv("ClientID", "").strip()
+        client_secret = (os.getenv("GOOGLE_CLIENT_SECRET", "").strip()
+                         or os.getenv("ClientSecret", "").strip() or os.getenv("ClientSecter", "").strip())
+        return cls(client_id, client_secret, base)
 
     @property
     def configured(self):
