@@ -20,3 +20,10 @@
 ## 4. Integration documentation
 
 - [x] 4.1 Update README and API/UX documentation, reconcile platform planning, and deliver the refreshed workspace preview; validate OpenSpec artifacts and record verification limits without claiming unrun automated tests or live model requests.
+
+## 5. Workspace refinements
+
+- [x] 5.1 Add a local browser favicon.
+- [x] 5.2 Add accessible close controls to file tabs, saved-file reopening, and confirmation before closing unsaved uploads.
+- [x] 5.3 Add an optional additional-context comment to the generation UI, request, external prompt, and saved study-set snapshot.
+- [x] 5.4 Preserve PDF reading position and rendered canvases during Fit width resizing; update documentation and inspect the workspace manually.

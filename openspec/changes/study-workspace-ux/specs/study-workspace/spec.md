@@ -17,6 +17,14 @@ The workspace SHALL display available source and context files as tabs and SHALL
 - **WHEN** the learner switches document tabs
 - **THEN** the corresponding file preview appears and the previous document's reading position is retained
 
+#### Scenario: Close and reopen a saved file
+- **WHEN** the learner closes a saved file tab
+- **THEN** its preview closes without deleting the file, and the file can be reopened from the library
+
+#### Scenario: Close a file that has not been saved
+- **WHEN** the learner closes an unfinished or failed upload tab
+- **THEN** the workspace asks for confirmation before discarding the local file and cancelling its upload
+
 ### Requirement: Attach context files
 The workspace SHALL accept PDFs, UTF-8 TXT/Markdown files, and supported images as additional generation context and make uploaded files available in document tabs.
 
@@ -39,12 +47,24 @@ The workspace SHALL offer source and context selection in a generation dialog. E
 - **WHEN** a range is reversed or exceeds the selected document
 - **THEN** the workspace reports the invalid selection before sending a model request
 
+### Requirement: Add a generation comment
+The workspace SHALL accept an optional plain-text additional-context comment of up to 4,000 characters independently of attached files. It SHALL pass the comment to generation through an external prompt template while retaining primary-source restrictions, and SHALL preserve the comment when the resulting set is saved.
+
+#### Scenario: Describe the desired exercise style
+- **WHEN** the learner enters a comment and generates a set
+- **THEN** the comment is included as learner preferences even when no context files are selected
+
 ### Requirement: Resize document and practice panes
 The workspace SHALL support horizontal dragging of the divider between document and practice panes and SHALL adapt both contents to the resulting widths.
 
 #### Scenario: Widen the source pane
 - **WHEN** the learner drags the divider to the right
 - **THEN** the source pane becomes wider, the practice pane becomes narrower, and the PDF rendering adapts
+
+#### Scenario: Resize a PDF in Fit width mode
+- **WHEN** the learner changes the pane width while reading a PDF
+- **THEN** the same page and relative reading position remain in view and the previous canvas remains visible until its replacement is ready
+- **AND** the final viewport update completes without requiring a click, hover, or scroll
 
 ### Requirement: Practice with physical flip cards
 Flashcards SHALL display a front and back with a flip transition. The learner SHALL be able to flip using pointer or keyboard controls and navigate between cards.

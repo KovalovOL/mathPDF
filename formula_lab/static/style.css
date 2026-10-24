@@ -25,6 +25,11 @@ h2 { font-size: 1.1rem; } h3 { font-size: .92rem; }
 .tab > span { text-overflow: ellipsis; overflow: hidden; white-space: nowrap; }
 .tab[aria-selected="true"] { color: #27364f; background: white; box-shadow: inset 0 2px var(--accent); }
 .tab .unsaved-mark { flex-shrink: 0; width: 6px; height: 6px; background: #7383a1; border-radius: 50%; }
+.file-tab { display: flex; flex: 0 0 auto; max-width: 230px; border-right: 1px solid var(--border); }
+.file-tab:has([aria-selected="true"]) { background: white; box-shadow: inset 0 2px var(--accent); }
+.file-tab .tab { flex: 1; min-width: 0; border: 0; padding-right: .35rem; box-shadow: none; background: transparent; }
+.tab-close { flex: 0 0 28px; border: 0; border-radius: 0; padding: .25rem .5rem; font-size: 1.15rem; background: transparent; color: #65738b; }
+.tab-close:hover { background: #dfe5ee; }
 .tab-action { border: 0; border-left: 1px solid var(--border); background: transparent; color: #364c70; padding: .6rem .8rem; font-size: .85rem; border-radius: 0; }
 .pane-toolbar { height: 45px; padding: 0 12px; display: flex; align-items: center; gap: .6rem; border-bottom: 1px solid var(--border); flex-shrink: 0; min-width: 0; }
 .pdf-controls, #page-form { display: flex; align-items: center; gap: .35rem; }
@@ -43,6 +48,7 @@ h2 { font-size: 1.1rem; } h3 { font-size: .92rem; }
 @container (max-width: 280px) { #zoom { display: none; } }
 .document-view { width: 100%; height: 100%; overflow: auto; }
 .document-view iframe { width: 100%; height: 100%; border: 0; display: block; }
+.document-empty, .upload-state { display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100%; gap: 12px; padding: 24px; text-align: center; color: #667389; overflow-wrap: anywhere; }
 .text-preview { padding: 24px; background: white; margin: 16px; white-space: pre-wrap; overflow-wrap: anywhere; font: 13px/1.7 ui-monospace, monospace; }
 .image-preview { display: block; max-width: 100%; max-height: 100%; object-fit: contain; margin: auto; padding: 20px; }
 .splitter { position: relative; cursor: col-resize; touch-action: none; }
@@ -96,6 +102,8 @@ input[type="number"] { appearance: textfield; }
 input::-webkit-inner-spin-button { appearance: none; }
 label { display: block; color: #55637a; font-size: .85rem; }
 label > input, label > select { display: block; width: 100%; margin-top: .35rem; }
+.context-comment { margin-top: 18px; }
+.context-comment textarea { display: block; width: 100%; margin-top: .35rem; resize: vertical; }
 dialog { width: min(600px, calc(100vw - 32px)); max-height: calc(100dvh - 48px); border: 1px solid #d4dce9; border-radius: 10px; padding: 0; color: inherit; box-shadow: 0 24px 90px #17233d38; }
 dialog::backdrop { background: #17233d6b; }
 .dialog-header { padding: 18px 22px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); }

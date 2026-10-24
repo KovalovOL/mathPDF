@@ -1,0 +1,22 @@
+services:
+  app:
+    build: .
+    restart: always
+    env_file:
+      - .env
+    volumes:
+      - ./.formula-lab:/app/.formula-lab
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=traefik-public"
+      - "traefik.http.routers.mathpdf.rule=Host(`mathpdf.site`)"
+      - "traefik.http.routers.mathpdf.entrypoints=websecure"
+      - "traefik.http.routers.mathpdf.tls=true"
+      - "traefik.http.routers.mathpdf.tls.certresolver=myresolver"
+      - "traefik.http.services.mathpdf.loadbalancer.server.port=8765"
+    networks:
+      - traefik-public
+
+networks:
+  traefik-public:
+    external: true

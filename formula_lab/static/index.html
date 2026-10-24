@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>mathPDF</title><link rel="icon" href="data:,">
+  <title>mathPDF</title><link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
   <link rel="stylesheet" href="/static/vendor/katex/katex.min.css">
   <link rel="stylesheet" href="/static/style.css">
   <script src="/static/vendor/katex/katex.min.js" defer></script>
@@ -17,8 +17,8 @@
   <div id="message" class="status-message" role="status" aria-live="polite" hidden></div>
   <main id="workspace" class="workspace">
     <section id="document-pane" class="pane" aria-label="Documents">
-      <div class="tabs-bar"><div id="document-tabs" class="tab-list" role="tablist" aria-label="Files"></div><button id="add-files" class="tab-action">+ Add files</button></div>
-      <div class="pane-toolbar">
+      <div class="tabs-bar"><div id="document-tabs" class="tab-list" role="tablist" aria-label="Files"></div><button id="open-files" class="tab-action" title="Open saved files">Open</button><button id="add-files" class="tab-action">+ Add files</button></div>
+      <div id="document-toolbar" class="pane-toolbar">
         <div id="pdf-controls" class="pdf-controls">
           <button id="previous-page" class="icon-button" aria-label="Previous PDF page">‹</button>
           <form id="page-form"><label for="page">Page</label><input id="page" type="number" min="1" value="1" aria-label="Current PDF page"><span id="page-count">/ 1</span></form>
@@ -41,6 +41,9 @@
   </main>
   <input id="file-input" type="file" accept=".pdf,.txt,.md,.png,.jpg,.jpeg,.webp" multiple hidden>
 
+  <dialog id="files-dialog" aria-labelledby="files-heading"><div class="dialog-header"><h2 id="files-heading">Open saved files</h2><button type="button" class="icon-button close-dialog" data-dialog="files-dialog" aria-label="Close saved files">×</button></div><div id="files-list" class="dialog-body saved-list"></div></dialog>
+  <dialog id="close-file-dialog" aria-labelledby="close-file-heading"><div class="dialog-header"><h2 id="close-file-heading">File not saved</h2></div><div class="dialog-body"><p id="close-file-message"></p></div><form method="dialog" class="dialog-footer"><button value="keep" class="secondary" autofocus>Keep open</button><button value="discard">Close file</button></form></dialog>
+
   <dialog id="generation-dialog" aria-labelledby="generation-heading">
     <form id="generate-form">
       <div class="dialog-header"><h2 id="generation-heading">Generate study material</h2><button type="button" class="icon-button close-dialog" data-dialog="generation-dialog" aria-label="Close generation settings">×</button></div>
@@ -51,6 +54,7 @@
         <div class="context-heading"><h3>Additional context</h3><button id="add-context" type="button" class="small secondary">+ Add files</button></div>
         <p class="field-note">Attach examples to guide the style and difficulty of your tasks.</p>
         <div id="context-files"></div>
+        <label class="context-comment" for="context-comment">Comment (optional)<textarea id="context-comment" rows="3" maxlength="4000" placeholder="Describe the style, difficulty, or focus you want."></textarea></label>
         <p id="generation-summary" class="selection-summary"></p>
         <p id="generation-error" class="error" role="alert" hidden></p>
       </div>

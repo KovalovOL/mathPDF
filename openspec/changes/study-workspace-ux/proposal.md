@@ -13,6 +13,8 @@ The current workbench forces page selection before document exploration and disp
 - Keep generation sets and individual items accessible through tabs.
 - Save study sets to SQLite and download formatted PDFs with selectable mathematical text.
 - Extend provider inputs and source references to include document identities while keeping prompts external.
+- Add a browser favicon, closable file tabs with unsaved-upload warnings and saved-file reopening, and an optional generation comment.
+- Preserve the PDF reading location and keep rendered pages visible throughout Fit width pane resizing.
 
 ## Capabilities
 

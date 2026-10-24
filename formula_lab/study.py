@@ -82,6 +82,7 @@ class GenerateRequest(StrictModel):
     document_id: str | None = None
     pages: list[int] | None = Field(default=None, min_length=1, max_length=100)
     context: list[ContextSelection] = Field(default_factory=list, max_length=6)
+    comment: str = Field(default="", max_length=4000)
     mode: Literal["flashcards", "problems"]
     count: int = Field(default=4, ge=1, le=10)
 
@@ -97,6 +98,7 @@ class StudySet(GeneratedContent):
     document: Document
     pages: list[int] = Field(min_length=1, max_length=100)
     context_documents: list[ContextSnapshot] = Field(default_factory=list, max_length=6)
+    comment: str = Field(default="", max_length=4000)
     mode: Literal["flashcards", "problems"]
     metadata: dict
 
@@ -129,7 +131,7 @@ PROMPTS = Path(__file__).parent / "prompts"
 
 
 def load_prompts(request: GenerateRequest, documents: list[InputDocument]) -> tuple[str, str, dict[str, str]]:
-    names = ["study-system.md", f"{request.mode}.md", "context.md", "attachment-label.md"]
+    names = ["study-system.md", f"{request.mode}.md", "context.md", "attachment-label.md", "comment.md"]
     resources = {name: (PROMPTS / name).read_text(encoding="utf-8") for name in names}
     source = documents[0]
     mapping = ", ".join(f"{index + 1} -> {page}" for index, page in enumerate(source.pages))
@@ -142,6 +144,8 @@ def load_prompts(request: GenerateRequest, documents: list[InputDocument]) -> tu
         metadata.append(info)
         entry.label = Template(resources["attachment-label.md"]).substitute(metadata=json.dumps(info, ensure_ascii=False))
     task += "\n\n" + Template(resources["context.md"]).substitute(attachments=json.dumps(metadata, ensure_ascii=False))
+    if request.comment.strip():
+        task += "\n\n" + Template(resources["comment.md"]).substitute(comment=json.dumps(request.comment.strip(), ensure_ascii=False))
     hashes = {name: hashlib.sha256(text.encode()).hexdigest() for name, text in resources.items()}
     return resources[names[0]], task, hashes
 
@@ -223,6 +227,7 @@ async def generate_study(workspace: Workspace, default_id: str, request: Generat
     return StudySet(
         title=f"{label} · {source.document.filename} · {selection}",
         document=source.document, pages=source.pages, mode=request.mode,
+        comment=request.comment.strip(),
         context_documents=[ContextSnapshot(document=entry.document, pages=entry.pages) for entry in documents[1:]],
         **content.model_dump(),
         metadata={"provider": result.provider, "model": result.model, "prompt_hashes": hashes,

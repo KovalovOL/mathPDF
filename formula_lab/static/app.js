@@ -1,8 +1,10 @@
 /* Local document and study workspace. Prompts and provider requests stay on the server. */
 const $ = id => document.getElementById(id);
 const documents = new Map(), views = new Map(), reading = new Map(), sets = new Map(), contextChoices = new Map();
+const pendingUploads = new Map();
+let openDocumentIds = [];
 let activeDocumentId, activeSetId, config, generationActive = false, setEpoch = 0, savingId;
-let statusTimer, practiceObserver, splitRatio = .5;
+let statusTimer, practiceObserver, viewportNotice, viewportSettled = false, splitRatio = .5;
 
 function el(tag, className, text) {
   const item = document.createElement(tag);
@@ -60,11 +62,21 @@ function wireTabs(container) {
   });
 }
 function renderDocumentTabs() {
-  $('document-tabs').replaceChildren(...[...documents.values()].map(doc =>
-    makeTab(doc.filename, doc.id === activeDocumentId, () => action(() => openDocument(doc.id)))));
+  $('document-tabs').replaceChildren(...openDocumentIds.map(id => {
+    const doc = documents.get(id) || pendingUploads.get(id);
+    const wrapper = el('div', 'file-tab'); wrapper.setAttribute('role', 'presentation');
+    const tab = makeTab(doc.filename, id === activeDocumentId, () => action(() => openDocument(id)), pendingUploads.has(id));
+    tab.setAttribute('aria-controls', `document-view-${id}`);
+    const close = button('×', 'tab-close', () => action(() => closeDocument(id)), `Close ${doc.filename}`);
+    close.title = `Close ${doc.filename}`; wrapper.append(tab, close); return wrapper;
+  }));
+  $('document-tabs').querySelector('[aria-selected="true"]')?.closest('.file-tab').scrollIntoView({block: 'nearest', inline: 'nearest'});
+  preference('open-files', JSON.stringify(openDocumentIds.filter(id => documents.has(id))));
 }
 function updateDocumentToolbar() {
-  const doc = documents.get(activeDocumentId); if (!doc) return;
+  const doc = documents.get(activeDocumentId);
+  $('document-toolbar').hidden = !doc;
+  if (!doc) return;
   const isPdf = doc.media_type === 'application/pdf', state = readState(doc.id);
   $('pdf-controls').hidden = !isPdf; $('file-type').hidden = isPdf;
   $('file-type').textContent = doc.media_type.startsWith('image/') ? 'Image' : doc.media_type === 'text/markdown' ? 'Markdown' : 'Text';
@@ -76,23 +88,28 @@ function updateDocumentToolbar() {
   }
 }
 async function openDocument(id, targetPage) {
-  const doc = documents.get(id); if (!doc) throw new Error('This source file is not available.');
+  const doc = documents.get(id) || pendingUploads.get(id); if (!doc) throw new Error('This source file is not available.');
   const state = readState(id);
   if (targetPage !== undefined) {
     if (!doc.page_count || !Number.isInteger(targetPage) || targetPage < 1 || targetPage > doc.page_count) throw new Error('That PDF page does not exist.');
     state.page = targetPage;
   }
-  activeDocumentId = id; preference('active-file', id);
+  if (!openDocumentIds.includes(id)) openDocumentIds.push(id);
+  activeDocumentId = id; if (documents.has(id)) preference('active-file', id);
+  $('document-views').querySelector('.document-empty')?.remove();
   for (const [viewId, view] of views) view.hidden = viewId !== id;
   let view = views.get(id);
   if (!view) {
     view = el('div', 'document-view'); view.id = `document-view-${id}`;
     views.set(id, view); $('document-views').append(view);
-    if (doc.page_count) {
+    if (pendingUploads.has(id)) {
+      view.append(el('div', 'upload-state'));
+    } else if (doc.page_count) {
       const iframe = el('iframe'); iframe.title = doc.filename;
-      iframe.src = `/static/pdf-viewer.html?document=${encodeURIComponent(id)}&page=${state.page}`;
+      iframe.src = `/static/pdf-viewer.html?document=${encodeURIComponent(id)}&page=${state.page}&zoom=${encodeURIComponent(state.zoom)}`;
       iframe.addEventListener('load', () => {
         iframe.contentWindow.postMessage({type: 'pdf-zoom', zoom: state.zoom}, location.origin);
+        iframe.contentWindow.postMessage({type: 'pdf-viewport', settled: true}, location.origin);
       });
       view.append(iframe);
     } else if (doc.media_type.startsWith('image/')) {
@@ -105,11 +122,58 @@ async function openDocument(id, targetPage) {
       }).then(text => {preview.textContent = text;}).catch(error => {preview.textContent = error.message;});
     }
   }
+  if (pendingUploads.has(id)) renderUploadState(id);
   view.hidden = false;
   if (targetPage !== undefined) view.querySelector('iframe')?.contentWindow.postMessage({type: 'go-to-page', page: targetPage}, location.origin);
   renderDocumentTabs(); updateDocumentToolbar();
+  notifyPdfViewport(true);
 }
 function jumpPage(page) {return openDocument(activeDocumentId, page);}
+function renderUploadState(id) {
+  const pending = pendingUploads.get(id), content = views.get(id)?.querySelector('.upload-state');
+  if (!pending || !content) return;
+  content.replaceChildren(el('p', '', pending.filename), el('p', pending.error ? 'error' : 'field-note', pending.error || 'Saving to server…'));
+  if (pending.error) content.append(button('Retry upload', 'secondary', () => action(() => saveUpload(id))));
+}
+function showEmptyDocuments() {
+  activeDocumentId = null;
+  for (const view of views.values()) view.hidden = true;
+  $('document-views').querySelector('.document-empty')?.remove();
+  const empty = el('div', 'document-empty');
+  empty.append(el('p', '', 'No open files.'), button('Open saved files', 'secondary', () => action(showFiles)));
+  $('document-views').append(empty); renderDocumentTabs(); updateDocumentToolbar();
+}
+async function closeDocument(id) {
+  if (!openDocumentIds.includes(id)) return;
+  if (pendingUploads.has(id)) {
+    const pending = pendingUploads.get(id);
+    const dialog = $('close-file-dialog'); dialog.returnValue = '';
+    $('close-file-message').textContent = `${pending.filename} has not been saved to the server. Close this file and cancel its upload?`;
+    dialog.showModal();
+    const discard = await new Promise(resolve => dialog.addEventListener('close', () => resolve(dialog.returnValue === 'discard'), {once: true}));
+    if (!discard) return;
+    // An upload can finish while the confirmation is open; never delete a saved file.
+    pendingUploads.get(id)?.controller?.abort(); pendingUploads.delete(id);
+    id = pending.savedId || id;
+  }
+  const index = openDocumentIds.indexOf(id); if (index < 0) return;
+  openDocumentIds.splice(index, 1); views.get(id)?.remove(); views.delete(id);
+  if (activeDocumentId === id) {
+    const next = openDocumentIds[Math.min(index, openDocumentIds.length - 1)];
+    if (next) await openDocument(next); else showEmptyDocuments();
+    $('document-tabs').querySelector('[aria-selected="true"]')?.focus();
+  } else renderDocumentTabs();
+}
+async function showFiles() {
+  const loaded = await api('/api/documents'); loaded.forEach(doc => documents.set(doc.id, doc));
+  $('files-list').replaceChildren(...loaded.map(doc => {
+    const entry = button('', '', () => action(async () => {$('files-dialog').close(); await openDocument(doc.id);}));
+    entry.append(el('span', '', doc.filename), el('small', '', openDocumentIds.includes(doc.id) ? 'Open' : doc.page_count ? `${doc.page_count} pages` : 'Saved'));
+    return entry;
+  }));
+  if (!loaded.length) $('files-list').append(el('p', 'field-note', 'No saved files. Use Add files to upload a document.'));
+  $('files-dialog').showModal();
+}
 window.addEventListener('message', event => {
   const data = event.data;
   if (event.origin !== location.origin || !data || data.type !== 'pdf-page') return;
@@ -238,17 +302,34 @@ async function openSet(id) {
 }
 async function uploadFiles(files) {
   if (!files.length) return;
-  let last;
+  const ids = [];
   for (const file of files) {
-    if (file.size > 25 * 1024 * 1024) throw new Error(`${file.name} exceeds the 25 MB upload limit.`);
-    message(`Adding ${file.name}…`, false, 0);
-    const body = new FormData(); body.append('file', file);
-    const doc = await api('/api/documents', {method: 'POST', body});
-    documents.set(doc.id, doc); last = doc.id; renderDocumentTabs();
+    if (file.size > 25 * 1024 * 1024) {message(`${file.name} exceeds the 25 MB upload limit.`, true); continue;}
+    const id = `local-${crypto.randomUUID()}`; ids.push(id);
+    pendingUploads.set(id, {filename: file.name, file, controller: null, error: null}); openDocumentIds.push(id);
   }
-  if (last) await openDocument(last);
-  if ($('generation-dialog').open) {updateSourceChoices(); renderContextChoices(); updateGenerationSummary();}
-  message(`${files.length} ${files.length === 1 ? 'file added' : 'files added'}.`);
+  if (ids.length) await openDocument(ids[ids.length - 1]);
+  for (const id of ids) await saveUpload(id);
+}
+async function saveUpload(id) {
+  const pending = pendingUploads.get(id); if (!pending || pending.controller) return;
+  pending.error = null; pending.controller = new AbortController(); renderUploadState(id);
+  const body = new FormData(); body.append('file', pending.file);
+  try {
+    const doc = await api('/api/documents', {method: 'POST', body, signal: pending.controller.signal});
+    documents.set(doc.id, doc);
+    if (!pendingUploads.has(id)) return;
+    pending.savedId = doc.id;
+    const selected = activeDocumentId === id;
+    openDocumentIds = openDocumentIds.filter(openId => openId !== doc.id).map(openId => openId === id ? doc.id : openId);
+    pendingUploads.delete(id); views.get(id)?.remove(); views.delete(id);
+    if (selected) await openDocument(doc.id); else renderDocumentTabs();
+    if ($('generation-dialog').open) {updateSourceChoices(); renderContextChoices(); updateGenerationSummary();}
+    message(`${doc.filename} saved to server.`);
+  } catch (error) {
+    if (!pendingUploads.has(id) || error.name === 'AbortError') return;
+    pending.error = error.message; renderUploadState(id); message(`${pending.filename}: ${error.message}`, true);
+  } finally {pending.controller = null;}
 }
 function sourceDocument() {return documents.get($('source-document').value);}
 function updateSourceChoices() {
@@ -289,7 +370,7 @@ function selectionRequest() {
   }
   if (context.length > 6) throw new Error('Attach up to 6 context files per request.');
   if (totalPages > 100) throw new Error('Select up to 100 PDF pages across the source and context files.');
-  return {document_id: source.id, pages, context, mode: $('mode').value, count: Number($('count').value)};
+  return {document_id: source.id, pages, context, comment: $('context-comment').value.trim(), mode: $('mode').value, count: Number($('count').value)};
 }
 function updateGenerationSummary() {
   try {
@@ -399,6 +480,15 @@ function resizePanes(value) {
   $('splitter').setAttribute('aria-valuenow', Math.round(splitRatio * 100));
   $('splitter').setAttribute('aria-valuemin', Math.ceil(minimum * 100));
   $('splitter').setAttribute('aria-valuemax', Math.floor(maximum * 100));
+  notifyPdfViewport();
+}
+function notifyPdfViewport(settled = false) {
+  viewportSettled ||= settled;
+  cancelAnimationFrame(viewportNotice);
+  viewportNotice = requestAnimationFrame(() => {
+    views.get(activeDocumentId)?.querySelector('iframe')?.contentWindow.postMessage({type: 'pdf-viewport', settled: viewportSettled}, location.origin);
+    viewportSettled = false;
+  });
 }
 $('splitter').addEventListener('pointerdown', event => {
   if (event.button !== 0) return;
@@ -411,12 +501,15 @@ $('splitter').addEventListener('pointermove', event => {
 function finishResize(event) {
   if ($('splitter').hasPointerCapture(event.pointerId)) $('splitter').releasePointerCapture(event.pointerId);
   document.body.classList.remove('resizing'); preference('split-ratio', splitRatio);
+  notifyPdfViewport(true);
 }
 $('splitter').addEventListener('pointerup', finishResize); $('splitter').addEventListener('pointercancel', finishResize);
-$('splitter').addEventListener('lostpointercapture', () => {document.body.classList.remove('resizing'); preference('split-ratio', splitRatio);});
+$('splitter').addEventListener('lostpointercapture', () => {
+  document.body.classList.remove('resizing'); preference('split-ratio', splitRatio); notifyPdfViewport(true);
+});
 $('splitter').addEventListener('keydown', event => {
   if (['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) {
-    event.preventDefault(); resizePanes(event.key === 'Home' ? 0 : event.key === 'End' ? 1 : splitRatio + (event.key === 'ArrowRight' ? .03 : -.03)); preference('split-ratio', splitRatio);
+    event.preventDefault(); resizePanes(event.key === 'Home' ? 0 : event.key === 'End' ? 1 : splitRatio + (event.key === 'ArrowRight' ? .03 : -.03)); preference('split-ratio', splitRatio); notifyPdfViewport(true);
   }
 });
 addEventListener('resize', () => resizePanes(splitRatio));
@@ -426,6 +519,7 @@ function chooseFiles() {
   $('file-input').click();
 }
 $('add-files').addEventListener('click', chooseFiles);
+$('open-files').addEventListener('click', () => action(showFiles));
 $('add-context').addEventListener('click', chooseFiles);
 $('file-input').addEventListener('change', () => {const files = [...$('file-input').files]; $('file-input').value = ''; action(() => uploadFiles(files));});
 $('page-form').addEventListener('submit', event => {event.preventDefault(); action(() => jumpPage(Number($('page').value))); $('page').blur();});
@@ -447,11 +541,18 @@ $('save-set').addEventListener('click', () => {
 $('save-form').addEventListener('submit', saveSet);
 $('export-set').addEventListener('click', () => action(exportSet));
 $('open-saved').addEventListener('click', () => action(showSaved));
+addEventListener('beforeunload', event => {
+  if (pendingUploads.size) {event.preventDefault(); event.returnValue = '';}
+});
 document.querySelectorAll('.close-dialog').forEach(control => control.addEventListener('click', () => $(control.dataset.dialog).close()));
 action(async () => {
   const [loadedDocuments, configuration, saved] = await Promise.all([api('/api/documents'), api('/api/generation/config'), api('/api/study-sets')]);
   config = configuration; loadedDocuments.forEach(doc => documents.set(doc.id, doc));
-  await openDocument(documents.has(preference('active-file')) ? preference('active-file') : config.default_document_id);
+  let storedFiles;
+  try {storedFiles = JSON.parse(preference('open-files'));} catch {}
+  openDocumentIds = Array.isArray(storedFiles) ? [...new Set(storedFiles.filter(id => documents.has(id)))] : [...documents.keys()];
+  const initial = openDocumentIds.includes(preference('active-file')) ? preference('active-file') : openDocumentIds[0];
+  if (initial) await openDocument(initial); else showEmptyDocuments();
   for (const meta of saved) sets.set(meta.id, {...meta, saved: true, data: null, itemIndex: 0});
   if (saved.length) await openSet(saved[0].id); else renderPractice();
   const storedRatio = Number(preference('split-ratio')); resizePanes(storedRatio > 0 && storedRatio < 1 ? storedRatio : .5);

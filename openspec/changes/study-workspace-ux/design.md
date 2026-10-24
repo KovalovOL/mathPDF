@@ -22,6 +22,12 @@ Support PDF, UTF-8 TXT/MD, PNG, JPEG, and WebP, as confirmed by the user. Previe
 
 Document tabs preserve their preview instances. PDF.js builds page placeholders and renders nearby pages lazily; continuous scrolling and page jumps can reach the whole document. Resizing causes visible pages to be re-rendered at the new width. The generation dialog independently selects the primary PDF, whole-document or inclusive from/to ranges, mode/count, and optional context files with their own ranges.
 
+Separate open tabs from the persistent file library. Closing a saved file only closes its preview; an Open files dialog reopens it. Show selected files immediately as unsaved upload tabs, require confirmation before closing an unfinished or failed upload, and allow failed uploads to be retried. Persist the open saved-file tab list locally. Use a local SVG favicon for browser identification.
+
+Keep PDF page heights explicit so a width change cannot reflow the document before a reading anchor is captured. During layout changes, preserve the page and relative vertical position at the top of the viewport, disable browser scroll anchoring, and update geometry and scroll position together. Retain the old canvas while rendering its replacement offscreen, defer expensive rendering until resizing settles, and release only distant canvases after layout stabilizes. Explicit outer-workspace notifications on resizing, drag completion, and file reopening complement viewport/container observers. A final two-frame measurement and visible-page redraw, followed by a missing-canvas recheck, must complete without requiring pointer or scroll interaction.
+
+The generation dialog also accepts an optional plain-text comment (up to 4,000 characters). Pass it through an external prompt template as learner preferences bounded by the primary-source rules, and retain it in the study-set snapshot when saved. Comments require no context attachment.
+
 Send the selected primary PDF and selected context attachments through a provider-independent document-input contract. Context files guide examples and task style; source formulas remain grounded in the primary selected pages. Prompts include document identity and per-file original-page mapping, all from external resources. Citation validation checks both document identity and selected page scope. The total selected PDF-page limit is 100, so the supplied 59-page file can be selected in full; the combined input-byte limit is 40 MB.
 
 ### Make the workspace responsive and keyboard accessible

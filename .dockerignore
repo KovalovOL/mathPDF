@@ -1,0 +1,9 @@
+**
+!Dockerfile
+!pyproject.toml
+!uv.lock
+!main.pdf
+!formula_lab/
+!formula_lab/**
+**/__pycache__/
+**/*.pyc

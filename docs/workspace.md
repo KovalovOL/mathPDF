@@ -15,6 +15,8 @@ The workspace imports the startup PDF and accepts PDF, UTF-8 TXT/Markdown, PNG, 
 
 Generation drafts are not saved automatically. Saved sets survive restart. Document tabs retain their preview instances and reading positions while the workspace is open.
 
+File-tab close controls remove previews, not stored documents. **Open** lists saved files, including closed ones. The open saved-file tab list persists in browser local storage. New files appear immediately as unsaved upload tabs; confirmation is required to close and cancel an unfinished or failed upload. Failed uploads retain the local file for **Retry upload** while the page is open. Leaving the browser page with pending uploads triggers the browser's unsaved-change warning. A request already committed by the server can remain in the library after cancellation.
+
 ## Generation request
 
 Reading always exposes the entire PDF. Only the generation dialog chooses what is sent to the model. Its inclusive From/To endpoints support both a range and one page; Entire PDF sends all pages. Each enabled PDF context file has its own independent selection. Text and images are attached in full.
@@ -27,6 +29,7 @@ Reading always exposes the entire PDF. Only the generation dialog chooses what i
     {"document_id": "example-pdf-id", "pages": [2, 3]},
     {"document_id": "instructions-text-id", "pages": null}
   ],
+  "comment": "Focus on notation and include a sign-error question.",
   "mode": "flashcards",
   "count": 4
 }
@@ -34,13 +37,15 @@ Reading always exposes the entire PDF. Only the generation dialog chooses what i
 
 `pages: null` selects an entire PDF. The service allows up to six context files, 100 PDF pages across all selected files, 40 MB of combined selected bytes, and 1–10 generated items. It validates all selections before the provider request. Page subsets are copied into in-memory PDFs; no formula catalog or full-text extraction is required.
 
+`comment` is optional, defaults to an empty string, and is limited to 4,000 characters. It is independent of context attachments. `prompts/comment.md` supplies its instruction text; the runtime comment is inserted as a JSON string and cannot relax source, citation, or schema requirements. The generated and saved canonical set retains the trimmed `comment`. Existing saved sets remain readable with the empty default.
+
 `StudyProvider.generate(documents, system, task)` receives provider-independent input documents. The OpenAI adapter sends PDF/text files as file inputs and images as image inputs. External prompt resources distinguish the primary source from context examples and supply per-file original-page mappings. Formula citations include the primary document ID and original page; citation scope is validated. Optional line ranges remain model-reported.
 
 ## Practice
 
 Top-level tabs retain multiple generated or saved sets. Item tabs select individual problems/cards. Flashcards have front/back faces, a physical flip transition, pointer/Space/Enter controls, and previous/next navigation. The hidden face is inert and excluded from accessibility navigation. Links do not trigger a flip. Problems have a separate solution section.
 
-A draggable vertical separator changes the panes' widths horizontally. Arrow keys adjust the focused separator, and Home/End move to its limits. The divider ratio is remembered locally. PDF pages render lazily near the viewport, release distant canvases, and re-render on width changes. Narrow screens stack the document and practice panes.
+A draggable vertical separator changes the panes' widths horizontally. Arrow keys adjust the focused separator, and Home/End move to its limits. The divider ratio is remembered locally. PDF pages render lazily near the viewport. Explicit page heights let the reader capture its top page/relative position before a width change, update geometry, and restore that position before painting. Browser scroll anchoring is disabled. The old canvas stays visible during resizing; replacement canvases render offscreen after resizing settles and swap in only when ready. The outer workspace explicitly signals viewport changes and drag completion; the reader measures again over two animation frames, redraws visible pages, and rechecks for missing canvases without waiting for pointer or scroll input. Distant canvases are released after layout stabilizes. Narrow screens stack the document and practice panes.
 
 ## PDF export
 
