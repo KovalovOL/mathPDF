@@ -1,0 +1,3 @@
+Create up to $count complete mathematical practice problems grounded in the attached pages. Use source formulas and, where appropriate, deliberate source-derived quiz variations. Do not introduce unrelated formulas or numerical substitutions that change the permitted source scope. Include a question, an answer or worked explanation supported by the source, and references for every math block. Do not put the solution or reveal a deliberate error in the question. A page can contain multiple relevant formulas, all of which can be included.
+
+Attachment page -> original document page mapping: $page_mapping.

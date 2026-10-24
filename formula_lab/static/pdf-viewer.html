@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PDF preview</title>
+  <style>
+    * { box-sizing: border-box; }
+    html { background: #e9ecf1; }
+    body { margin: 0; padding: 16px; font: 12px/1.5 system-ui, sans-serif; color: #566174; }
+    #status { margin: 0 0 12px; }
+    #pages { margin: auto; }
+    .pdf-page { margin: 0 0 20px; }
+    .page-label { margin: 0 0 5px; }
+    .pdf-sheet { position: relative; width: 100%; background: white; aspect-ratio: 595 / 842; box-shadow: 0 1px 4px #23304426; }
+    canvas { position: absolute; inset: 0; display: block; width: 100%; height: 100%; }
+    .page-error { padding: 20px; color: #a61d2c; }
+  </style>
+  <script src="/static/pdf-viewer.js" type="module"></script>
+</head>
+<body>
+  <p id="status" role="status">Loading PDF…</p>
+  <div id="pages" aria-label="PDF pages"></div>
+</body>
+</html>

@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>mathPDF</title><link rel="icon" href="data:,">
+  <link rel="stylesheet" href="/static/vendor/katex/katex.min.css">
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="/static/vendor/katex/katex.min.js" defer></script>
+  <script src="/static/math-renderer.js" defer></script>
+  <script src="/static/app.js" defer></script>
+</head>
+<body>
+  <header class="app-header">
+    <h1>mathPDF</h1>
+    <div class="header-actions"><button id="open-saved" class="secondary">Saved sets</button><button id="open-generation">Generate study set</button></div>
+  </header>
+  <div id="message" class="status-message" role="status" aria-live="polite" hidden></div>
+  <main id="workspace" class="workspace">
+    <section id="document-pane" class="pane" aria-label="Documents">
+      <div class="tabs-bar"><div id="document-tabs" class="tab-list" role="tablist" aria-label="Files"></div><button id="add-files" class="tab-action">+ Add files</button></div>
+      <div class="pane-toolbar">
+        <div id="pdf-controls" class="pdf-controls">
+          <button id="previous-page" class="icon-button" aria-label="Previous PDF page">‹</button>
+          <form id="page-form"><label for="page">Page</label><input id="page" type="number" min="1" value="1" aria-label="Current PDF page"><span id="page-count">/ 1</span></form>
+          <button id="next-page" class="icon-button" aria-label="Next PDF page">›</button>
+          <select id="zoom" aria-label="PDF zoom"><option value="fit">Fit width</option><option value="1">100%</option><option value="1.25">125%</option><option value="1.5">150%</option></select>
+        </div>
+        <span id="file-type" class="muted" hidden></span>
+        <a id="download-file" class="toolbar-link" download>Download</a>
+      </div>
+      <div id="document-views" class="document-views"></div>
+    </section>
+    <div id="splitter" class="splitter" role="separator" tabindex="0" aria-label="Resize document and study panes" aria-orientation="vertical" aria-valuemin="25" aria-valuemax="75" aria-valuenow="50" aria-controls="document-pane practice-pane"></div>
+    <section id="practice-pane" class="pane" aria-label="Study workspace">
+      <div class="tabs-bar"><div id="set-tabs" class="tab-list" role="tablist" aria-label="Study sets"></div></div>
+      <div class="pane-toolbar"><span id="set-status" class="muted">Study material</span><div class="result-actions"><button id="save-set" class="small secondary" disabled>Save</button><button id="export-set" class="small secondary" disabled>Download PDF</button></div></div>
+      <div id="item-tabs" class="item-tabs tab-list" role="tablist" aria-label="Study items" hidden></div>
+      <div id="practice-content" class="practice-content"><p class="empty-state">Generate a study set to start practicing.</p></div>
+      <div id="study-notes" class="study-notes" hidden></div>
+    </section>
+  </main>
+  <input id="file-input" type="file" accept=".pdf,.txt,.md,.png,.jpg,.jpeg,.webp" multiple hidden>
+
+  <dialog id="generation-dialog" aria-labelledby="generation-heading">
+    <form id="generate-form">
+      <div class="dialog-header"><h2 id="generation-heading">Generate study material</h2><button type="button" class="icon-button close-dialog" data-dialog="generation-dialog" aria-label="Close generation settings">×</button></div>
+      <div class="dialog-body">
+        <div class="form-grid"><label>Mode<select id="mode"><option value="flashcards">Flashcards</option><option value="problems">Problems</option></select></label><label>Items<input id="count" type="number" value="4" min="1" max="10" required></label></div>
+        <h3>Source PDF</h3><label for="source-document">Document</label><select id="source-document" required></select>
+        <div id="source-range" class="range-controls"><label>Pages<select id="source-scope"><option value="range">Page range</option><option value="all">Entire PDF</option></select></label><label>From<input id="source-from" type="number" min="1" value="1" required></label><label>To<input id="source-to" type="number" min="1" value="1" required></label></div>
+        <div class="context-heading"><h3>Additional context</h3><button id="add-context" type="button" class="small secondary">+ Add files</button></div>
+        <p class="field-note">Attach examples to guide the style and difficulty of your tasks.</p>
+        <div id="context-files"></div>
+        <p id="generation-summary" class="selection-summary"></p>
+        <p id="generation-error" class="error" role="alert" hidden></p>
+      </div>
+      <div class="dialog-footer"><button type="button" class="secondary close-dialog" data-dialog="generation-dialog">Cancel</button><button id="generate" type="submit">Generate</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="save-dialog" aria-labelledby="save-heading"><form id="save-form"><div class="dialog-header"><h2 id="save-heading">Save study set</h2><button type="button" class="icon-button close-dialog" data-dialog="save-dialog" aria-label="Close save dialog">×</button></div><div class="dialog-body"><label for="set-name">Name</label><input id="set-name" type="text" maxlength="200" required><p id="save-error" class="error" role="alert" hidden></p></div><div class="dialog-footer"><button type="button" class="secondary close-dialog" data-dialog="save-dialog">Cancel</button><button id="confirm-save" type="submit">Save</button></div></form></dialog>
+  <dialog id="saved-dialog" aria-labelledby="saved-heading"><div class="dialog-header"><h2 id="saved-heading">Saved study sets</h2><button type="button" class="icon-button close-dialog" data-dialog="saved-dialog" aria-label="Close saved sets">×</button></div><div id="saved-list" class="dialog-body saved-list"></div></dialog>
+</body>
+</html>

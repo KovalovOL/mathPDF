@@ -1,0 +1,79 @@
+# Spec Delta
+
+## Purpose
+
+Provides a document and practice workspace for exploring source material before generation and retaining useful mathematics study sets.
+
+## ADDED Requirements
+
+### Requirement: Browse complete documents in tabs
+The workspace SHALL display available source and context files as tabs and SHALL let the learner browse every PDF page without selecting a generation range first.
+
+#### Scenario: Explore a PDF
+- **WHEN** a learner opens a PDF tab
+- **THEN** all pages are reachable by continuous scrolling and page navigation
+
+#### Scenario: Switch files
+- **WHEN** the learner switches document tabs
+- **THEN** the corresponding file preview appears and the previous document's reading position is retained
+
+### Requirement: Attach context files
+The workspace SHALL accept PDFs, UTF-8 TXT/Markdown files, and supported images as additional generation context and make uploaded files available in document tabs.
+
+#### Scenario: Add example problems
+- **WHEN** the learner uploads a supported context file
+- **THEN** its tab and preview become available and it can be selected for generation
+
+### Requirement: Choose file ranges immediately before generation
+The workspace SHALL offer source and context selection in a generation dialog. Each selected PDF SHALL support the whole document or an inclusive page range, including a single page. Text and image context SHALL be included in full.
+
+#### Scenario: Choose pages five through seven
+- **WHEN** the learner chooses page 5 as the range start and 7 as its end
+- **THEN** only pages 5, 6, and 7 of that PDF are sent
+
+#### Scenario: Choose only page seven
+- **WHEN** both range endpoints are 7
+- **THEN** only page 7 is sent
+
+#### Scenario: Invalid range
+- **WHEN** a range is reversed or exceeds the selected document
+- **THEN** the workspace reports the invalid selection before sending a model request
+
+### Requirement: Resize document and practice panes
+The workspace SHALL support horizontal dragging of the divider between document and practice panes and SHALL adapt both contents to the resulting widths.
+
+#### Scenario: Widen the source pane
+- **WHEN** the learner drags the divider to the right
+- **THEN** the source pane becomes wider, the practice pane becomes narrower, and the PDF rendering adapts
+
+### Requirement: Practice with physical flip cards
+Flashcards SHALL display a front and back with a flip transition. The learner SHALL be able to flip using pointer or keyboard controls and navigate between cards.
+
+#### Scenario: Reveal a card answer
+- **WHEN** the learner flips a question card
+- **THEN** the card turns to its answer side while preserving mathematical formatting
+
+### Requirement: Navigate study sets and items through tabs
+The workspace SHALL retain multiple generated sets in tabs and SHALL let the learner select individual cards or problems without replacing other sets.
+
+#### Scenario: Generate another set
+- **WHEN** generation completes while another set is open
+- **THEN** a new set tab appears and the earlier set remains available
+
+### Requirement: Save study sets across restarts
+The workspace SHALL explicitly save a study set's items, editable mathematics, source references, context selections, and generation metadata to persistent storage and SHALL restore saved sets after restart.
+
+#### Scenario: Reopen a saved set
+- **WHEN** the learner saves a set and reloads the workspace
+- **THEN** the saved set is available with its original mathematical content and references
+
+### Requirement: Download formatted study PDFs
+The workspace SHALL export saved or unsaved study sets as downloadable PDFs containing their questions, answers, source references, and selectable mathematical text with formatted fractions, indices, and operators.
+
+#### Scenario: Download a set
+- **WHEN** the learner requests PDF download
+- **THEN** a PDF is returned with all study items and their formatted mathematics rather than formula screenshots
+
+#### Scenario: Mathematical source cannot be rendered
+- **WHEN** an expression cannot be rendered for export
+- **THEN** the workspace identifies the failure rather than exporting a silently incomplete formula

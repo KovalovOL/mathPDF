@@ -1,0 +1,15 @@
+{
+  "name": "mathpdf-assets",
+  "private": true,
+  "scripts": {
+    "vendor:math": "node scripts/vendor_math.cjs",
+    "check:browser": "node scripts/browser_check.cjs"
+  },
+  "devDependencies": {
+    "playwright": "1.62.1"
+  },
+  "dependencies": {
+    "katex": "0.19.1",
+    "pdfjs-dist": "6.4.299"
+  }
+}

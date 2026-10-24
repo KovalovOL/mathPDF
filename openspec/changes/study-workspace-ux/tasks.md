@@ -1,0 +1,22 @@
+# Tasks
+
+## 1. Documents and generation context
+
+- [x] 1.1 Add managed PDF/text/image uploads and SQLite document metadata; document supported formats and inspect document identity, upload bounds, and persistent file paths.
+- [x] 1.2 Extend generation requests, external prompts, provider attachments, and citation validation for per-file ranges; document the wire contract and inspect that only selected pages and enabled attachments enter the request.
+
+## 2. Reading workspace
+
+- [x] 2.1 Replace the single-page viewer with lazy continuous PDF browsing and file tabs; inspect scrolling, page navigation, source links, and preserved tab positions.
+- [x] 2.2 Add a generation dialog with primary/context file selection and inclusive ranges; inspect range controls, preflight errors, and independent reading state.
+- [x] 2.3 Add pointer and keyboard pane resizing with responsive PDF/card layout; inspect divider bounds and narrow-screen layout.
+
+## 3. Practice and retention
+
+- [x] 3.1 Add set/item tabs, front/back flashcards, keyboard flipping, and problem solutions; inspect accessible face state and navigation while retaining other sets.
+- [x] 3.2 Add explicit SQLite study-set saves and restoration through the workspace; document persistence and inspect canonical set/source/context serialization and reload behavior.
+- [x] 3.3 Add downloadable PDF export through the shared mathematical renderer and Chromium; document browser setup, print layout, font readiness, and visible rendering-error handling.
+
+## 4. Integration documentation
+
+- [x] 4.1 Update README and API/UX documentation, reconcile platform planning, and deliver the refreshed workspace preview; validate OpenSpec artifacts and record verification limits without claiming unrun automated tests or live model requests.
