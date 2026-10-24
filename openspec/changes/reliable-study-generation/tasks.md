@@ -16,4 +16,4 @@
 
 ## 4. Integration
 
-- [ ] 4.1 Review the final diff and existing-set compatibility, run static syntax and strict OpenSpec checks, record observations and live-generation limits, and push the completed change through the existing deployment.
+- [x] 4.1 Review the final diff and existing-set compatibility, run static syntax and strict OpenSpec checks, record observations and live-generation limits, and push the completed change through the existing deployment.

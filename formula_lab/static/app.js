@@ -482,7 +482,7 @@ async function generate(event) {
   message('');
   const word = request.mode === 'flashcards' ? 'flashcard' : 'problem';
   $('generation-progress-label').textContent = `Generating ${request.count} ${word}${request.count === 1 ? '' : 's'}…`;
-  $('generation-progress').hidden = false; $('practice-content').setAttribute('aria-busy', 'true');
+  $('generation-progress').hidden = false; $('open-generation').setAttribute('aria-busy', 'true');
   if (!sets.get(activeSetId)?.data) renderPractice();
   const started = performance.now();
   function updateElapsed() {
@@ -497,7 +497,7 @@ async function generate(event) {
     await openSet(data.id);
     message(`Created ${data.items.length} ${data.mode === 'flashcards' ? 'flashcards' : 'problems'}.`);
   } finally {
-    clearInterval(timer); $('generation-progress').hidden = true; $('practice-content').setAttribute('aria-busy', 'false');
+    clearInterval(timer); $('generation-progress').hidden = true; $('open-generation').setAttribute('aria-busy', 'false');
     generationActive = false; updateGenerationAvailability(); $('open-generation').textContent = 'Generate study set';
     if (!sets.get(activeSetId)?.data) renderPractice();
   }

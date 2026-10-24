@@ -13,6 +13,8 @@ Date: 2026-10-24. These are manual implementation observations, not automated re
 
 The implementation enforces exact successful counts; it cannot guarantee that an external provider will always complete a request. Insufficient source, refusals, usage limits, or exhausted recovery produce errors instead of short sets. Duplicate checking is exact-content based and does not prove semantic uniqueness or mathematical correctness. Earlier observations below describe historical behavior, including successful short sets, that is superseded by this revision.
 
+The feature commit `c68f655` was pushed to `main`, and its [deployment](https://github.com/KovalovOL/mathPDF/actions/runs/40128338354) completed successfully. Final accessibility review scopes `aria-busy` to the generation control, so already-open cards remain available to assistive technology while another set is generated. No live 15-item provider result or authenticated preview screenshot is claimed.
+
 ## Google authentication and personal library (2026-10-24)
 
 - Started the account-aware application with the local loopback origin after stopping the old process. The authorized legacy migration produced owned document/set schemas and removed all three old managed uploads and old saved sets. Read-only inspection showed zero users, sessions, documents, sets, and managed binaries. The repository's `main.pdf` remains present.
