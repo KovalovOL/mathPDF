@@ -205,13 +205,13 @@ async function jump(number, {animated = false, quote = null} = {}) {
   highlightedRecord = record;
   const fragmentTop = highlightRange(record, range);
   if (fragmentTop === null && animated) record.sheet.classList.add('source-page');
+  highlightTimer = setTimeout(clearHighlight, 4500);
   const top = fragmentTop ?? record.element.getBoundingClientRect().top;
   await scrollToSource(scrollY + top - (fragmentTop === null ? 12 : Math.min(120, innerHeight * .2)), animated);
   if (version !== navigationVersion) return;
   currentPage = number; announce();
   navigationRecord = null;
   refreshNearby(); enqueue(record, true); scheduleNearby(); pruneLater();
-  highlightTimer = setTimeout(clearHighlight, 4500);
 }
 function resize() {
   if (!pdf || document.documentElement.clientWidth < 80) return;

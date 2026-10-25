@@ -21,4 +21,6 @@ No automated tests or paid OpenAI requests were run. The authenticated reader an
 
 ## Deployment
 
-Pending the existing push-to-main deployment workflow.
+Code commit `73be534` was pushed to `main`. The existing [Deploy run 40202427132](https://github.com/KovalovOL/mathPDF/actions/runs/40202427132) completed successfully, including its `/opt/mathPDF` build/restart step. The local development server was also restarted with the updated imports.
+
+A follow-up commit records completion and ensures that interrupted citation navigation still expires its highlight. This does not establish authenticated end-to-end behavior or model output quality.

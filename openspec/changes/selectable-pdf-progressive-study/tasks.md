@@ -14,4 +14,4 @@
 ## 3. Integration
 
 - [x] 3.1 Review the complete diff, run static syntax and strict OpenSpec validation, and record the scope of checks without making paid generation requests.
-- [ ] 3.2 Commit and push the change using the existing deployment workflow; observe the deployment result and record any remaining limitations.
+- [x] 3.2 Commit and push the change using the existing deployment workflow; observe the deployment result and record any remaining limitations.
