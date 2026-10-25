@@ -63,4 +63,4 @@
 ## 11. Literal conjunction ampersands
 
 - [x] 11.1 Preserve visible conjunction ampersands in standalone, aligned and inline legacy expressions without replacing their notation or changing table columns; clarify the external guide.
-- [ ] 11.2 Add screenshot regressions and verify browser/PDF rendering, update English documentation, and deploy through the existing workflow.
+- [x] 11.2 Add screenshot regressions and verify browser/PDF rendering, update English documentation, and deploy through the existing workflow.
