@@ -38,4 +38,4 @@ Application commit `9c3bc26` was pushed to `main`. [GitHub Actions run 402439302
 - Full regression suite: **96 passed**, one existing Starlette/httpx deprecation warning, 21.19 seconds. Changed JavaScript syntax, whitespace and strict OpenSpec checks passed. No external model request was made.
 - Screenshots: ignored `artifacts/ui/safari-cached-previews.png` and `artifacts/ui/viewer-icon-left.png`.
 
-Follow-up deployment verification will be recorded after the existing workflow completes.
+Follow-up commit `468a3e7` was pushed to `main`; [Actions run 40245630820](https://github.com/KovalovOL/mathPDF/actions/runs/40245630820) completed successfully. The live protected `/api/me` returned 401 with build `1649eb7d04bd`, matching local. SHA-256 checks matched all four changed static assets (`visual-cache.js`, `file-previews.js`, `pdf-viewer.js`, `style.css`). No production account data was requested for this verification.

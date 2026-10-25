@@ -47,4 +47,4 @@
 
 - [x] 8.1 Store derived images as byte buffers, read older Blob cache entries compatibly and recover unreadable images without displaying broken thumbnails; cover library and PDF page caches.
 - [x] 8.2 Replace source show/hide text with accessible icons and place the expanded viewer's collapse control at the far left of its file bar.
-- [ ] 8.3 Verify cache migration/recovery and desktop/mobile controls, update English documentation and deploy through the existing workflow.
+- [x] 8.3 Verify cache migration/recovery and desktop/mobile controls, update English documentation and deploy through the existing workflow.
