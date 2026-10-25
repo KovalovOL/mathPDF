@@ -199,3 +199,37 @@ def test_conjunction_ampersands_survive_save_and_pdf_export(tmp_path):
         assert answers.count('&') == 4
         assert 'Leftrightarrow' not in answers
         assert app.state.provider.calls == 1
+
+
+@pytest.mark.parametrize('mode', ['flashcards', 'problems'])
+@pytest.mark.parametrize('latex,symbol', [(r'x \in A', '∈'), (r'\unknownCommand{x}', r'\unknownCommand')])
+def test_provider_independent_question_math_projection(tmp_path, mode, latex, symbol):
+    from pypdf import PdfReader
+
+    class InlineProvider(FixtureProvider):
+        async def generate(self, *args, **kwargs):
+            result = await super().generate(*args, **kwargs)
+            item = result.content.items[0]
+            item.question[0].text = r'Which expression is used? \(' + latex + r'\)'
+            item.answer[0].latex = latex
+            return result
+
+    app = create_app(tmp_path, InlineProvider())
+    with TestClient(app) as client:
+        sign_in(client, app)
+        document = upload(client)
+        response = client.post('/api/study/generate', json={
+            'document_id': document['id'], 'pages': [1], 'mode': mode, 'count': 1})
+        assert response.status_code == 200
+        result = response.json()
+        assert latex in result['items'][0]['question'][0]['text']  # Stored content is preserved.
+        assert client.post('/api/study-sets', json=result).status_code == 200
+        assert client.get('/api/study-sets/' + result['id']).json() == result
+        exported = client.post('/api/study/export.pdf', json=result)
+        assert exported.status_code == 200
+        text = '\n'.join(p.extract_text() for p in PdfReader(io.BytesIO(exported.content)).pages)
+        questions, answers = text.split('Answers', 1)
+        assert 'Which expression is used?' in questions
+        assert (symbol in questions) == (mode == 'problems')
+        assert symbol in answers
+        assert app.state.provider.calls == result['metadata']['provider_requests'] == 1

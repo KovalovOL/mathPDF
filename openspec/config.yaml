@@ -1,5 +1,8 @@
 schema: spec-driven
 
+context: |
+  Every new release must read all previously supported persisted formats, including saved study sets and browser drafts. Use compatible defaults or explicit non-destructive upgrades and retain historical fixtures. Breaking backward read compatibility is permitted only for a major change with the project owner's explicit approval. Older releases need not read newer formats.
+
 # Project context (optional)
 # Add only constraints that should guide OpenSpec artifacts and workflows.
 # Include constraints an agent cannot infer by reading the code.

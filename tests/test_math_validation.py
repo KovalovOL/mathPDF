@@ -166,3 +166,49 @@ def test_literal_ampersands_are_not_alignment_tabs():
                 # Display recovery is idempotent and does not invent a negation.
                 assert expected.count(r'\bar') == latex.count(r'\bar')
     asyncio.run(check())
+
+
+def test_shared_flashcard_projection_removes_text_math_without_mutating_content():
+    from formula_lab.study import StudyItem
+
+    cases = [
+        r'Which expression denotes membership? \(x \in A\)',
+        r'Which expression denotes membership? $x \in A$',
+        r'Recall this expression: \[x^2\]',
+        r'Recall this expression: $$x^2$$',
+        r'Which relation is printed? t&t \Leftrightarrow 0',
+        r'Which relation is printed? \begin{aligned}t\&t&\Leftrightarrow t\end{aligned}',
+        r'Which expression is printed? \(\unknownCommand{x}\)',
+        r'Which expression is printed? \unknownCommand{x}',
+        r'\(x \in A\)',
+        'What conditions define equality?',
+    ]
+
+    async def check():
+        async with MathValidator() as validator:
+            for text in cases:
+                item = StudyItem.model_validate({'title': 'Answer title',
+                    'question': [{'kind': 'text', 'text': text}],
+                    'answer': [{'kind': 'math', 'latex': r'x \in A', 'display': True,
+                                'source': {'page': 1, 'line_start': None, 'line_end': None, 'quote': None},
+                                'original_latex': r'x \notin A', 'change': 'Answer-only change.'}]}).model_dump(mode='json')
+                result = await validator.page.evaluate(r'''item => {
+                    const before = JSON.stringify(item), sides = MathPDF.flashcardSides(item);
+                    const front = document.createElement('div'), back = document.createElement('div');
+                    MathPDF.renderBlocks(front, sides.question, {editable:false});
+                    MathPDF.renderBlocks(back, sides.answer, {editable:false});
+                    return {unchanged:before===JSON.stringify(item),
+                        idempotent:JSON.stringify(MathPDF.flashcardSides(sides))===JSON.stringify(sides),
+                        frontMath:front.querySelectorAll('.inline-math, .math-block, .math-fallback').length,
+                        frontText:front.textContent, answerBlocks:sides.answer,
+                        backMath:back.querySelectorAll('.katex, .math-fallback').length};
+                }''', item)
+                assert result['unchanged'] and result['idempotent'], (text, result)
+                assert result['frontMath'] == 0, (text, result)
+                assert '\\' not in result['frontText'] and '$' not in result['frontText']
+                assert result['backMath'] >= 1
+                assert result['answerBlocks'][-1] == item['answer'][0]  # Citation and variant survive.
+                if text == cases[0]: assert len(result['answerBlocks']) == 1  # No repeated central formula.
+                if text == cases[-2]: assert result['frontText'] == 'Recall the formula.'
+                if text == cases[-1]: assert result['frontText'] == text
+    asyncio.run(check())

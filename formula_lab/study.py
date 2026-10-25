@@ -105,6 +105,8 @@ class ContextSnapshot(StrictModel):
 
 
 class StudySet(GeneratedContent):
+    # Unmarked historical records and browser drafts are version 1 as well.
+    schema_version: Literal[1] = 1
     id: str = Field(default_factory=lambda: uuid4().hex, pattern=r"^[a-f0-9]{32}$")
     title: str = Field(min_length=1, max_length=200)
     document: Document

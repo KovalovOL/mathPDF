@@ -38,6 +38,8 @@ Set `OPENAI_API_KEY` or the existing `OPENAI_KEY` in the server environment or p
 
 `.formula-lab/workspace.sqlite3` stores document metadata and explicitly saved sets. `.formula-lab/documents/` stores managed original files. Save preserves question/answer blocks, TeX, source references, context selections, the generation comment, quiz originals, and provider/prompt metadata. Unsaved sets remain browser drafts; leaving the page warns about pending uploads or unsaved sets. Closing a saved file or study-set tab retains its stored record. Open saved-file and study-set tab lists are remembered locally.
 
+New releases must read every previously supported persisted format. Study sets without a version marker are version 1; newer writes include `schema_version: 1`. Reading an older set does not rewrite it. Compatibility may be broken only for a major change with the project owner's explicit approval; older releases need not read newer payloads. See the [compatibility contract](docs/study-contract.md#backward-compatibility) and frozen fixtures under `tests/fixtures/study-sets/`.
+
 Every file and saved set belongs to its authenticated owner. All reads, downloads, generation attachments, updates, and exports enforce ownership on the backend. Identical files uploaded by different accounts receive separate records. Browser preferences are scoped by account ID.
 
 On the first ownership upgrade, the application deletes pre-authentication managed uploads and saved sets, as explicitly requested by the project owner. Later restarts preserve owned data. Repository PDFs outside the managed upload directory are untouched. Storage remains local; Garage integration is future work.
@@ -117,4 +119,4 @@ Node is not required to run the Python application with these assets present. Ke
 
 Correct typesetting does not prove that an LLM transcribed the PDF correctly or that generic math fonts match its original typography. Generated sets retain unchecked source metadata and references for comparison. The current work does not claim universal PDF fidelity.
 
-Existing automated tests and historical browser scripts cover the earlier source-font prototype; they were not run for this UX revision. The superseded `scripts/browser_check.cjs` does not cover the new workspace. Current manual UI observations and any model/export execution are recorded separately from automated test coverage.
+The regression suite covers generation, provider adaptation, shared mathematical rendering, owner-scoped persistence, historical payload compatibility and PDF export. Run it with `uv run --frozen --extra dev pytest -q`. Real-provider latency and manual browser observations are recorded separately in the OpenSpec change verification notes. The superseded `scripts/browser_check.cjs` does not cover the current workspace.

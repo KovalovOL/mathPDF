@@ -153,7 +153,7 @@
   const operator = String.raw`(?:\\(?:Rightarrow|Leftarrow|Leftrightarrow|rightarrow|leftarrow|leftrightarrow|implies|iff|lor|vee|land|wedge|cap|cup|in|notin|subseteq|subset|supseteq|supset|times|cdot|equiv|neq|leq|geq|downarrow|uparrow|oplus|setminus|mid)(?![A-Za-z])|\\&|[&=+*/<>−-])`;
   const bareMath = new RegExp(String.raw`(?<![A-Za-z\\])${atom}(?:\s*${operator}\s*${atom})*(?![A-Za-z])`, 'g');
 
-  function renderLegacyText(container, text) {
+  function* legacyTextParts(text) {
     let position = 0;
     for (const match of text.matchAll(bareMath)) {
       const expression = match[0];
@@ -161,27 +161,36 @@
       if (!/[\\^_=|!&]/.test(expression) && !/^[A-Za-z]\(/.test(expression)) continue;
       const withoutCommands = expression.replace(/\\[A-Za-z]+/g, '');
       if (/\b[A-Za-z]{3,}\b/.test(withoutCommands)) continue;
-      const math = element('span', 'inline-math');
-      if (!renderMath(math, expression, false)) continue;
-      container.append(document.createTextNode(text.slice(position, match.index)), math);
+      yield {text: text.slice(position, match.index)};
+      yield {latex: expression, display: false, raw: expression, explicit: false};
       position = match.index + expression.length;
     }
-    container.append(document.createTextNode(text.slice(position)));
+    yield {text: text.slice(position)};
   }
 
-  function renderText(container, text) {
+  function* textParts(text) {
     // Explicit delimiters and complete environments take precedence over any
     // legacy fragment scanning. Preserve every source character inside math.
     const pattern = /\\\(([\s\S]*?)\\\)|\\\[([\s\S]*?)\\\]|\$\$([\s\S]*?)\$\$|\$([^$\n]+)\$|(\\begin\{(aligned|alignedat|gathered|array|matrix|pmatrix|bmatrix|Bmatrix|vmatrix|Vmatrix|smallmatrix|cases)\}[\s\S]*?\\end\{\6\})/g;
     let position = 0;
     for (const match of text.matchAll(pattern)) {
-      renderLegacyText(container, text.slice(position, match.index));
+      yield* legacyTextParts(text.slice(position, match.index));
       const display = match[2] !== undefined || match[3] !== undefined || match[5] !== undefined;
-      const math = element('span', display ? 'inline-math display-math' : 'inline-math');
-      renderMath(math, match[1] ?? match[2] ?? match[3] ?? match[4] ?? match[5], display);
-      container.append(math); position = match.index + match[0].length;
+      yield {latex: match[1] ?? match[2] ?? match[3] ?? match[4] ?? match[5],
+        display, raw: match[0], explicit: true};
+      position = match.index + match[0].length;
     }
-    renderLegacyText(container, text.slice(position));
+    yield* legacyTextParts(text.slice(position));
+  }
+
+  function renderText(container, text) {
+    for (const part of textParts(text)) {
+      if (part.text !== undefined) {container.append(document.createTextNode(part.text)); continue;}
+      const math = element('span', part.display ? 'inline-math display-math' : 'inline-math');
+      const rendered = renderMath(math, part.latex, part.display);
+      // Preserve the existing plain-text fallback for unsupported bare TeX.
+      container.append(rendered || part.explicit ? math : document.createTextNode(part.raw));
+    }
   }
 
   function renderBlocks(container, blocks, options = {}) {
@@ -203,9 +212,24 @@
   function flashcardSides(item) {
     // Older saved sets and browser drafts put the answer formula in question.
     // Project both faces without mutating those records or losing citations.
-    const question = item.question.filter(block => block.kind === 'text');
+    const question = [], moved = [];
+    const answerMath = new Set(item.answer.filter(block => block.kind === 'math').map(block => block.latex.trim()));
+    for (const block of item.question) {
+      if (block.kind === 'math') {moved.push(block); continue;}
+      const parts = [...textParts(block.text)], maths = parts.filter(part => part.latex !== undefined);
+      if (!maths.length) {question.push(block); continue;}
+      const text = parts.filter(part => part.text !== undefined).map(part => part.text).join('')
+        .replace(/\(\s*\)|\[\s*\]/g, '').replace(/[ \t]+([,.;:!?])/g, '$1').replace(/[ \t]{2,}/g, ' ').trim();
+      if (/[\p{L}\p{N}]/u.test(text)) question.push({...block, text});
+      for (const part of maths) {
+        if (answerMath.has(part.latex.trim())) continue;
+        // Keep inline mathematics in a canonical text block; do not invent a
+        // citation or alter the source expression, even when KaTeX rejects it.
+        moved.push({kind: 'text', text: part.explicit ? part.raw : `\\(${part.latex}\\)`});
+      }
+    }
     const answer = [], seen = new Set();
-    for (const block of [...item.question.filter(block => block.kind === 'math'), ...item.answer]) {
+    for (const block of [...moved, ...item.answer]) {
       if (block.kind === 'math') {
         const key = JSON.stringify([block.latex, block.source, block.original_latex, block.change]);
         if (seen.has(key)) continue;

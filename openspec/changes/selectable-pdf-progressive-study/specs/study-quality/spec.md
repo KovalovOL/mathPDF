@@ -52,6 +52,11 @@ Flashcard fronts SHALL show only a self-contained recall question without answer
 - **THEN** the workspace and exported question section omit that formula and the item title
 - **AND** the answer side or section retains the formula, citation and variant explanation
 
+#### Scenario: Provider embeds the formula inside question prose
+- **WHEN** a flashcard question text contains delimited mathematics or recognizable legacy TeX
+- **THEN** the shared workspace/export projection removes that mathematics from the front and retains it on the answer
+- **AND** this behavior is independent of the provider and does not mutate the stored item or add model calls
+
 ### Requirement: Single-request progressive learning sequence
 Generation SHALL request the complete set of distinct source-grounded items in one provider request, ordered in increasing intended difficulty. It SHALL NOT make separate planning, batching, repair, or automatic retry requests. Difficulty remains a model assessment.
 
@@ -81,11 +86,17 @@ Formula-writing instructions SHALL remain in a separate English guide. The UI an
 - **THEN** PDF export preserves it as readable raw text rather than rejecting the whole export
 
 ### Requirement: Existing study material remains readable
-Existing saved sets SHALL remain readable without newly required planning fields. Unambiguous standalone TeX lines in old prose SHALL be typeset without treating ordinary English paragraphs as formulas.
+New releases SHALL read every previously supported persisted format without losing user content. Compatible defaults or non-destructive upgrades SHALL retain older saved sets and browser drafts. Breaking read compatibility SHALL require a major change and the project owner's explicit approval. Older releases are not required to read newer formats.
 
 #### Scenario: Open an older set
 - **WHEN** a saved item lacks a learning goal identifier
 - **THEN** it remains readable and exportable
+
+#### Scenario: Read a set written before version markers
+- **WHEN** a saved set has no version marker, item source or goal identifier
+- **THEN** a new release reads it as version 1 and can open, save and export it without losing its formulas or citations
+- **AND** merely reading or displaying it does not rewrite its persisted payload
+- **AND** intentional variants and metadata remain available
 
 ### Requirement: Bounded generation progress
 The workspace SHALL run generation through short owner-scoped job requests, display the actual phase and accepted count, and terminate waiting on completion, failure, cancellation, or deadline. Restarted or expired jobs SHALL produce an actionable interruption message.

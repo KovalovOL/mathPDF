@@ -1,0 +1,30 @@
+{
+  "id": "dddddddddddddddddddddddddddddddd",
+  "title": "Legacy practice problems",
+  "document": {
+    "id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "filename": "legacy-notes.pdf",
+    "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "media_type": "application/pdf",
+    "page_count": 1,
+    "size": 100
+  },
+  "pages": [1],
+  "mode": "problems",
+  "items": [
+    {
+      "title": "Addition of fractions",
+      "question": [
+        {"kind": "text", "text": "Evaluate the expression."},
+        {
+          "kind": "math", "latex": "\\frac{1}{2}+\\frac{1}{2}", "display": true,
+          "source": {"document_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "page": 1, "line_start": null, "line_end": null, "quote": null},
+          "original_latex": null, "change": null
+        }
+      ],
+      "answer": [{"kind": "text", "text": "The sum is \\(1\\)."}]
+    }
+  ],
+  "notes": [],
+  "metadata": {"provider": "fixture", "model": "historical", "custom_legacy_note": "Preserve unknown metadata."}
+}

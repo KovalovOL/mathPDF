@@ -64,3 +64,9 @@
 
 - [x] 11.1 Preserve visible conjunction ampersands in standalone, aligned and inline legacy expressions without replacing their notation or changing table columns; clarify the external guide.
 - [x] 11.2 Add screenshot regressions and verify browser/PDF rendering, update English documentation, and deploy through the existing workflow.
+
+## 12. Backward compatibility and shared flashcard projection
+
+- [x] 12.1 Record the mandatory backward-compatibility policy, add a defaulted study-set version marker and frozen legacy fixtures, and verify non-destructive read/save compatibility.
+- [x] 12.2 Share text/math fragment parsing with flashcard projection so inline and recognizable legacy formulas remain answer-only across providers, old sets and PDF export without model calls or stored-content mutation.
+- [ ] 12.3 Verify compatibility and front/back regressions through tests, the local browser and PDF export; update English documentation and deploy through the existing workflow.
