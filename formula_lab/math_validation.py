@@ -73,7 +73,8 @@ class MathValidator:
                     await self._start()
                 results = await wait_for(self.page.evaluate("""expressions => expressions.map(([latex, display]) => {
                     const target = document.createElement('div');
-                    return window.MathPDF.renderMath(target, latex, display) ? null : target.textContent.slice(0, 400);
+                    return window.MathPDF.renderMath(target, latex, display) ? null :
+                        (target.dataset.mathError || target.textContent).slice(0, 400);
                 })""", pending), timeout=20)
                 self.cache.update(zip(pending, results))
             return list(dict.fromkeys(self.cache[expression] for expression in expressions if self.cache[expression]))

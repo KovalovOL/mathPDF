@@ -9,6 +9,7 @@ h3 { font-size: 11pt; margin: 0 0 3mm; }
 .text-block { white-space: pre-wrap; overflow-wrap: anywhere; margin: 0 0 3mm; }
 .math-block { margin: 4mm 0; }
 .math-output { font-size: 12pt; width: 100%; padding: 2mm 0; overflow: visible; }
+.raw-formula { font-family: monospace; white-space: pre-wrap; overflow-wrap: anywhere; }
 .katex-display { margin: 0; }
 .katex-display > .katex { text-align: left; }
 .answer-key { break-before: page; }

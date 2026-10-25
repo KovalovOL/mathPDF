@@ -26,25 +26,27 @@ def test_real_renderer_accepts_valid_math_and_rejects_bad_tex():
     asyncio.run(check())
 
 
-def test_renderer_fault_stops_before_any_provider_calls(monkeypatch):
-    closed = []
+def test_generation_does_not_launch_a_validation_browser(monkeypatch):
+    from formula_lab.study import GeneratedContent, ProviderResult, StudyItem
 
-    class BrokenValidator(MathValidator):
-        async def errors(self, expressions):
-            return ["Cannot render this formula: simulated renderer environment failure"]
+    async def forbidden_start(self):
+        pytest.fail('Generation must not start a server validation browser')
 
-        async def __aexit__(self, *_):
-            closed.append(True)
+    monkeypatch.setattr(MathValidator, '_start', forbidden_start)
+    document = Document(id='a'*32, filename='notes.pdf', sha256='b'*64,
+                        media_type='application/pdf', page_count=1, size=10)
+    source = InputDocument(document=document, data=b'', filename='notes.pdf', role='primary', pages=[1])
 
-    class UnusedProvider:
+    class Provider:
         async def generate(self, *args, **kwargs):
-            pytest.fail("A broken renderer must not trigger model repair attempts")
+            entry = StudyItem.model_validate({'title':'Raw math',
+                'question':[{'kind':'math','latex':r'\unknownCommand{x}','display':True,
+                             'source':{'page':1,'line_start':None,'line_end':None,'quote':None},
+                             'original_latex':None,'change':None}],
+                'answer':[{'kind':'text','text':'An explanation.'}]})
+            return ProviderResult(content=GeneratedContent(items=[entry],notes=[]),provider='fixture',model='fixture')
 
-    monkeypatch.setattr("formula_lab.study.MathValidator", BrokenValidator)
-    document = Document(id="a" * 32, filename="notes.pdf", sha256="b" * 64,
-                        media_type="application/pdf", page_count=1, size=10)
-    source = InputDocument(document=document, data=b"", filename="notes.pdf", role="primary", pages=[1])
-    with pytest.raises(MathValidationError, match="server formula renderer is unavailable"):
-        asyncio.run(collect_study([source], GenerateRequest(mode="flashcards", count=5),
-                                  UnusedProvider(), lambda _: None))
-    assert closed == [True]
+    content, metadata = asyncio.run(collect_study([source], GenerateRequest(mode='flashcards',count=1),
+                                                 Provider(), lambda _: None))
+    assert len(content.items) == 1
+    assert metadata['math_check'] == 'on_display'

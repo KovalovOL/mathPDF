@@ -62,7 +62,7 @@ def normalize_model_prose(text: str) -> str:
 
 class FormulaVariant(StrictModel):
     original: str = Field(min_length=1, max_length=5000)
-    change: str = Field(min_length=1, max_length=1000, pattern=r"^[^\\$]+$")
+    change: str = Field(min_length=1, max_length=1000)
 
 
 class Formula(StrictModel):
@@ -79,7 +79,7 @@ class Formula(StrictModel):
 
 
 class CompactItem(StrictModel):
-    title: str = Field(min_length=1, max_length=180, pattern=r"^[^\\$]+$")
+    title: str = Field(min_length=1, max_length=180)
     formula: Formula
     question: list[Prose | Formula] = Field(min_length=1, max_length=40)
     answer: list[Prose | Formula] = Field(min_length=1, max_length=40)

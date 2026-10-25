@@ -38,6 +38,8 @@ The exact cause of the previously reported unreadable response was not captured.
 
 ## Formula renderer health
 
-Generation initializes Chromium with a standards-mode document and runs a known-valid formula self-check before calling the provider. A failed self-check ends the job as a server renderer error; it does not trigger paid model repair attempts. Candidate formulas still undergo strict KaTeX validation.
+Generation no longer initializes Chromium or rejects a complete set for mathematical formatting. It makes one provider request and validates count/source ownership; KaTeX runs on display with a readable raw-text fallback. Successful metadata records `math_check: on_display` and `formatting_policy: best_effort`. This prioritizes usability and removes preflight browser latency. PDF export still uses Chromium, with the same raw-text fallback for unsupported TeX.
 
 The October 25 zero-progress failure was reproduced locally: the previous blank validation document used quirks mode, causing KaTeX to reject even `x+1`. Logs showed every candidate rejected as `invalid_math`. Missing PDF.js source maps are browser debugging files and do not cause this failure.
+
+The later reference `c7f8c8ee266b400a87fefa2c6004238c` produced five problems in about 13 seconds but was rejected as `math_in_text`. The non-blocking display policy removes that rejection rather than making another provider request.

@@ -17,7 +17,6 @@ from uuid import uuid4
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from pypdf import PdfReader, PdfWriter
 from .workspace import Document, Workspace
-from .math_validation import MathValidator, MathValidationError
 
 
 MAX_ITEMS = 50
@@ -222,37 +221,17 @@ def prepare_documents(workspace: Workspace, request: GenerateRequest, owner_id: 
     return result
 
 
-def validate_item(item: StudyItem, mode: str, document_id: str, pages: list[int], *, strict_blocks: bool = False):
+def validate_item(item: StudyItem, mode: str, document_id: str, pages: list[int]):
     maths = [block for block in item.question + item.answer if isinstance(block, MathBlock)]
     if not maths:
         raise ContentValidationError("missing_formula", "A study item is missing its source formula.")
     if mode == "flashcards" and not any(isinstance(block, MathBlock) for block in item.question):
         raise ContentValidationError("missing_question_formula", "A flashcard question is missing its formula.")
-    if strict_blocks:
-        prose = [item.title] + [INLINE_MATH.sub("", block.text) for block in item.question + item.answer if isinstance(block, TextBlock)]
-        prose += [block.change for block in maths if block.change]
-        if any(re.search(r"\\(?:[A-Za-z]+|[{}\[\]()])|\$", text) for text in prose):
-            raise ContentValidationError("math_in_text", "Mathematical expressions need formatted math blocks.")
-        for block in maths:
-            for expression in [block.latex, block.original_latex]:
-                if expression and prose_in_math(expression):
-                    raise ContentValidationError("prose_in_math", "Exercise prose needs separate text blocks.")
     for block in maths:
         if block.source.document_id is None:
             block.source.document_id = document_id
         if block.source.page not in pages or block.source.document_id != document_id:
             raise ContentValidationError("invalid_source", "A formula references pages outside the selected source.")
-
-
-def prose_in_math(latex: str) -> bool:
-    if re.search(r"(?:^|\\text\s*\{)\s*(?:exercise|problem|question)\s+\d", latex, re.I):
-        return True
-    # Long sentences inside \text are usually a copied prompt, not a formula condition.
-    text_runs = re.findall(r"\\text\s*\{([^{}]*)\}", latex)
-    if any(len(re.findall(r"[A-Za-z]{2,}", run)) >= 12 for run in text_runs):
-        return True
-    without_commands = re.sub(r"\\[A-Za-z]+", "", latex)
-    return len(re.findall(r"\b[A-Za-z]{3,}\b", without_commands)) >= 14
 
 
 def item_expressions(item: StudyItem) -> list[tuple[str, bool]]:
@@ -286,43 +265,38 @@ async def collect_study(documents: list[InputDocument], request: GenerateRequest
     source = documents[0]
     system, task, hashes = load_prompts(request, documents)
     started = perf_counter()
-    async with MathValidator() as validator:
-        progress({"phase": "generating", "accepted_count": 0, "attempt": 1})
-        logger.info("Study single request started requested=%s mode=%s", request.count, request.mode)
-        result = await provider.generate(documents, system, task, count=request.count, mode=request.mode)
-        if result.insufficient_source:
-            raise GenerationError(f"The selected pages could not support {request.count} distinct items. "
-                                  "Choose more source pages or request fewer items.")
-        if len(result.content.items) != request.count:
-            logger.warning("Study response rejected code=wrong_count requested=%s received=%s",
-                           request.count, len(result.content.items))
-            raise GenerationError(f"The model returned {len(result.content.items)} of {request.count} requested items. "
-                                  "No partial set was created. Please try again.")
-        progress({"phase": "checking"})
-        seen = set()
-        expressions = []
-        try:
-            for index, item in enumerate(result.content.items, 1):
-                item.goal_step = index  # Stable order without a separate model-generated plan.
-                validate_item(item, request.mode, source.document.id, source.pages, strict_blocks=True)
-                fingerprint = question_fingerprint(item)
-                if fingerprint in seen:
-                    raise ContentValidationError("duplicate_question", "The model returned a repeated question.")
-                seen.add(fingerprint)
-                expressions.extend(item_expressions(item))
-            if await validator.errors(expressions):
-                raise ContentValidationError("invalid_math", "The model returned a formula with invalid formatting.")
-        except ContentValidationError as error:
-            logger.warning("Study response rejected code=%s requested=%s", error.code, request.count)
-            raise GenerationError(str(error) + " No partial set was created. Please try again.") from None
-        progress({"accepted_count": request.count})
-        elapsed = round((perf_counter() - started) * 1000)
-        logger.info("Study single request completed requested=%s accepted=%s duration_ms=%s",
-                    request.count, request.count, elapsed)
-        return result.content, {"provider": result.provider, "model": result.model, "prompt_hashes": hashes,
-                                "math_check": "katex", "requested_count": request.count,
-                                "generation_attempts": 1, "provider_requests": 1,
-                                "generation_strategy": "single_request", "generation_duration_ms": elapsed}
+    progress({"phase": "generating", "accepted_count": 0, "attempt": 1})
+    logger.info("Study single request started requested=%s mode=%s", request.count, request.mode)
+    result = await provider.generate(documents, system, task, count=request.count, mode=request.mode)
+    if result.insufficient_source:
+        raise GenerationError(f"The selected pages could not support {request.count} distinct items. "
+                              "Choose more source pages or request fewer items.")
+    if len(result.content.items) != request.count:
+        logger.warning("Study response rejected code=wrong_count requested=%s received=%s",
+                       request.count, len(result.content.items))
+        raise GenerationError(f"The model returned {len(result.content.items)} of {request.count} requested items. "
+                              "No partial set was created. Please try again.")
+    progress({"phase": "checking"})
+    seen = set()
+    try:
+        for index, item in enumerate(result.content.items, 1):
+            item.goal_step = index  # Stable order without a separate model-generated plan.
+            validate_item(item, request.mode, source.document.id, source.pages)
+            fingerprint = question_fingerprint(item)
+            if fingerprint in seen:
+                raise ContentValidationError("duplicate_question", "The model returned a repeated question.")
+            seen.add(fingerprint)
+    except ContentValidationError as error:
+        logger.warning("Study response rejected code=%s requested=%s", error.code, request.count)
+        raise GenerationError(str(error) + " No partial set was created. Please try again.") from None
+    progress({"accepted_count": request.count})
+    elapsed = round((perf_counter() - started) * 1000)
+    logger.info("Study single request completed requested=%s accepted=%s duration_ms=%s",
+                request.count, request.count, elapsed)
+    return result.content, {"provider": result.provider, "model": result.model, "prompt_hashes": hashes,
+                            "math_check": "on_display", "formatting_policy": "best_effort", "requested_count": request.count,
+                            "generation_attempts": 1, "provider_requests": 1,
+                            "generation_strategy": "single_request", "generation_duration_ms": elapsed}
 
 
 async def generate_study(workspace: Workspace, owner_id: str, request: GenerateRequest,
@@ -336,8 +310,6 @@ async def generate_study(workspace: Workspace, owner_id: str, request: GenerateR
     except TimeoutError:
         raise GenerationError(f"Generation timed out before all {request.count} items were ready. "
                               "Try again with fewer items or fewer source pages.") from None
-    except MathValidationError as error:
-        raise GenerationError(str(error)) from None
     source = documents[0]
     label = "Flashcards" if request.mode == "flashcards" else "Problems"
     selection = str(source.pages[0]) if len(source.pages) == 1 else f"{source.pages[0]}–{source.pages[-1]}"

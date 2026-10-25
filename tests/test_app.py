@@ -77,7 +77,7 @@ def test_job_exact_count_render_validation_save_and_restart(tmp_path):
         result = job['result']
         assert len(result['items']) == job['accepted_count'] == 5
         assert [item['goal_step'] for item in result['items']] == [1,2,3,4,5]
-        assert result['metadata']['math_check'] == 'katex'
+        assert result['metadata']['math_check'] == 'on_display'
         assert result['metadata']['generation_attempts'] == 1
         assert result['metadata']['provider_requests'] == 1
         assert app.state.provider.calls == 1
@@ -94,30 +94,30 @@ def test_job_exact_count_render_validation_save_and_restart(tmp_path):
         assert len(client.get('/api/study-sets/' + result['id']).json()['items']) == 5
 
 
-def test_renderer_failure_produces_terminal_job_error(tmp_path, monkeypatch):
-    from formula_lab.math_validation import MathValidationError
+def test_raw_math_completes_saves_and_exports(tmp_path):
+    from pypdf import PdfReader
 
-    class UnavailableRenderer:
-        async def __aenter__(self):
-            raise MathValidationError('The server formula renderer is unavailable. Please try again later.')
-        async def __aexit__(self, *_):
-            pass
+    class RawProvider(FixtureProvider):
+        async def generate(self, *args, **kwargs):
+            result = await super().generate(*args, **kwargs)
+            result.content.items[0].question[0].text = r'Explain x \in A in words.'
+            result.content.items[0].question[1].latex = r'\unknownCommand{x}'
+            return result
 
-    monkeypatch.setattr('formula_lab.study.MathValidator', UnavailableRenderer)
-    app = create_app(tmp_path, FixtureProvider())
+    app = create_app(tmp_path, RawProvider())
     with TestClient(app) as client:
         sign_in(client, app)
         document = upload(client)
-        response = client.post('/api/study/jobs', json={
+        response = client.post('/api/study/generate', json={
             'document_id': document['id'], 'pages': [1], 'mode': 'flashcards', 'count': 5})
-        job_id = response.json()['id']
-        deadline = time.monotonic() + 5
-        while time.monotonic() < deadline:
-            job = client.get('/api/study/jobs/' + job_id).json()
-            if job['status'] == 'failed':
-                break
-            time.sleep(.05)
-        assert job['status'] == 'failed'
-        assert 'formula renderer is unavailable' in job['error']
-        assert job['accepted_count'] == 0
-        assert job.get('result') is None
+        assert response.status_code == 200
+        result = response.json()
+        assert len(result['items']) == 5
+        assert app.state.provider.calls == 1
+        assert result['metadata']['formatting_policy'] == 'best_effort'
+        assert client.post('/api/study-sets', json=result).status_code == 200
+        exported = client.post('/api/study/export.pdf', json=result)
+        assert exported.status_code == 200
+        assert exported.content.startswith(b'%PDF')
+        pdf = PdfReader(io.BytesIO(exported.content))
+        assert 'unknownCommand' in '\n'.join(page.extract_text() for page in pdf.pages)

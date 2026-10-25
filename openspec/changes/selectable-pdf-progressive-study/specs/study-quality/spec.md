@@ -21,17 +21,18 @@ Successful generation SHALL return exactly the requested number of items and SHA
 - **WHEN** a returned set contains an exact repeated question or has the wrong count
 - **THEN** generation fails explicitly without an automatic model retry
 
-### Requirement: Guided renderable mathematical output
-All formula-writing instructions SHALL live in a detailed separate English prompt file loaded into the single generation request. The guide SHALL cover text/math boundaries, JSON/TeX escaping, supported notation/environments, source fidelity, citations, and intentional variants. New formulas SHALL pass the same strict renderer used by the UI, in a local validation pass without model repair calls.
+### Requirement: Best-effort mathematical formatting
+Formula-writing instructions SHALL remain in a separate English guide. The UI and PDF export SHALL typeset supported TeX locally and preserve unsupported TeX as readable plain text. Bare TeX in prose, unsupported commands, or unavailable renderer assets SHALL NOT cause generation to fail or discard the complete set. Generation SHALL NOT start a validation browser or make model repair calls. Exact counts and owner/source validation remain enforced.
 
-#### Scenario: Formula contains unsupported syntax
-- **WHEN** a returned formula fails mathematical rendering
-- **THEN** the job fails explicitly without sending a repair request
+#### Scenario: Provider returns a formula in prose
+- **WHEN** a complete set includes an unformatted or unsupported mathematical expression
+- **THEN** the complete requested set remains usable and saveable
+- **AND** that expression is formatted locally when possible, otherwise displayed safely as raw text
+- **AND** no additional provider call is made
 
-#### Scenario: Validation browser has an operational fault
-- **WHEN** the renderer cannot render a known-valid expression during startup
-- **THEN** generation fails before any provider request
-- **AND** the validation browser uses standards mode, matching the UI and export
+#### Scenario: Export includes an unsupported formula
+- **WHEN** a saved or unsaved set includes unsupported TeX
+- **THEN** PDF export preserves it as readable raw text rather than rejecting the whole export
 
 ### Requirement: Existing study material remains readable
 Existing saved sets SHALL remain readable without newly required planning fields. Unambiguous standalone TeX lines in old prose SHALL be typeset without treating ordinary English paragraphs as formulas.

@@ -9,7 +9,7 @@ The PDF reader currently paints pages without selectable text. Study generation 
 - Add a selectable PDF.js text layer while preserving stable resizing and lazy rendering.
 - Animate citation navigation to the original source page.
 - Generate the complete varied, progressively ordered set in one provider request, with no separate planning call.
-- Supply a detailed external formula-writing guide and validate the single returned set locally without automatic model repair requests.
+- Supply a detailed external formula-writing guide and render formulas on display with a readable raw-text fallback, without blocking the set or requesting model repairs.
 - Safely render unambiguous standalone TeX lines in older saved material.
 - Use a compact provider response to reduce output tokens; retain exact counts, bounded owner-scoped progress, cancellation, and clear terminal failures.
 
@@ -26,4 +26,4 @@ None. Main specifications have not yet been populated.
 
 ## Impact
 
-The PDF iframe, workspace messaging, shared math renderer, generation models, provider abstraction, and external prompt files change. The existing Playwright/Chromium dependency supplies KaTeX validation; no new runtime dependency is needed. Each generation makes exactly one provider request, with SDK retries disabled. Existing saved sets remain readable.
+The PDF iframe, workspace messaging, shared math renderer, generation models, provider abstraction, and external prompt files change. The existing Playwright/Chromium dependency remains for PDF export; no new runtime dependency is needed. Each generation makes exactly one provider request, with SDK retries disabled. Existing saved sets remain readable.

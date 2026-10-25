@@ -19,7 +19,6 @@
         document.getElementById(side === 'question' ? 'questions' : 'answers').append(section);
       }
     }
-    if (document.querySelector('.math-error')) throw new Error('A formula contains unsupported TeX. Correct it before exporting.');
     await document.fonts.ready;
     for (const output of document.querySelectorAll('.math-output')) {
       if (output.scrollWidth > output.clientWidth + 1) {

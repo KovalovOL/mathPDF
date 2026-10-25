@@ -52,11 +52,11 @@ def test_complete_set_uses_one_call(source, mode, count):
     assert provider.calls == metadata['provider_requests'] == metadata['generation_attempts'] == 1
     assert len(content.items) == count
     assert [entry.goal_step for entry in content.items] == list(range(1,count+1))
-    assert metadata['math_check'] == 'katex'
+    assert metadata['math_check'] == 'on_display'
     assert 'planning' not in [entry.get('phase') for entry in progress]
 
 
-@pytest.mark.parametrize('case', ['short', 'duplicate', 'source', 'latex', 'prose', 'provider', 'insufficient'])
+@pytest.mark.parametrize('case', ['short', 'duplicate', 'source', 'provider', 'insufficient'])
 def test_failures_never_trigger_another_model_request(source, case):
     entries = [item(1), item(2)]
     if case == 'short': entries.pop()
@@ -150,18 +150,30 @@ def test_uniform_json_overescaping_is_fixed_without_changing_valid_tex(tex):
 
 
 @pytest.mark.parametrize('field', ['title', 'change'])
-def test_compact_schema_prohibits_tex_in_prose(field):
-    from pydantic import ValidationError
+def test_compact_schema_accepts_raw_tex_in_noncritical_prose(field):
     payload = compact_payload()
     entry = payload['result']['items'][0]
-    if field in {'question','answer'}:
-        entry[field] = [r'x \in A']
-    elif field == 'title':
+    if field == 'title':
         entry['title'] = r'Explain x \in A'
     else:
         entry['formula']['variant'] = {'original':'x', 'change': r'Use \notin'}
-    with pytest.raises(ValidationError):
-        set_response_format(1).model_validate(payload)
+    set_response_format(1).model_validate(payload)
+
+
+@pytest.mark.parametrize('mode', ['flashcards', 'problems'])
+@pytest.mark.parametrize('kind', ['prose', 'latex', 'title', 'prose_in_math'])
+def test_formatting_does_not_discard_the_requested_set(source, mode, kind):
+    entries = [item(1), item(2)]
+    if kind == 'prose': entries[0].question[0].text = r'Explain x \in A in words.'
+    if kind == 'latex': entries[0].question[1].latex = r'\unknownCommand{x}'
+    if kind == 'title': entries[0].title = r'Relation x \in A'
+    if kind == 'prose_in_math': entries[0].question[1].latex = 'Exercise 1. Explain this relation.'
+    provider = Provider(entries)
+    content, metadata = asyncio.run(collect_study([source], GenerateRequest(mode=mode, count=2), provider, lambda _: None))
+    assert len(content.items) == 2
+    assert provider.calls == metadata['provider_requests'] == 1
+    assert metadata['formatting_policy'] == 'best_effort'
+    assert content.items[0].question[0].text == entries[0].question[0].text
 
 
 def test_required_formula_cannot_be_omitted_or_replaced_with_prose():

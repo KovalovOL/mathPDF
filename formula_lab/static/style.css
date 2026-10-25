@@ -145,6 +145,7 @@ body.resizing iframe { pointer-events: none; }
 .citation, .field-note { font-size: .8rem; color: #758197; }
 .citation { margin-top: .35rem; }
 .math-error, .error { color: #ad253c; overflow-wrap: anywhere; }
+.raw-formula { font-family: ui-monospace, monospace; white-space: pre-wrap; overflow-wrap: anywhere; }
 .study-notes { border-top: 1px solid var(--border); padding: 10px 16px; font-size: .8rem; color: #667389; max-height: 110px; overflow: auto; }
 .study-notes summary { cursor: pointer; } .study-notes details[open] summary { margin-bottom: 8px; }
 .status-message { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); max-width: min(720px, 90vw); z-index: 10; background: #253650; color: #fff; padding: .75rem 1rem; border-radius: 7px; box-shadow: 0 4px 20px #1c2a4630; font-size: .85rem; }

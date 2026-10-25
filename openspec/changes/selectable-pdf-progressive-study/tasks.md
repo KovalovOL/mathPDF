@@ -41,3 +41,9 @@
 - [x] 7.2 Add a comprehensive external formula-writing guide, compact provider output, and concise prompts for both modes; remove obsolete planning/repair prompts and update progress text.
 - [x] 7.3 Add one-request/failure regression tests and measure real API/browser generation for flashcards and problems, recording counts, formatting, and timings.
 - [x] 7.4 Update English documentation, deploy, and inspect the live application build.
+
+## 8. Non-blocking formula display
+
+- [x] 8.1 Remove formatting rejection and server browser startup from generation; add safe raw-text fallbacks in the workspace and PDF export.
+- [x] 8.2 Update regression tests and verify malformed math remains usable/saveable/exportable without another provider request.
+- [ ] 8.3 Update English documentation, deploy, and inspect the live build.

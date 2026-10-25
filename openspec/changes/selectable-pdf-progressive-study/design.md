@@ -2,11 +2,11 @@
 
 ## Context
 
-See proposal.md for motivation. The reader uses vendored PDF.js 6.4.299 and retains the old canvas during resize renders. Generation uses one request for the complete set, validates locally once, and enforces the requested count. KaTeX is shared by the UI and Chromium PDF export. Prompts live in separate English files.
+See proposal.md for motivation. The reader uses vendored PDF.js 6.4.299 and retains the old canvas during resize renders. Generation uses one request for the complete set, validates counts and source ownership locally, and enforces the requested count. KaTeX is shared by the UI and Chromium PDF export. Prompts live in separate English files.
 
 ## Goals / Non-Goals
 
-**Goals:** Preserve the stable reader geometry; make citations useful when model line numbers are unavailable; request varied progression within the single response; detect formatting failures before presenting new material.
+**Goals:** Preserve the stable reader geometry; make citations useful when model line numbers are unavailable; request varied progression within the single response; keep complete sets usable even when formatting is imperfect.
 
 **Non-Goals:** OCR, arbitrary PDF editing, proof of mathematical correctness, and a guarantee of pixel-identical reconstructed formulas. Older corrupted mixed prose/math blocks cannot always be reconstructed automatically.
 
@@ -17,7 +17,7 @@ See proposal.md for motivation. The reader uses vendored PDF.js 6.4.299 and reta
 3. Use a short cancellable animation for explicit citation jumps, respecting reduced motion. Resize anchor restoration remains immediate. A global smooth-scroll rule would interfere with resizing.
 4. Call the provider exactly once for the whole requested set. Remove separate plan models/prompts, batch loops, continuation prompts, and automatic repair calls. Ask for varied reasoning and easier-to-harder order within the generation prompt. Keep optional persisted goal identifiers readable and assign new sequence identifiers locally.
 5. Use a compact provider response: a required central formula for every item, prose strings and additional formula objects with TeX, original page, and an optional variant description. Fill canonical citation document IDs, null line/quote fields, and display defaults in the adapter. This reduces generated syntax without changing saved sets, the renderer, or export.
-6. Load a comprehensive English formula-writing guide from a separate prompt file. Validate count, citations, exact duplicates, prose/math boundaries, and all formula expressions locally in one pass with the shared strict KaTeX renderer. A failure ends the job without another model request. Normalize uniform extra escape layers and dangling terminal escapes locally, reuse exact known-formula blocks/citations, and delimit only unambiguous standalone TeX lines before validation; retain valid mathematical rows and never infer a new formula or page. Retain the renderer startup self-check before the provider call.
+6. Load the external formula guide and normalize common encoding errors locally. Validate counts, required formula presence, citations and exact duplicates. Do not preflight mathematical syntax or launch Chromium during generation. The UI and export typeset supported expressions and preserve unsupported TeX as readable text; no extra provider request is made.
 7. Add a conservative legacy renderer for standalone TeX lines; retain ordinary paragraphs and escape all generated prose. No arbitrary provider HTML is executed.
 
 ## Risks / Trade-offs
@@ -25,7 +25,7 @@ See proposal.md for motivation. The reader uses vendored PDF.js 6.4.299 and reta
 - [Text extraction order and glyph mappings vary] → Retain the original page canvas and use the text layer for selection; source navigation requires only the original page number.
 - [One response can still be slow or invalid] → Compact output, concise complete answers, one provider request with SDK retries disabled, a 150-second overall deadline, and explicit terminal errors. Record measured latency; do not promise a universal 20-second bound.
 - [Difficulty and variety are model assessments] → Guide whole-set variety/progression and reject exact duplicates locally, without claiming semantic uniqueness or mathematically proven difficulty.
-- [Chromium validation can fail operationally] → Return an actionable error rather than silently accepting unvalidated formulas; reuse the already installed browser.
+- [Some model output may not typeset] → Show escaped raw text for that expression instead of blocking the set. Chromium is needed only for PDF export.
 - [Text overlays consume memory] → Prune distant pages except active selections and cancel stale render work.
 
 ## Migration Plan
@@ -55,3 +55,7 @@ Production logs showed every candidate rejected as invalid math. A real local Ch
 ## Single-request latency revision
 
 The user explicitly prioritizes latency and replaces the previous planning/batch/repair policy. Generate flashcards and problems in one request, without retrying invalid or incomplete content. The formula guide replaces repair instructions and includes JSON escaping, block boundaries, mathematical environments, source notation, and variants. Keep the configured model and original selected PDF inputs. Retain exact-count validation and page ownership; never silently discard invalid items or manufacture missing content. Measure real provider calls and end-to-end durations for both modes before deployment.
+
+## Non-blocking formatting revision (current policy)
+
+The user explicitly accepts raw formulas and prioritizes speed/usability. Request c7f8c8ee266b400a87fefa2c6004238c returned five problems in about 13 seconds, but the service rejected the complete set for math in prose. This supersedes strict generation-time math rejection and renderer startup checks described above. Remove Chromium validation from generation and treat formatting solely as a local display concern. Keep the external guide and deterministic normalization. Render supported expressions with KaTeX; render unsupported expressions as escaped raw text in the workspace and export. Do not require plain titles/change descriptions to pass a TeX-free schema. Preserve exact counts, source/owner validation, and one provider request.

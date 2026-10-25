@@ -10,7 +10,8 @@
 
   function renderMath(container, latex, display = true) {
     container.replaceChildren();
-    container.classList.remove('math-error');
+    container.classList.remove('math-error', 'math-fallback');
+    delete container.dataset.mathError;
     try {
       if (typeof latex !== 'string' || !latex.trim()) throw new Error('Enter a formula.');
       if (latex.length > 5000) throw new Error('Formula exceeds 5,000 characters.');
@@ -22,8 +23,10 @@
       });
       return true;
     } catch (error) {
-      container.classList.add('math-error');
-      container.append(element('span', '', `Cannot render this formula: ${error.message}`));
+      container.replaceChildren();
+      container.classList.add('math-fallback');
+      container.dataset.mathError = error.message;
+      container.append(element('span', 'raw-formula', typeof latex === 'string' ? latex : ''));
       return false;
     }
   }
