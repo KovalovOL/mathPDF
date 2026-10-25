@@ -118,4 +118,4 @@ Verification:
 - Exported three existing generated sets through the local API, including inline binomial/factorial formulas, labelled rows and a page-only definition; PDFs had 3, 3 and 2 pages. Rendered answer pages were visually inspected. Unsupported content remains readable instead of discarding a set.
 - JavaScript syntax, strict OpenSpec validation and `git diff --check` passed. Source PDFs and test artifacts are not included in the commit.
 
-Deployment observation follows after the implementation push.
+Commit `e1804b3` deployed successfully in [Deploy run 40237882149](https://github.com/KovalovOL/mathPDF/actions/runs/40237882149). Public `/api/me` reports build `9d64a1cd750b`, matching the committed local source, and remains 401 JSON without a session. Browser verification confirmed the terminal-label repair removed the remaining raw formatting fallback in the inspected five-card set; this does not establish its mathematical correctness. The temporary local server and browser tab were closed. The completion-record commit skips CI to avoid another live restart for documentation only.
