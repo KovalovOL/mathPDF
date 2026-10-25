@@ -57,3 +57,22 @@ This pass supersedes the earlier static-only verification limits for the generat
 - Strict OpenSpec validation and `git diff --check` passed. These checks establish this reproduction and successful rendering, not pixel-identical reconstruction, semantic correctness for every formula, or a latency guarantee. Model truncation/repair can still add substantial waiting time.
 
 Fix commit `6b3a98d` deployed successfully in [Deploy run 40208498587](https://github.com/KovalovOL/mathPDF/actions/runs/40208498587). The live container started with build `70e46fcf59e1`. A direct check inside that container confirmed standards mode, accepted valid fractions/sums/simple formulas, and rejected an unknown TeX command. This live check did not access user documents or call OpenAI. The temporary loopback browser-test server was stopped after verification.
+
+## Single-request latency verification — October 25
+
+The user replaced the earlier plan/batch/repair policy with one model request and a detailed formula guide. Removed planning/repair prompts and provider methods, kept exact counts and local strict rendering, and reduced provider output to compact items with a required central source formula. Old saved sets retain the canonical format.
+
+Exploratory guide/schema drafts were rejected locally for prose-only items, raw TeX in prose, double escaping, or a dangling escape; no individual generation retried its model call. Added the required formula field, conventional delimited inline math, and bounded deterministic formatting normalization before final validation. The guide is `formula_lab/prompts/formula-guide.md`; original PDF data and the configured `gpt-4.1-mini` model remain the benchmark inputs.
+
+Final real-provider API benchmark, isolated local storage/test identity, `main.pdf` original pages 4–7:
+
+| Mode | Count | Provider requests | Wall time | Model output tokens |
+| --- | --- | --- | --- | --- |
+| Flashcards | 10/10 | 1 | 9.97 s | 1,031 |
+| Problems | 10/10 | 1 | 10.85 s | 1,419 |
+
+Both complete sets passed strict local KaTeX validation and explicit save. The earlier same-source 10-card benchmark took 161.3 seconds. This is a measured comparison, not a universal latency guarantee for other documents, counts, complexity, or provider load. Timing artifact: ignored local `artifacts/single-request-benchmark.json`.
+
+Separate browser submissions completed 10/10 flashcards and 10/10 problems. Server logs recorded 7.779 s and 11.941 s respectively for collection/self-check/local validation (excluding input preparation and browser polling). Each job made one provider call. Inspected all twenty item tabs: KaTeX content was present and no formula error elements were found. Verified a card flip and waiting UI completion. Screenshot: ignored local `artifacts/ui/fast-generation-problems.png`.
+
+Full test suite: **54 passed**, one existing Starlette/httpx deprecation warning. Tests cover counts 1/10/15 in both modes, no second request after invalid math/short or duplicated content/source failures/provider errors, one SDK attempt on truncation/refusal/timeout/schema errors, compact response expansion, exact citations, variants, mandatory formulas, escaping normalization and preservation of valid matrix/aligned rows. Python compilation, JavaScript syntax, strict OpenSpec validation and `git diff --check` passed. Google identity exchange was not tested; the temporary test harness is loopback-only and is not shipped.

@@ -6,36 +6,31 @@ Create varied study material grounded in the selected PDF, with progressive lear
 
 ## ADDED Requirements
 
-### Requirement: Progressive learning sequence
-Generation SHALL plan distinct source-grounded learning goals in increasing intended difficulty before creating items. Returned items SHALL follow that plan across batches and repairs. Difficulty is a model assessment, not a proof of mathematical complexity.
+### Requirement: Single-request progressive learning sequence
+Generation SHALL request the complete set of distinct source-grounded items in one provider request, ordered in increasing intended difficulty. It SHALL NOT make separate planning, batching, repair, or automatic retry requests. Difficulty remains a model assessment.
 
-#### Scenario: Generate a multi-batch set
-- **WHEN** a reader requests more items than fit in one generation batch
-- **THEN** every item fills its assigned learning goal
-- **AND** the final order follows the whole-set progression rather than restarting at each batch
+#### Scenario: Generate a complete set
+- **WHEN** a reader requests flashcards or problems
+- **THEN** the provider receives exactly one request for the entire requested count
+- **AND** the prompt asks for varied reasoning and an easier-to-harder sequence
 
-### Requirement: Varied questions
-Generation SHALL instruct the provider to vary learning goals and reasoning activities, and SHALL reject exact or conservatively detected near-duplicate questions within the set. Rejected items SHALL be repaired within bounded attempts without silently reducing the requested count.
+### Requirement: Varied questions and exact counts
+Successful generation SHALL return exactly the requested number of items and SHALL reject exact repeated questions. Invalid, incomplete, insufficient-source, or short responses SHALL terminate with an explicit failure and SHALL NOT trigger another model request or return a partial successful set.
 
-#### Scenario: Provider repeats an exercise
-- **WHEN** a returned item repeats an accepted question with only superficial wording changes
-- **THEN** it is rejected and its learning slot remains unfilled
-- **AND** generation either completes the requested count or returns an actionable failure
+#### Scenario: Provider repeats or omits an item
+- **WHEN** a returned set contains an exact repeated question or has the wrong count
+- **THEN** generation fails explicitly without an automatic model retry
 
-### Requirement: Renderable mathematical output
-Newly generated formulas SHALL pass the same strict mathematical renderer settings used by the application. Undelimited TeX commands in prose and obvious exercise prose placed in formula blocks SHALL be rejected for repair. Correctly delimited prose mathematics SHALL be accepted only after renderer validation.
-
-#### Scenario: Provider places TeX in a text list
-- **WHEN** a text block contains undelimited TeX commands
-- **THEN** the item is rejected and the provider is instructed to use separate mathematical blocks
+### Requirement: Guided renderable mathematical output
+All formula-writing instructions SHALL live in a detailed separate English prompt file loaded into the single generation request. The guide SHALL cover text/math boundaries, JSON/TeX escaping, supported notation/environments, source fidelity, citations, and intentional variants. New formulas SHALL pass the same strict renderer used by the UI, in a local validation pass without model repair calls.
 
 #### Scenario: Formula contains unsupported syntax
-- **WHEN** a formula fails the application's mathematical renderer
-- **THEN** the item is repaired or generation reports failure instead of presenting broken TeX
+- **WHEN** a returned formula fails mathematical rendering
+- **THEN** the job fails explicitly without sending a repair request
 
 #### Scenario: Validation browser has an operational fault
-- **WHEN** the renderer cannot render a known-valid expression during its startup self-check
-- **THEN** generation fails before making provider requests instead of asking the model to repair valid formulas
+- **WHEN** the renderer cannot render a known-valid expression during startup
+- **THEN** generation fails before any provider request
 - **AND** the validation browser uses standards mode, matching the UI and export
 
 ### Requirement: Existing study material remains readable

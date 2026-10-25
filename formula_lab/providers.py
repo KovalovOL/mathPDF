@@ -1,52 +1,138 @@
-"""OpenAI adapter. Provider-specific request details stay out of use cases."""
+"""OpenAI adapter: one compact response expanded into canonical study blocks."""
 
 import base64
 import logging
+import re
 from functools import lru_cache
 from time import perf_counter
-from typing import Literal
+from typing import Annotated, Literal
 
 from openai import APIError, AsyncOpenAI, pydantic_function_tool
-from pydantic import Field, ValidationError
+from pydantic import Field, ValidationError, model_validator
 
-from .study import (BATCH_SIZE, MAX_ITEMS, GeneratedContent, GenerationError, InputDocument, LearningGoal,
-                    PlanResult, ProviderResult, RetryableGenerationError, StrictModel, StudyItem)
+from .study import (MAX_ITEMS, GeneratedContent, GenerationError, InputDocument,
+                    ProviderResult, StrictModel, StudyItem)
 
 
 class InsufficientSource(StrictModel):
     status: Literal["insufficient_source"]
-    reason: str = Field(min_length=1, max_length=2000)
+    reason: str = Field(min_length=1, max_length=1000)
 
 
-@lru_cache(maxsize=BATCH_SIZE)
-def batch_response_format(count: int) -> type[StrictModel]:
-    if not 1 <= count <= BATCH_SIZE:
-        raise ValueError("Invalid generation batch size.")
+Prose = Annotated[str, Field(min_length=1, max_length=8000)]
 
-    class CompletedBatch(StrictModel):
-        status: Literal["completed"]
-        items: list[StudyItem] = Field(min_length=count, max_length=count)
-        notes: list[str] = Field(max_length=10)
 
-    class BatchResponse(StrictModel):
-        result: CompletedBatch | InsufficientSource
+def normalize_model_tex(latex: str) -> str:
+    """Undo uniform extra JSON escaping, preserving actual TeX rows.
 
-    return BatchResponse
+    Only new provider output passes here. Mixed/singly escaped TeX is untouched;
+    a consistently doubled expression has even backslash runs everywhere.
+    """
+    # A dangling escape at the end has no mathematical content and is invalid
+    # TeX. Preserve even runs, which can represent genuine row separators.
+    trailing = re.search(r"\\+$", latex)
+    if trailing and len(trailing[0]) % 2:
+        latex = latex[:-1]
+    while True:
+        runs = re.findall(r"\\+", latex)
+        if not (runs and all(len(run) % 2 == 0 for run in runs)
+                and re.search(r"\\\\(?:[A-Za-z]{2,}|[{}])", latex)):
+            return latex
+        latex = re.sub(r"\\+", lambda match: "\\" * (len(match[0]) // 2), latex)
+        trailing = re.search(r"\\+$", latex)
+        if trailing and len(trailing[0]) % 2:
+            latex = latex[:-1]
+
+
+def normalize_model_prose(text: str) -> str:
+    """Typeset only unambiguous standalone TeX lines, as the legacy UI does."""
+    text = normalize_model_tex(text)
+    lines = []
+    for line in text.split("\n"):
+        expression = line.strip()
+        without_commands = re.sub(r"\\[A-Za-z]+", "", expression)
+        if (not any(marker in expression for marker in ("$", r"\(", r"\["))
+                and re.search(r"\\[A-Za-z]+", expression)
+                and re.match(r"^(?:[\\\d+\-({\[]|[A-Za-z](?=[\s_^=<>]))", expression)
+                and not re.search(r"\b[A-Za-z]{3,}\b", without_commands)):
+            line = "$" + expression + "$"
+        lines.append(line)
+    return "\n".join(lines)
+
+
+class FormulaVariant(StrictModel):
+    original: str = Field(min_length=1, max_length=5000)
+    change: str = Field(min_length=1, max_length=1000, pattern=r"^[^\\$]+$")
+
+
+class Formula(StrictModel):
+    latex: str = Field(min_length=1, max_length=5000)
+    page: int = Field(ge=1)
+    variant: FormulaVariant | None
+
+    @model_validator(mode="after")
+    def decoded_tex(self):
+        self.latex = normalize_model_tex(self.latex)
+        if self.variant:
+            self.variant.original = normalize_model_tex(self.variant.original)
+        return self
+
+
+class CompactItem(StrictModel):
+    title: str = Field(min_length=1, max_length=180, pattern=r"^[^\\$]+$")
+    formula: Formula
+    question: list[Prose | Formula] = Field(min_length=1, max_length=40)
+    answer: list[Prose | Formula] = Field(min_length=1, max_length=40)
+
+    def expand(self, document_id: str, index: int, mode: str = "flashcards") -> StudyItem:
+        known = [self.formula] + [entry for entry in self.question + self.answer if isinstance(entry, Formula)]
+
+        def blocks(entries):
+            output = []
+            for entry in entries:
+                if isinstance(entry, str):
+                    text = normalize_model_tex(entry)
+                    # A model may repeat its typed formula as a bare prose entry.
+                    # Reuse that exact formula's citation; never infer a new formula/page.
+                    matching = next((formula for formula in known if text.strip() == formula.latex.strip()), None)
+                    if matching is None:
+                        output.append({"kind": "text", "text": normalize_model_prose(text)})
+                        continue
+                    entry = matching
+                output.append({
+                    "kind": "math", "latex": entry.latex, "display": True,
+                    "source": {"document_id": document_id, "page": entry.page,
+                               "line_start": None, "line_end": None, "quote": None},
+                    "original_latex": entry.variant.original if entry.variant else None,
+                    "change": entry.variant.change if entry.variant else None,
+                })
+            return output
+        question, answer = blocks(self.question), blocks(self.answer)
+        main = blocks([self.formula])[0]
+        destination = question if mode == "flashcards" else answer
+        existing = question if mode == "flashcards" else question + answer
+        if not any(block["kind"] == "math" and block["latex"] == main["latex"]
+                   and block["source"]["page"] == main["source"]["page"] for block in existing):
+            if mode == "flashcards":
+                destination.append(main)
+            else:
+                destination.insert(0, main)
+        return StudyItem(goal_step=index, title=self.title, question=question, answer=answer)
 
 
 @lru_cache(maxsize=MAX_ITEMS)
-def plan_response_format(count: int) -> type[StrictModel]:
+def set_response_format(count: int) -> type[StrictModel]:
     if not 1 <= count <= MAX_ITEMS:
-        raise ValueError("Invalid learning plan size.")
+        raise ValueError("Invalid requested item count.")
 
-    class CompletedPlan(StrictModel):
+    class CompletedSet(StrictModel):
         status: Literal["completed"]
-        goals: list[LearningGoal] = Field(min_length=count, max_length=count)
+        items: list[CompactItem] = Field(min_length=count, max_length=count)
 
-    class PlanResponse(StrictModel):
-        result: CompletedPlan | InsufficientSource
+    class SetResponse(StrictModel):
+        result: CompletedSet | InsufficientSource
 
-    return PlanResponse
+    return SetResponse
 
 
 class OpenAIProvider:
@@ -54,8 +140,8 @@ class OpenAIProvider:
         self.api_key = api_key
         self.model = model
 
-    async def _request(self, documents: list[InputDocument], system: str, task: str,
-                       response_format: type[StrictModel], *, phase: str) -> StrictModel:
+    async def generate(self, documents: list[InputDocument], system: str, task: str,
+                       *, count: int, mode: Literal["flashcards", "problems"]) -> ProviderResult:
         content = []
         for entry in documents:
             content.append({"type": "input_text", "text": entry.label})
@@ -65,13 +151,13 @@ class OpenAIProvider:
             else:
                 content.append({"type": "input_file", "filename": entry.filename, "file_data": data_url})
         content.append({"type": "input_text", "text": task})
-        # Use the SDK's public strict-schema converter, then inspect completion
-        # status BEFORE parsing. responses.parse attempts to parse truncated JSON.
+        response_format = set_response_format(count)
         function = pydantic_function_tool(response_format)["function"]
         logger = logging.getLogger(__name__)
         started = perf_counter()
-        logger.info("Provider request started phase=%s", phase)
+        logger.info("Provider request started phase=generating requested=%s", count)
         try:
+            # Exactly one HTTP attempt, including timeouts and provider errors.
             async with AsyncOpenAI(api_key=self.api_key, timeout=120, max_retries=0) as client:
                 response = await client.responses.create(
                     model=self.model,
@@ -79,54 +165,36 @@ class OpenAIProvider:
                     input=[{"role": "user", "content": content}],
                     text={"format": {"type": "json_schema", "name": function["name"],
                                      "strict": True, "schema": function["parameters"]}},
-                    max_output_tokens=12000,
+                    max_output_tokens=min(30000, 1000 + 400 * count),
                     store=False,
                 )
         except APIError as error:
-            # SDK errors can include request/response details; never forward them.
             status = getattr(error, "status_code", None)
-            logger.warning("Provider request failed phase=%s status=%s error_type=%s duration_ms=%s",
-                           phase, status, type(error).__name__, round((perf_counter() - started) * 1000))
+            logger.warning("Provider request failed status=%s error_type=%s duration_ms=%s",
+                           status, type(error).__name__, round((perf_counter() - started) * 1000))
             messages = {
                 401: "Generation is unavailable because of a server configuration problem.",
                 429: "The generation service has reached its usage limit. Please try again later.",
                 400: "The generation service could not process these files. Try fewer pages or different files.",
             }
             raise GenerationError(messages.get(status, "The generation service is unavailable or timed out. Try again later.")) from None
-        logger.info("Provider request finished phase=%s status=%s output_tokens=%s duration_ms=%s",
-                    phase, response.status, getattr(response.usage, "output_tokens", None), round((perf_counter() - started) * 1000))
+        logger.info("Provider request finished phase=generating status=%s output_tokens=%s duration_ms=%s",
+                    response.status, getattr(response.usage, "output_tokens", None), round((perf_counter() - started) * 1000))
         if any(part.type == "refusal" for output in response.output if output.type == "message"
                for part in output.content):
-            raise GenerationError("The generation service could not create material from these pages. "
-                                  "Try different source pages.")
+            raise GenerationError("The generation service could not create material from these pages. Try different source pages.")
         if response.status != "completed":
-            reason = getattr(response.incomplete_details, "reason", None)
-            logging.getLogger(__name__).warning("Study provider phase=%s status=%s reason=%s output_tokens=%s",
-                phase, response.status, reason, getattr(response.usage, "output_tokens", None))
-            if reason == "content_filter":
-                raise GenerationError("The generation service could not complete this material. Try different source pages.")
-            code = "output_limit" if reason == "max_output_tokens" else "incomplete_response"
-            raise RetryableGenerationError(code, "The study response was incomplete.")
+            logger.warning("Study response incomplete reason=%s output_tokens=%s",
+                           getattr(response.incomplete_details, "reason", None), getattr(response.usage, "output_tokens", None))
+            raise GenerationError("The model did not complete the requested set. No partial set was created. Please try again.")
         try:
-            return response_format.model_validate_json(response.output_text).result
+            result = response_format.model_validate_json(response.output_text).result
+            if isinstance(result, InsufficientSource):
+                return ProviderResult(content=GeneratedContent(items=[], notes=[]), provider="openai", model=self.model,
+                                      insufficient_source=True)
+            items = [item.expand(documents[0].document.id, index, mode) for index, item in enumerate(result.items, 1)]
         except ValidationError as error:
-            # Do not log model content, quotes, prompts or error messages containing input.
             fields = [{"type": entry["type"], "loc": entry["loc"]} for entry in error.errors()]
-            logging.getLogger(__name__).warning("Study provider phase=%s invalid_fields=%s", phase, fields)
-            raise RetryableGenerationError("invalid_response", "The study content needs to be regenerated.") from None
-
-    async def plan(self, documents: list[InputDocument], system: str, task: str,
-                   *, count: int) -> PlanResult:
-        result = await self._request(documents, system, task, plan_response_format(count), phase="planning")
-        insufficient = isinstance(result, InsufficientSource)
-        return PlanResult(goals=[] if insufficient else result.goals, provider="openai", model=self.model,
-                          insufficient_source=insufficient)
-
-    async def generate(self, documents: list[InputDocument], system: str, task: str,
-                       *, count: int) -> ProviderResult:
-        result = await self._request(documents, system, task, batch_response_format(count), phase="generating")
-        insufficient = isinstance(result, InsufficientSource)
-        content = GeneratedContent(items=[], notes=[result.reason]) if insufficient else GeneratedContent(
-            items=result.items, notes=result.notes)
-        return ProviderResult(content=content, provider="openai", model=self.model,
-                              insufficient_source=insufficient)
+            logger.warning("Study response invalid_fields=%s", fields)
+            raise GenerationError("The model returned an invalid study set. No partial set was created. Please try again.") from None
+        return ProviderResult(content=GeneratedContent(items=items, notes=[]), provider="openai", model=self.model)

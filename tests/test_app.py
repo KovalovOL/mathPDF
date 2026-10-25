@@ -6,23 +6,17 @@ from fastapi.testclient import TestClient
 from pypdf import PdfWriter
 
 from formula_lab.app import create_app
-from formula_lab.study import GeneratedContent, LearningGoal, PlanResult, ProviderResult, StudyItem
+from formula_lab.study import GeneratedContent, ProviderResult, StudyItem
 
 
 class FixtureProvider:
     def __init__(self):
-        self.next_step = 1
+        self.calls = 0
 
-    async def plan(self, documents, system, task, *, count):
-        return PlanResult(provider='fixture', model='fixture', goals=[
-            LearningGoal(step=i, topic=f'Topic {i}', objective=f'Explain property {i}',
-                         activity=['recognition', 'explanation', 'application'][(i-1) % 3],
-                         challenge=f'Reason about property {i}', source_pages=[1])
-            for i in range(1, count+1)])
-
-    async def generate(self, documents, system, task, *, count):
+    async def generate(self, documents, system, task, *, count, mode):
+        self.calls += 1
         items = []
-        for i in range(self.next_step, self.next_step + count):
+        for i in range(1, count + 1):
             items.append(StudyItem.model_validate({
                 'goal_step': i, 'title': f'Expression {i}',
                 'question': [{'kind': 'text', 'text': f'Identify expression {i}.'},
@@ -31,7 +25,6 @@ class FixtureProvider:
                                          'line_start': None, 'line_end': None, 'quote': None},
                               'original_latex': None, 'change': None}],
                 'answer': [{'kind': 'text', 'text': f'Test explanation {i}.'}]}))
-        self.next_step += count
         return ProviderResult(content=GeneratedContent(items=items, notes=[]), provider='fixture', model='fixture')
 
 
@@ -85,8 +78,9 @@ def test_job_exact_count_render_validation_save_and_restart(tmp_path):
         assert len(result['items']) == job['accepted_count'] == 5
         assert [item['goal_step'] for item in result['items']] == [1,2,3,4,5]
         assert result['metadata']['math_check'] == 'katex'
-        assert result['metadata']['generation_attempts'] == 3
-        assert result['metadata']['rejection_counts'] == {}
+        assert result['metadata']['generation_attempts'] == 1
+        assert result['metadata']['provider_requests'] == 1
+        assert app.state.provider.calls == 1
         assert client.post('/api/study-sets', json=result).status_code == 200
         assert client.get('/api/documents/' + document['id'] + '/file').content.startswith(b'%PDF')
         sign_in(client, app, 'account-two')

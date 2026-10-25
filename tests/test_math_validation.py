@@ -37,9 +37,6 @@ def test_renderer_fault_stops_before_any_provider_calls(monkeypatch):
             closed.append(True)
 
     class UnusedProvider:
-        async def plan(self, *args, **kwargs):
-            pytest.fail("A broken renderer must stop generation before planning")
-
         async def generate(self, *args, **kwargs):
             pytest.fail("A broken renderer must not trigger model repair attempts")
 

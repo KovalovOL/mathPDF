@@ -2,11 +2,11 @@
 
 ## Context
 
-See proposal.md for motivation. The reader uses vendored PDF.js 6.4.299 and retains the old canvas during resize renders. Generation uses small batches, repairs invalid items, and enforces the final count. KaTeX is shared by the UI and Chromium PDF export. Prompts live in separate English files.
+See proposal.md for motivation. The reader uses vendored PDF.js 6.4.299 and retains the old canvas during resize renders. Generation uses one request for the complete set, validates locally once, and enforces the requested count. KaTeX is shared by the UI and Chromium PDF export. Prompts live in separate English files.
 
 ## Goals / Non-Goals
 
-**Goals:** Preserve the stable reader geometry; make citations useful when model line numbers are unavailable; keep progression consistent across repairs; detect formatting failures before presenting new material.
+**Goals:** Preserve the stable reader geometry; make citations useful when model line numbers are unavailable; request varied progression within the single response; detect formatting failures before presenting new material.
 
 **Non-Goals:** OCR, arbitrary PDF editing, proof of mathematical correctness, and a guarantee of pixel-identical reconstructed formulas. Older corrupted mixed prose/math blocks cannot always be reconstructed automatically.
 
@@ -15,16 +15,16 @@ See proposal.md for motivation. The reader uses vendored PDF.js 6.4.299 and reta
 1. Add the PDF.js TextLayer above each canvas, with its matching CSS scale and rotation rules. Render text independently and cancel obsolete text work during resize/pruning. Retain the old canvas until replacement is ready. Preserve pages participating in an active selection. A canvas alone cannot provide selection.
 2. Use source-page citations with a viewer-ready handshake and settled viewport measurement. Following the user's revised preference, remove quotation matching and row highlighting. Keep the text layer for selection/copying, independently of source navigation.
 3. Use a short cancellable animation for explicit citation jumps, respecting reduced motion. Resize anchor restoration remains immediate. A global smooth-scroll rule would interfere with resizing.
-4. Add a provider-neutral planning call returning numbered learning goals with topics, activities, source pages, and a rationale for increasing challenge. Generate missing goal slots in batches and return items sorted by slot. Optional item identifiers preserve old saved-set compatibility. Prompt-only instructions inside isolated batches would restart progression.
-5. Reject exact and conservative near-duplicates with the same formula signature. Validate plan coverage and variety. Keep the existing exact-count and timeout behavior. Model-assessed difficulty and semantic uniqueness remain imperfect.
-6. Preflight candidate formulas using local KaTeX in the existing Chromium runtime, with the same strict settings as the shared renderer. Block external network access. Reject raw TeX in prose and obvious exercise prose in math blocks. Feed safe rejection codes into external repair prompts.
+4. Call the provider exactly once for the whole requested set. Remove separate plan models/prompts, batch loops, continuation prompts, and automatic repair calls. Ask for varied reasoning and easier-to-harder order within the generation prompt. Keep optional persisted goal identifiers readable and assign new sequence identifiers locally.
+5. Use a compact provider response: a required central formula for every item, prose strings and additional formula objects with TeX, original page, and an optional variant description. Fill canonical citation document IDs, null line/quote fields, and display defaults in the adapter. This reduces generated syntax without changing saved sets, the renderer, or export.
+6. Load a comprehensive English formula-writing guide from a separate prompt file. Validate count, citations, exact duplicates, prose/math boundaries, and all formula expressions locally in one pass with the shared strict KaTeX renderer. A failure ends the job without another model request. Normalize uniform extra escape layers and dangling terminal escapes locally, reuse exact known-formula blocks/citations, and delimit only unambiguous standalone TeX lines before validation; retain valid mathematical rows and never infer a new formula or page. Retain the renderer startup self-check before the provider call.
 7. Add a conservative legacy renderer for standalone TeX lines; retain ordinary paragraphs and escape all generated prose. No arbitrary provider HTML is executed.
 
 ## Risks / Trade-offs
 
 - [Text extraction order and glyph mappings vary] → Retain the original page canvas and use the text layer for selection; source navigation requires only the original page number.
-- [Planning adds latency and cost] → One planning pass normally, at most two; share the existing total deadline and record attempts.
-- [Difficulty and paraphrase detection are heuristic] → Use explicit learning goals plus conservative duplicate checks, without claiming mathematical proof.
+- [One response can still be slow or invalid] → Compact output, concise complete answers, one provider request with SDK retries disabled, a 150-second overall deadline, and explicit terminal errors. Record measured latency; do not promise a universal 20-second bound.
+- [Difficulty and variety are model assessments] → Guide whole-set variety/progression and reject exact duplicates locally, without claiming semantic uniqueness or mathematically proven difficulty.
 - [Chromium validation can fail operationally] → Return an actionable error rather than silently accepting unvalidated formulas; reuse the already installed browser.
 - [Text overlays consume memory] → Prune distant pages except active selections and cancel stale render work.
 
@@ -32,7 +32,7 @@ See proposal.md for motivation. The reader uses vendored PDF.js 6.4.299 and reta
 
 Deploy with the existing workflow. No database migration is required: new goal identifiers are optional for persisted sets. Rollback restores the previous assets and generator; new metadata is backward compatible.
 
-## Production recovery
+## Historical production recovery (superseded by single-request generation)
 
 The VPS container remained running without OOM/restarts, while generation exhausted recovery and its log showed truncated JSON. Existing logs did not record item rejection codes. Inspect provider completion status before schema parsing, keep plans concise, and use two-item batches (one after truncation). Replacements receive the actual rejected candidate and renderer diagnostic, rather than a generic code alone. Log phases, counts and rejection codes without source content or secrets.
 
@@ -51,3 +51,7 @@ The browser records status, content type, redirect state, route and correlation 
 ## Renderer regression recovery
 
 Production logs showed every candidate rejected as invalid math. A real local Chromium reproduction rejected even `x+1` with KaTeX's quirks-mode error: the validator used an `about:blank` document without a doctype. Initialize a standards-mode HTML document before loading the renderer, matching the UI and export. Run a known-valid expression self-check before any provider request and treat a failed self-check as an operational error with bounded cleanup. Preserve strict candidate validation. Regression tests must use the actual bundled KaTeX and Chromium; the user now explicitly authorized real provider, API and browser verification.
+
+## Single-request latency revision
+
+The user explicitly prioritizes latency and replaces the previous planning/batch/repair policy. Generate flashcards and problems in one request, without retrying invalid or incomplete content. The formula guide replaces repair instructions and includes JSON escaping, block boundaries, mathematical environments, source notation, and variants. Keep the configured model and original selected PDF inputs. Retain exact-count validation and page ownership; never silently discard invalid items or manufacture missing content. Measure real provider calls and end-to-end durations for both modes before deployment.

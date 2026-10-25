@@ -509,13 +509,13 @@ async function generate(event) {
   updateElapsed(); const timer = setInterval(updateElapsed, 1000);
   const controller = new AbortController(); generationController = controller;
   const deadline = setTimeout(() => controller.abort(new Error('Generation timed out. Please try again.')),
-    ((config.generation_timeout_seconds || 600) + 30) * 1000);
+    ((config.generation_timeout_seconds || 150) + 30) * 1000);
   let jobId, terminal = false;
   $('cancel-generation').disabled = false;
   $('generation-progress-detail').textContent = 'Preparing source files…';
   function showProgress(job) {
-    const phases = {preparing: 'Preparing source files', planning: 'Planning a varied sequence',
-      generating: 'Generating the next items', checking: 'Checking formulas'};
+    const phases = {preparing: 'Preparing source files',
+      generating: 'Generating your study set', checking: 'Checking formatting'};
     $('generation-progress-detail').textContent = `${phases[job.phase] || 'Generating'} · ${job.accepted_count} / ${job.requested_count} ready`;
   }
   function pollDelay() {
