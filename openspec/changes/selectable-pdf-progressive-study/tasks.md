@@ -59,3 +59,8 @@
 - [x] 10.1 Add explicit inline mathematical segments to the compact provider contract, reusable source-preserving LaTeX examples, and exact-formula deduplication without extra model requests.
 - [x] 10.2 Recover unambiguous legacy environments and bare inline TeX safely in the shared renderer, preserving symbols and source references without inferring missing expressions.
 - [x] 10.3 Add screenshot-derived regressions, verify real generation and PDF/browser display against the supplied sources, update English documentation and deploy.
+
+## 11. Literal conjunction ampersands
+
+- [x] 11.1 Preserve visible conjunction ampersands in standalone, aligned and inline legacy expressions without replacing their notation or changing table columns; clarify the external guide.
+- [ ] 11.2 Add screenshot regressions and verify browser/PDF rendering, update English documentation, and deploy through the existing workflow.

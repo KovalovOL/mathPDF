@@ -164,3 +164,38 @@ def test_prose_definition_saves_exports_and_enforces_its_page_reference(tmp_path
         assert 'notes.pdf · page 1' in text.split('Answers',1)[1]
         result['items'][0]['source']['document_id']='f'*32
         assert client.post('/api/study-sets',json=result).status_code==502
+
+
+def test_conjunction_ampersands_survive_save_and_pdf_export(tmp_path):
+    from pypdf import PdfReader
+    from formula_lab.study import TextBlock
+
+    latex = r'\begin{aligned}t&t\Leftrightarrow0\\t&t\Leftrightarrow t\end{aligned}'
+
+    class ConjunctionProvider(FixtureProvider):
+        async def generate(self, *args, **kwargs):
+            result = await super().generate(*args, **kwargs)
+            result.content.items[0].answer[0].latex = latex
+            result.content.items[0].answer.append(TextBlock(kind='text', text=
+                r'Compare \(t&t \Leftrightarrow 0\) with the idempotent t&t \Leftrightarrow t.'))
+            return result
+
+    app = create_app(tmp_path, ConjunctionProvider())
+    with TestClient(app) as client:
+        sign_in(client, app)
+        document = upload(client)
+        response = client.post('/api/study/generate', json={
+            'document_id': document['id'], 'pages': [1], 'mode': 'flashcards', 'count': 1})
+        assert response.status_code == 200
+        result = response.json()
+        assert result['items'][0]['answer'][0]['latex'] == latex
+        assert client.post('/api/study-sets', json=result).status_code == 200
+        assert client.get('/api/study-sets/'+result['id']).json()['items'] == result['items']
+        exported = client.post('/api/study/export.pdf', json=result)
+        assert exported.status_code == 200
+        text = '\n'.join(p.extract_text() for p in PdfReader(io.BytesIO(exported.content)).pages)
+        questions, answers = text.split('Answers', 1)
+        assert '&' not in questions
+        assert answers.count('&') == 4
+        assert 'Leftrightarrow' not in answers
+        assert app.state.provider.calls == 1

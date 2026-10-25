@@ -64,7 +64,14 @@ def test_screenshot_legacy_fragments_render_without_changing_notation():
          [r'\begin{aligned}w\vee y=\overline{\bar{w}\&\bar{y}}\end{aligned}']),
         (r'If |S| = n, then |P(S)| = 2^n.', [r'|S| = n', r'|P(S)| = 2^n']),
         (r'Already $x \in A$, also \binom{n}{k} here.', [r'x \in A',r'\binom{n}{k}']),
+        (r'Constant false (t&t \Leftrightarrow 0) and idempotent (t&t \Leftrightarrow t).',
+         [r't\&t \Leftrightarrow 0', r't\&t \Leftrightarrow t']),
+        (r'Conjunction \(t&t \Leftrightarrow t\), with \(t & \bar{t} \Leftrightarrow 0\).',
+         [r't\&t \Leftrightarrow t', r't \& \bar{t} \Leftrightarrow 0']),
+        (r'Conjunction t&t keeps the source notation.', [r't\&t']),
+        (r'Without spaces: t&t\Leftrightarrow0.', [r't\&t\Leftrightarrow0']),
         ('An ordinary English explanation. A vector has magnitude and direction.', []),
+        ('Research & development and an entity &amp; stay text.', []),
         (r'Unsupported \unknownCommand{x} remains readable.', []),
     ]
     async def check():
@@ -112,4 +119,50 @@ def test_only_terminal_text_label_brace_is_completed():
                         bad:MathPDF.renderMath(bad,'\\overline{x',false),raw:bad.textContent};
             }''')
             assert result=={'good':True,'source':r'x+\text{a label}', 'bad':False,'raw':r'\overline{x'}
+    asyncio.run(check())
+
+
+def test_literal_ampersands_are_not_alignment_tabs():
+    rows = r't\vee z\Leftrightarrow z\vee t\\t&t\Leftrightarrow0\\t&t\Leftrightarrow t'
+    cases = [
+        (r't&t\Leftrightarrow t', r't\&t\Leftrightarrow t'),
+        (r't \& \bar{t}\Leftrightarrow0', r't \& \bar{t}\Leftrightarrow0'),
+        (rows, r'\begin{aligned}&t\vee z\Leftrightarrow z\vee t\\&t\&t\Leftrightarrow0\\&t\&t\Leftrightarrow t\end{aligned}'),
+        (r'\begin{aligned}'+rows+r'\end{aligned}',
+         r'\begin{aligned}t\vee z\Leftrightarrow z\vee t\\t\&t\Leftrightarrow0\\t\&t\Leftrightarrow t\end{aligned}'),
+        (r'\begin{aligned}t&\bar t&\Leftrightarrow0\\t&t &\Leftrightarrow t\end{aligned}',
+         r'\begin{aligned}t\&\bar t&\Leftrightarrow0\\t\&t &\Leftrightarrow t\end{aligned}'),
+        (r'a&=b\\c&=d', r'\begin{aligned}a&=b\\c&=d\end{aligned}'),
+        (r'\begin{aligned}a&=b\\c&=d\end{aligned}', r'\begin{aligned}a&=b\\c&=d\end{aligned}'),
+        (r'\begin{aligned}a&\Leftrightarrow b\end{aligned}', r'\begin{aligned}a&\Leftrightarrow b\end{aligned}'),
+        (r'\begin{array}{c|c}t&t\Leftrightarrow0\\0&1\end{array}',
+         r'\begin{array}{c|c}t&t\Leftrightarrow0\\0&1\end{array}'),
+        (r'\begin{pmatrix}a&b\\c&d\end{pmatrix}', r'\begin{pmatrix}a&b\\c&d\end{pmatrix}'),
+        (r'\begin{matrix*}[l]a&b\\c&d\end{matrix*}', r'\begin{matrix*}[l]a&b\\c&d\end{matrix*}'),
+        (r'\begin{darray}{cc}a&b\\c&d\end{darray}', r'\begin{darray}{cc}a&b\\c&d\end{darray}'),
+        (r'\begin{cases}x&x>0\\0&\text{otherwise}\end{cases}', r'\begin{cases}x&x>0\\0&\text{otherwise}\end{cases}'),
+        (r'\begin{aligned}a&=\begin{matrix}b&c\end{matrix}\\t&t&\Leftrightarrow t\end{aligned}',
+         r'\begin{aligned}a&=\begin{matrix}b&c\end{matrix}\\t\&t&\Leftrightarrow t\end{aligned}'),
+        (r'\begin{aligned}\overline{t&t}&\Leftrightarrow t\end{aligned}',
+         r'\begin{aligned}\overline{t\&t}&\Leftrightarrow t\end{aligned}'),
+        (r'\text{A & B}', r'\text{A \& B}'),
+    ]
+
+    async def check():
+        async with MathValidator() as validator:
+            for latex, expected in cases:
+                result = await validator.page.evaluate(r'''latex => {
+                    const target = document.createElement('div');
+                    const ok = MathPDF.renderMath(target, latex, true);
+                    const normalized = target.querySelector('annotation')?.textContent;
+                    const repeat = document.createElement('div');
+                    const idempotent = MathPDF.renderMath(repeat, normalized, true)
+                        && repeat.querySelector('annotation')?.textContent === normalized;
+                    return {ok, latex:normalized, idempotent,
+                            ampersands:(target.querySelector('.katex-html')?.textContent.match(/&/g)||[]).length};
+                }''', latex)
+                assert result == {'ok': True, 'latex': expected, 'idempotent': True,
+                                  'ampersands': expected.replace(r'\\', '').count(r'\&')}, (latex, result)
+                # Display recovery is idempotent and does not invent a negation.
+                assert expected.count(r'\bar') == latex.count(r'\bar')
     asyncio.run(check())

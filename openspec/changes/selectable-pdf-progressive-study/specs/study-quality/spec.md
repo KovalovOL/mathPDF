@@ -33,6 +33,12 @@ The shared workspace/export renderer SHALL typeset complete supported bare envir
 - **THEN** that fragment is typeset locally without changing its mathematical symbols
 - **AND** surrounding English and distinct source references remain available
 
+#### Scenario: Source conjunction uses an ampersand
+- **WHEN** an older expression contains a raw conjunction ampersand outside a table, including the reported Boolean equivalence rows and inline explanations
+- **THEN** local rendering retains a visible ampersand instead of consuming it as an alignment separator or showing the whole fragment as raw TeX
+- **AND** actual array, matrix, cases and equation alignment separators remain structural
+- **AND** no missing negation is inferred and no additional provider request is made
+
 ### Requirement: Flashcard answers appear only after reveal
 Flashcard fronts SHALL show only a self-contained recall question without answer hints. Titles, answer formulas, explanations and citations SHALL appear only on the back. External prompts SHALL enforce this separation, without another provider request. Hidden faces SHALL be inaccessible to assistive technology and keyboard focus.
 

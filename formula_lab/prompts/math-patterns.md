@@ -31,6 +31,12 @@ A multi-row expression uses aligned with explicit row breaks. Labels stay short,
 
 Copy the real labels and accents from the selected page. Do not concatenate labelled alternatives as `(P)1 => p; (F)0 or p` or add an equality between them. Keep separately cited source expressions in separate formula objects.
 
+In an aligned Boolean expression, a VISIBLE conjunction ampersand must still be escaped. Only the alignment marker is bare. For example, if these exact rows and accents are printed in the source:
+
+{"latex":"\\begin{aligned}t \\& \\bar{t}&\\Leftrightarrow 0\\\\t \\& t&\\Leftrightarrow t\\end{aligned}","page":2,"variant":null}
+
+Here `\\&` in JSON prints the source ampersand; `&` before the relation aligns the rows. Writing `t&t` inside aligned consumes the conjunction as a column separator. Inline explanations must likewise use math parts, for example {"parts":["The source conjunction is ",{"math":"t \\& t \\Leftrightarrow t"},"."]}. Never omit an overbar or infer one from this example.
+
 ## Tables, matrices and cases
 
 A truth table uses array. Preserve its header, truth values, row order and the exact source separator rules:

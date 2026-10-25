@@ -8,6 +8,42 @@
     return node;
   }
 
+  const booleanOperand = String.raw`(?:\\(?:neg|lnot)\s*)*(?:\\(?:bar|overline)\s*(?:\{[A-Za-z01]\}|[A-Za-z01])|[A-Za-z01])`;
+  const beforeConjunction = new RegExp(String.raw`(?:^|[^A-Za-z])${booleanOperand}\s*$`);
+  const afterConjunction = new RegExp(String.raw`^\s*${booleanOperand}(?![A-Za-z])\s*(?:&\s*)?\\(?:Leftrightarrow|leftrightarrow|iff|Rightarrow|Leftarrow|implies)(?![A-Za-z])`);
+  const columnEnvironments = new Set(['aligned', 'alignedat', 'array', 'darray', 'matrix', 'pmatrix',
+    'bmatrix', 'Bmatrix', 'vmatrix', 'Vmatrix', 'smallmatrix', 'cases', 'dcases', 'rcases', 'drcases', 'subarray', 'CD']);
+
+  function literalAmpersands(latex, initialEnvironment = '') {
+    // Column tabs belong to their environment's top level. A raw ampersand
+    // elsewhere is a visible glyph, including inside a grouped overbar/text.
+    const environments = [{name: initialEnvironment, depth: 0}];
+    const tokens = /\\(begin|end)\{([A-Za-z]+\*?)\}|\\(?:[A-Za-z]+|[\s\S])|[{}&]/g;
+    let depth = 0, position = 0, output = '';
+    for (const match of latex.matchAll(tokens)) {
+      const token = match[0];
+      output += latex.slice(position, match.index);
+      if (match[1] === 'begin') environments.push({name: match[2], depth});
+      else if (match[1] === 'end') {
+        if (environments.length > 1 && environments.at(-1).name === match[2]) environments.pop();
+      } else if (token === '{') depth++;
+      else if (token === '}') depth--;
+      if (token === '&') {
+        const environment = environments.at(-1);
+        const name = environment.name.replace(/\*$/, '');
+        const column = depth === environment.depth && columnEnvironments.has(name);
+        // In a Boolean row, t&t <=> ... is conjunction, while &<=> and
+        // conventional a&=b remain alignment. Never reinterpret table cells.
+        const conjunction = /^(aligned|alignedat)$/.test(name)
+          && beforeConjunction.test(latex.slice(0, match.index))
+          && afterConjunction.test(latex.slice(match.index + 1));
+        output += column && !conjunction ? '&' : '\\&';
+      } else output += token;
+      position = match.index + token.length;
+    }
+    return output + latex.slice(position);
+  }
+
   function displayRows(latex, display) {
     if (!display || /\\begin\{/.test(latex)) return latex;
     const rows = []; let depth = 0, start = 0;
@@ -23,7 +59,10 @@
     }
     if (!rows.length || depth !== 0) return latex;
     rows.push(latex.slice(start));
-    return '\\begin{aligned}' + rows.map(row => /(?<!\\)&/.test(row) ? row : '&' + row).join('\\\\') + '\\end{aligned}';
+    return '\\begin{aligned}' + rows.map(row => {
+      const escaped = literalAmpersands(row, 'aligned');
+      return /(?<!\\)&/.test(escaped) ? escaped : '&' + escaped;
+    }).join('\\\\') + '\\end{aligned}';
   }
 
   function completeTextGroup(latex) {
@@ -46,7 +85,7 @@
       if (typeof latex !== 'string' || !latex.trim()) throw new Error('Enter a formula.');
       if (latex.length > 5000) throw new Error('Formula exceeds 5,000 characters.');
       if (!window.katex) throw new Error('The math renderer could not be loaded.');
-      window.katex.render(displayRows(completeTextGroup(latex), display), container, {
+      window.katex.render(literalAmpersands(displayRows(completeTextGroup(latex), display)), container, {
         displayMode: display, output: 'htmlAndMathml',
         throwOnError: true, trust: false, strict: 'error',
         maxExpand: 1000, maxSize: 20,
@@ -111,7 +150,7 @@
   const parens = String.raw`\((?:[^()\n]|\([^()\n]*\))*\)`;
   const command = String.raw`\\[A-Za-z]+(?:\s*${group}){0,2}`;
   const atom = String.raw`(?:\\(?:neg|lnot)\s*)*(?:${command}|\\[&{}]|[A-Za-z](?![A-Za-z])|\d+(?:\.\d+)?|\|[^|\n]+\|)(?:${parens}|[_^]${argument}|!)*`;
-  const operator = String.raw`(?:\\(?:Rightarrow|Leftarrow|Leftrightarrow|rightarrow|leftarrow|leftrightarrow|implies|iff|lor|vee|land|wedge|cap|cup|in|notin|subseteq|subset|supseteq|supset|times|cdot|equiv|neq|leq|geq|downarrow|uparrow|oplus|setminus|mid)\b|\\&|[=+*/<>−-])`;
+  const operator = String.raw`(?:\\(?:Rightarrow|Leftarrow|Leftrightarrow|rightarrow|leftarrow|leftrightarrow|implies|iff|lor|vee|land|wedge|cap|cup|in|notin|subseteq|subset|supseteq|supset|times|cdot|equiv|neq|leq|geq|downarrow|uparrow|oplus|setminus|mid)(?![A-Za-z])|\\&|[&=+*/<>−-])`;
   const bareMath = new RegExp(String.raw`(?<![A-Za-z\\])${atom}(?:\s*${operator}\s*${atom})*(?![A-Za-z])`, 'g');
 
   function renderLegacyText(container, text) {
@@ -119,7 +158,7 @@
     for (const match of text.matchAll(bareMath)) {
       const expression = match[0];
       // Plain words, sentence numbers, initials and articles stay plain text.
-      if (!/[\\^_=|!]/.test(expression) && !/^[A-Za-z]\(/.test(expression)) continue;
+      if (!/[\\^_=|!&]/.test(expression) && !/^[A-Za-z]\(/.test(expression)) continue;
       const withoutCommands = expression.replace(/\\[A-Za-z]+/g, '');
       if (/\b[A-Za-z]{3,}\b/.test(withoutCommands)) continue;
       const math = element('span', 'inline-math');
