@@ -33,6 +33,11 @@ Newly generated formulas SHALL pass the same strict mathematical renderer settin
 - **WHEN** a formula fails the application's mathematical renderer
 - **THEN** the item is repaired or generation reports failure instead of presenting broken TeX
 
+#### Scenario: Validation browser has an operational fault
+- **WHEN** the renderer cannot render a known-valid expression during its startup self-check
+- **THEN** generation fails before making provider requests instead of asking the model to repair valid formulas
+- **AND** the validation browser uses standards mode, matching the UI and export
+
 ### Requirement: Existing study material remains readable
 Existing saved sets SHALL remain readable without newly required planning fields. Unambiguous standalone TeX lines in old prose SHALL be typeset without treating ordinary English paragraphs as formulas.
 

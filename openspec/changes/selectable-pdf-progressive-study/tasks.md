@@ -28,3 +28,9 @@
 - [x] 5.1 Add correlated HTTP/job/provider logs and safe unexpected-error JSON responses; inspect request context propagation and redaction.
 - [x] 5.2 Add browser JSON/content-type diagnostics, bounded authenticated error reports, and versioned uncached application assets; inspect telemetry ownership and asset serving.
 - [x] 5.3 Document log commands and diagnostic limits, run static checks, deploy, and inspect live response headers and container logs.
+
+## 6. Renderer regression recovery
+
+- [x] 6.1 Initialize the validation browser in standards mode and check known-valid math before provider requests; add real-renderer regression tests.
+- [x] 6.2 Reproduce generation through the local API and browser with the real configured provider, checking exact counts and rendered formulas.
+- [ ] 6.3 Deploy the verified fix and record test results and live renderer checks.

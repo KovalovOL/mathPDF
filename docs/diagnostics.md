@@ -35,3 +35,9 @@ Reports are limited to ten per page and ten per account per minute, have a 4 KB 
 Application HTML is served with `Cache-Control: no-store`, a build meta tag, and content-versioned local JS/CSS URLs. JavaScript, modules and CSS require revalidation with `Cache-Control: no-cache`. Existing open tabs still need a reload to load the new code. The build identifier hashes application code/assets/prompts; it is not a Git commit SHA and does not include environment secrets.
 
 The exact cause of the previously reported unreadable response was not captured. Current public API inspection returned JSON and matching deployed code hashes. These diagnostics make a recurrence traceable; they do not establish successful authenticated generation by themselves.
+
+## Formula renderer health
+
+Generation initializes Chromium with a standards-mode document and runs a known-valid formula self-check before calling the provider. A failed self-check ends the job as a server renderer error; it does not trigger paid model repair attempts. Candidate formulas still undergo strict KaTeX validation.
+
+The October 25 zero-progress failure was reproduced locally: the previous blank validation document used quirks mode, causing KaTeX to reject even `x+1`. Logs showed every candidate rejected as `invalid_math`. Missing PDF.js source maps are browser debugging files and do not cause this failure.

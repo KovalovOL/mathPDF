@@ -1,10 +1,14 @@
 """Validate generated TeX with the exact renderer and options used by the UI."""
 
 from asyncio import timeout, wait_for
+import logging
 
 from playwright.async_api import Error as BrowserError, async_playwright
 
 from .pdf_export import STATIC, ExportError, chromium_executable
+
+
+logger = logging.getLogger(__name__)
 
 
 class MathValidationError(Exception):
@@ -12,7 +16,7 @@ class MathValidationError(Exception):
 
 
 class MathValidator:
-    """One lazy, network-isolated browser per generation; reuse it for repairs."""
+    """One network-isolated browser per generation; reuse it for repairs."""
 
     def __init__(self):
         self.playwright = None
@@ -21,6 +25,15 @@ class MathValidator:
         self.cache: dict[tuple[str, bool], str | None] = {}
 
     async def __aenter__(self):
+        try:
+            # A broken renderer is a server failure, not something the model can
+            # repair. Check known-valid TeX before spending any provider calls.
+            if await self.errors([("x+1", False)]):
+                logger.error("Formula renderer self-check failed")
+                raise MathValidationError("The server formula renderer is unavailable. Please try again later.")
+        except BaseException:
+            await self.__aexit__()
+            raise
         return self
 
     async def __aexit__(self, *_):
@@ -46,6 +59,9 @@ class MathValidator:
         await context.route("**/*", lambda route: route.abort())
         self.page = await context.new_page()
         self.page.set_default_timeout(15000)
+        # about:blank defaults to quirks mode, which KaTeX rejects even for x+1.
+        # Match the standards-mode documents used by the UI and PDF export.
+        await self.page.set_content("<!doctype html><html><head><meta charset='utf-8'></head><body></body></html>")
         await self.page.add_script_tag(path=str(STATIC / "vendor/katex/katex.min.js"))
         await self.page.add_script_tag(path=str(STATIC / "math-renderer.js"))
 

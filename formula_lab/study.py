@@ -392,17 +392,17 @@ async def create_plan(documents: list[InputDocument], request: GenerateRequest,
 
 async def collect_study(documents: list[InputDocument], request: GenerateRequest,
                         provider: StudyProvider, progress: Progress) -> tuple[GeneratedContent, dict]:
-    plan, planning = await create_plan(documents, request, provider, progress)
     accepted: dict[int, StudyItem] = {}
     notes: list[str] = []
     feedback: list[str] = []
     rejected: list[dict] = []
     rejection_counts: Counter = Counter()
-    activities = {goal.step: goal.activity for goal in plan}
     source = documents[0]
     limit = request.count + EXTRA_ATTEMPTS
     batch_size = BATCH_SIZE
     async with MathValidator() as validator:
+        plan, planning = await create_plan(documents, request, provider, progress)
+        activities = {goal.step: goal.activity for goal in plan}
         for attempt in range(1, limit + 1):
             goal_steps = [goal.step for goal in plan if goal.step not in accepted][:batch_size]
             batch_count = len(goal_steps)
