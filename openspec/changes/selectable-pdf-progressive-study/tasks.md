@@ -40,4 +40,4 @@
 - [x] 7.1 Replace the plan/batch/repair pipeline with one full-set provider request and one local validation pass; preserve counts, ownership, cancellation, and old saved sets.
 - [x] 7.2 Add a comprehensive external formula-writing guide, compact provider output, and concise prompts for both modes; remove obsolete planning/repair prompts and update progress text.
 - [x] 7.3 Add one-request/failure regression tests and measure real API/browser generation for flashcards and problems, recording counts, formatting, and timings.
-- [ ] 7.4 Update English documentation, deploy, and inspect the live application build.
+- [x] 7.4 Update English documentation, deploy, and inspect the live application build.
