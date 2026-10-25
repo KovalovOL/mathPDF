@@ -41,4 +41,4 @@
 - [x] 7.3 Add home deletion dialogs and collapsible sections with cached previews and account-specific preferences.
 - [x] 7.4 Add full desktop source collapse and mobile study focus/pull-down restoration while preserving source navigation, resize anchors and ordinary answer scrolling.
 - [x] 7.5 Integrate the ten-page cache into the source viewer and remove obsolete per-item generation progress text.
-- [ ] 7.6 Verify regression tests, local desktop/mobile behavior and cache reloads; update English documentation and deploy through the existing workflow.
+- [x] 7.6 Verify regression tests, local desktop/mobile behavior and cache reloads; update English documentation and deploy through the existing workflow.

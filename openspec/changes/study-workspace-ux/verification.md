@@ -26,4 +26,4 @@ A disposable loopback application used its own data directory, ordinary authenti
 
 The page cache contains derived page images, not full offline PDFs or cached private API responses. Authoritative metadata access precedes cache display; selectable text arrives with the authorized PDF. Browser storage may be evicted or unavailable, in which case ordinary rendering remains available. Real-device gesture and browser-specific repaint behavior has not been exhaustively tested.
 
-Deployment verification will be recorded after the existing GitHub Actions workflow completes.
+Application commit `9c3bc26` was pushed to `main`. [GitHub Actions run 40243930243](https://github.com/KovalovOL/mathPDF/actions/runs/40243930243) completed successfully. The live protected `/api/me` returned HTTP 401 with build `baedc7e9bc83`, matching the verified local application. The six checked static assets (`home.js`, `app.js`, `style.css`, `workspace-layout.js`, `visual-cache.js`, `pdf-viewer.js`) matched local SHA-256 hashes. No production account data was accessed. The disposable local server/tab were closed and the browser viewport restored.
