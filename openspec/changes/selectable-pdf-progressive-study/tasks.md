@@ -46,4 +46,4 @@
 
 - [x] 8.1 Remove formatting rejection and server browser startup from generation; add safe raw-text fallbacks in the workspace and PDF export.
 - [x] 8.2 Update regression tests and verify malformed math remains usable/saveable/exportable without another provider request.
-- [ ] 8.3 Update English documentation, deploy, and inspect the live build.
+- [x] 8.3 Update English documentation, deploy, and inspect the live build.
