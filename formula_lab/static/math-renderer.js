@@ -73,7 +73,7 @@
     return figure;
   }
 
-  function renderText(container, text) {
+  function renderDelimitedText(container, text) {
     // Models sometimes put delimited inline TeX in prose. Parse only math
     // delimiters; every other character remains a DOM text node.
     const pattern = /\\\(([\s\S]*?)\\\)|\\\[([\s\S]*?)\\\]|\$\$([\s\S]*?)\$\$|\$([^$\n]+)\$/g;
@@ -86,6 +86,31 @@
       container.append(math); position = match.index + match[0].length;
     }
     container.append(document.createTextNode(text.slice(position)));
+  }
+
+  function renderText(container, text) {
+    // Older sets sometimes contain a whole TeX expression on a prose list line.
+    // Only recover clearly mathematical standalone lines; never typeset an English paragraph.
+    if (['$', '\\(', '\\['].some(marker => text.includes(marker))) {
+      renderDelimitedText(container, text); return;
+    }
+    const lines = text.split('\n');
+    lines.forEach((line, index) => {
+      if (index) container.append(document.createTextNode('\n'));
+      const prefix = line.match(/^\s*(?:(?:\d+[.)]|[-*•])\s+)?/)[0];
+      const expression = line.slice(prefix.length).trim();
+      const withoutCommands = expression.replace(/\\[A-Za-z]+/g, '');
+      const standalone = /\\[A-Za-z]+/.test(expression) &&
+        /^(?:[\\\d+\-({\[]|[A-Za-z](?=[\s_^=<>]))/.test(expression) &&
+        !/\b[A-Za-z]{3,}\b/.test(withoutCommands);
+      if (standalone) {
+        const math = element('span', 'inline-math');
+        if (renderMath(math, expression, false)) {
+          container.append(document.createTextNode(prefix), math); return;
+        }
+      }
+      renderDelimitedText(container, line);
+    });
   }
 
   function renderBlocks(container, blocks, options = {}) {

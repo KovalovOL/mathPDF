@@ -8,8 +8,8 @@ from typing import Literal
 from openai import APIError, AsyncOpenAI, LengthFinishReasonError
 from pydantic import Field, ValidationError
 
-from .study import (BATCH_SIZE, GeneratedContent, GenerationError, InputDocument, ProviderResult,
-                    RetryableGenerationError, StrictModel, StudyItem)
+from .study import (BATCH_SIZE, MAX_ITEMS, GeneratedContent, GenerationError, InputDocument, LearningGoal,
+                    PlanResult, ProviderResult, RetryableGenerationError, StrictModel, StudyItem)
 
 
 class InsufficientSource(StrictModel):
@@ -33,13 +33,28 @@ def batch_response_format(count: int) -> type[StrictModel]:
     return BatchResponse
 
 
+@lru_cache(maxsize=MAX_ITEMS)
+def plan_response_format(count: int) -> type[StrictModel]:
+    if not 1 <= count <= MAX_ITEMS:
+        raise ValueError("Invalid learning plan size.")
+
+    class CompletedPlan(StrictModel):
+        status: Literal["completed"]
+        goals: list[LearningGoal] = Field(min_length=count, max_length=count)
+
+    class PlanResponse(StrictModel):
+        result: CompletedPlan | InsufficientSource
+
+    return PlanResponse
+
+
 class OpenAIProvider:
     def __init__(self, api_key: str, model: str):
         self.api_key = api_key
         self.model = model
 
-    async def generate(self, documents: list[InputDocument], system: str, task: str,
-                       *, count: int) -> ProviderResult:
+    async def _request(self, documents: list[InputDocument], system: str, task: str,
+                       response_format: type[StrictModel]) -> StrictModel:
         content = []
         for entry in documents:
             content.append({"type": "input_text", "text": entry.label})
@@ -55,7 +70,7 @@ class OpenAIProvider:
                     model=self.model,
                     instructions=system,
                     input=[{"role": "user", "content": content}],
-                    text_format=batch_response_format(count),
+                    text_format=response_format,
                     max_output_tokens=12000,
                     store=False,
                 )
@@ -81,7 +96,18 @@ class OpenAIProvider:
                                   "Try different source pages.")
         if response.status != "completed" or response.output_parsed is None:
             raise RetryableGenerationError("incomplete_response", "The study response was incomplete.")
-        result = response.output_parsed.result
+        return response.output_parsed.result
+
+    async def plan(self, documents: list[InputDocument], system: str, task: str,
+                   *, count: int) -> PlanResult:
+        result = await self._request(documents, system, task, plan_response_format(count))
+        insufficient = isinstance(result, InsufficientSource)
+        return PlanResult(goals=[] if insufficient else result.goals, provider="openai", model=self.model,
+                          insufficient_source=insufficient)
+
+    async def generate(self, documents: list[InputDocument], system: str, task: str,
+                       *, count: int) -> ProviderResult:
+        result = await self._request(documents, system, task, batch_response_format(count))
         insufficient = isinstance(result, InsufficientSource)
         content = GeneratedContent(items=[], notes=[result.reason]) if insufficient else GeneratedContent(
             items=result.items, notes=result.notes)

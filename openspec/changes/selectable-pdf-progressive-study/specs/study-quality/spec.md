@@ -1,0 +1,41 @@
+# Spec Delta
+
+## Purpose
+
+Create varied study material grounded in the selected PDF, with progressive learning goals and formulas that the application can typeset correctly.
+
+## ADDED Requirements
+
+### Requirement: Progressive learning sequence
+Generation SHALL plan distinct source-grounded learning goals in increasing intended difficulty before creating items. Returned items SHALL follow that plan across batches and repairs. Difficulty is a model assessment, not a proof of mathematical complexity.
+
+#### Scenario: Generate a multi-batch set
+- **WHEN** a reader requests more items than fit in one generation batch
+- **THEN** every item fills its assigned learning goal
+- **AND** the final order follows the whole-set progression rather than restarting at each batch
+
+### Requirement: Varied questions
+Generation SHALL instruct the provider to vary learning goals and reasoning activities, and SHALL reject exact or conservatively detected near-duplicate questions within the set. Rejected items SHALL be repaired within bounded attempts without silently reducing the requested count.
+
+#### Scenario: Provider repeats an exercise
+- **WHEN** a returned item repeats an accepted question with only superficial wording changes
+- **THEN** it is rejected and its learning slot remains unfilled
+- **AND** generation either completes the requested count or returns an actionable failure
+
+### Requirement: Renderable mathematical output
+Newly generated formulas SHALL pass the same strict mathematical renderer settings used by the application. Raw TeX commands in prose and obvious exercise prose placed in formula blocks SHALL be rejected for repair.
+
+#### Scenario: Provider places TeX in a text list
+- **WHEN** a text block contains undelimited TeX commands
+- **THEN** the item is rejected and the provider is instructed to use separate mathematical blocks
+
+#### Scenario: Formula contains unsupported syntax
+- **WHEN** a formula fails the application's mathematical renderer
+- **THEN** the item is repaired or generation reports failure instead of presenting broken TeX
+
+### Requirement: Existing study material remains readable
+Existing saved sets SHALL remain readable without newly required planning fields. Unambiguous standalone TeX lines in old prose SHALL be typeset without treating ordinary English paragraphs as formulas.
+
+#### Scenario: Open an older set
+- **WHEN** a saved item lacks a learning goal identifier
+- **THEN** it remains readable and exportable

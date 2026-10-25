@@ -88,7 +88,7 @@ function updateDocumentToolbar() {
     $('previous-page').disabled = state.page <= 1; $('next-page').disabled = state.page >= doc.page_count;
   }
 }
-async function openDocument(id, targetPage) {
+async function openDocument(id, targetPage, sourceRef = null) {
   const doc = documents.get(id) || pendingUploads.get(id); if (!doc) throw new Error('This source file is not available.');
   const state = readState(id);
   if (targetPage !== undefined) {
@@ -125,7 +125,14 @@ async function openDocument(id, targetPage) {
   }
   if (pendingUploads.has(id)) renderUploadState(id);
   view.hidden = false;
-  if (targetPage !== undefined) view.querySelector('iframe')?.contentWindow.postMessage({type: 'go-to-page', page: targetPage}, location.origin);
+  if (targetPage !== undefined) {
+    const iframe = view.querySelector('iframe');
+    if (iframe) {
+      const navigation = {type: 'go-to-page', page: targetPage, animated: !!sourceRef, quote: sourceRef?.quote || null};
+      if (iframe.dataset.ready) iframe.contentWindow.postMessage(navigation, location.origin);
+      else iframe.pendingNavigation = navigation;
+    }
+  }
   renderDocumentTabs(); updateDocumentToolbar();
   notifyPdfViewport(true);
 }
@@ -183,10 +190,19 @@ window.addEventListener('message', event => {
       [...views.values()].some(view => event.source === view.querySelector('iframe')?.contentWindow)) {
     action(() => MathPDFSession.api('/api/me')); return;
   }
-  if (event.origin !== location.origin || !data || data.type !== 'pdf-page') return;
+  if (event.origin !== location.origin || !data || !['pdf-page', 'pdf-ready'].includes(data.type)) return;
   const view = views.get(data.documentId), doc = documents.get(data.documentId);
-  if (!view || event.source !== view.querySelector('iframe')?.contentWindow || !doc ||
-      !Number.isInteger(data.page) || data.page < 1 || data.page > doc.page_count) return;
+  const iframe = view?.querySelector('iframe');
+  if (!iframe || event.source !== iframe.contentWindow || !doc) return;
+  if (data.type === 'pdf-ready') {
+    iframe.dataset.ready = 'true';
+    if (iframe.pendingNavigation) {
+      iframe.contentWindow.postMessage(iframe.pendingNavigation, location.origin);
+      delete iframe.pendingNavigation;
+    }
+    return;
+  }
+  if (!Number.isInteger(data.page) || data.page < 1 || data.page > doc.page_count) return;
   readState(doc.id).page = data.page;
   if (activeDocumentId === doc.id && document.activeElement !== $('page')) updateDocumentToolbar();
 });
@@ -235,7 +251,7 @@ function sourceOptions(result) {
     onSource: ref => action(() => {
       const id = ref.document_id || result.document.id;
       if (!documents.has(id) && id === result.document.id) documents.set(id, result.document);
-      updateGenerationAvailability(); return openDocument(id, ref.page);
+      updateGenerationAvailability(); return openDocument(id, ref.page, ref);
     }),
     sourceUrl: ref => `${fileUrl(ref.document_id || result.document.id)}#page=${ref.page}`,
     sourceLabel: ref => `Source · page ${ref.page}`};

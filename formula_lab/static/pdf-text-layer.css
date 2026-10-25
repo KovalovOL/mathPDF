@@ -1,0 +1,55 @@
+/* Text positioning follows Mozilla PDF.js web/text_layer_builder.css.
+ * Copyright Mozilla Foundation.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy at https://www.apache.org/licenses/LICENSE-2.0
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License. Also see vendor/pdfjs/LICENSE.
+ * https://github.com/mozilla/pdf.js/blob/master/web/text_layer_builder.css
+ */
+.textLayer {
+  color-scheme: only light;
+  position: absolute;
+  inset: 0;
+  overflow: clip;
+  text-align: initial;
+  line-height: 1;
+  letter-spacing: normal;
+  word-spacing: normal;
+  text-size-adjust: none;
+  forced-color-adjust: none;
+  transform-origin: 0 0;
+  caret-color: CanvasText;
+  z-index: 1;
+  --min-font-size: 1;
+  --text-scale-factor: calc(var(--total-scale-factor) * var(--min-font-size));
+  --min-font-size-inv: calc(1 / var(--min-font-size));
+}
+.textLayer :is(span, br) {
+  color: transparent;
+  position: absolute;
+  white-space: pre;
+  cursor: text;
+  transform-origin: 0 0;
+  user-select: text;
+}
+.textLayer > :not(.markedContent), .textLayer .markedContent span:not(.markedContent) {
+  --font-height: 0;
+  --scale-x: 1;
+  --rotate: 0deg;
+  font-size: calc(var(--text-scale-factor) * var(--font-height));
+  transform: rotate(var(--rotate)) scaleX(var(--scale-x)) scale(var(--min-font-size-inv));
+}
+.textLayer .markedContent { display: contents; }
+.textLayer span[role="img"] { user-select: none; }
+.textLayer ::selection { background: #2962ff45; color: transparent; }
+.textLayer br::selection { background: transparent; }
+.textLayer[data-main-rotation="90"] { transform: rotate(90deg) translateY(-100%); }
+.textLayer[data-main-rotation="180"] { transform: rotate(180deg) translate(-100%, -100%); }
+.textLayer[data-main-rotation="270"] { transform: rotate(270deg) translateX(-100%); }
+.source-highlights { position: absolute; inset: 0; pointer-events: none; z-index: 2; }
+.source-highlight { position: absolute; background: #ffd23f70; border-radius: 2px; }
+.pdf-sheet.source-page { outline: 2px solid #2656cb; outline-offset: 3px; }
