@@ -40,7 +40,7 @@ window.MathPDFSession = (() => {
       redirecting = true;
       location.assign(`/login?${new URLSearchParams({next: location.pathname + location.search})}`);
     }
-    throw new Error('Your session has expired. Sign in to continue.');
+    const error = new Error('Your session has expired. Sign in to continue.'); error.status = 401; throw error;
   }
   async function request(path, options = {}) {
     const headers = {...options.headers};
@@ -64,7 +64,7 @@ window.MathPDFSession = (() => {
     function failure(message, event) {
       reported = true;
       const id = reportFailure(event, path, settings.method, reference, response, receivedBytes);
-      return new Error(`${message} Reference: ${id}`);
+      const error = new Error(`${message} Reference: ${id}`); error.status = response?.status; return error;
     }
     try {
       const headers = settings.body instanceof FormData ? {} : {'Content-Type': 'application/json'};
@@ -114,6 +114,11 @@ window.MathPDFSession = (() => {
       const email = document.createElement('span'); email.className = 'account-email'; email.textContent = user.email;
       const form = document.createElement('form'); form.method = 'post'; form.action = '/auth/logout';
       const logout = document.createElement('button'); logout.type = 'submit'; logout.className = 'secondary'; logout.textContent = 'Sign out';
+      form.addEventListener('submit', async event => {
+        event.preventDefault(); logout.disabled = true;
+        try {await (await import('/static/visual-cache.js')).clearVisualCache(user.id);} catch {}
+        form.submit();
+      });
       form.append(logout); panel.append(name, email, form); menu.append(summary, panel); container.replaceChildren(menu);
       document.addEventListener('click', event => {if (!menu.contains(event.target)) menu.open = false;});
       document.addEventListener('keydown', event => {if (event.key === 'Escape') {menu.open = false; summary.focus();}});

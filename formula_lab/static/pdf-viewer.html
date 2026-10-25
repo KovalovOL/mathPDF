@@ -14,9 +14,10 @@
     .pdf-page { margin: 0 0 20px; }
     .page-label { margin: 0 0 5px; }
     .pdf-sheet { position: relative; width: 100%; background: white; box-shadow: 0 1px 4px #23304426; }
-    canvas { position: absolute; inset: 0; display: block; width: 100%; height: 100%; }
+    canvas, .cached-page { position: absolute; inset: 0; display: block; width: 100%; height: 100%; }
     .page-error { padding: 20px; color: #a61d2c; }
   </style>
+  <script src="/static/account.js" defer></script>
   <script src="/static/pdf-viewer.js" type="module"></script>
 </head>
 <body>

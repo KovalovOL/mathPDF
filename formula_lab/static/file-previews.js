@@ -1,8 +1,9 @@
 /* Lazy file previews use the same owner-protected originals as the workspace. */
-import {getDocument, GlobalWorkerOptions} from '/static/vendor/pdfjs/pdf.mjs';
-GlobalWorkerOptions.workerSrc = '/static/vendor/pdfjs/pdf.worker.mjs';
+import {createVisualCache, canvasBlob} from '/static/visual-cache.js';
+let pdfModule;
 
 export function createFilePreviews({request, userId, onAuthFailure}) {
+  const cache = createVisualCache(userId), urls = new Set();
   let disposed = false, active = 0;
   const queue = [], targets = new Map(), pdfLoads = new Set(), controllers = new Set();
   const observer = new IntersectionObserver(entries => {
@@ -27,6 +28,8 @@ export function createFilePreviews({request, userId, onAuthFailure}) {
   }
 
   async function renderPdf(container, file) {
+    const {getDocument, GlobalWorkerOptions} = await (pdfModule ||= import('/static/vendor/pdfjs/pdf.mjs'));
+    GlobalWorkerOptions.workerSrc = '/static/vendor/pdfjs/pdf.worker.mjs';
     const loading = getDocument({url: `/api/documents/${encodeURIComponent(file.id)}/file`,
       httpHeaders: {'X-MathPDF-User': userId}, isEvalSupported: false,
       cMapUrl: '/static/vendor/pdfjs/cmaps/', cMapPacked: true,
@@ -42,6 +45,8 @@ export function createFilePreviews({request, userId, onAuthFailure}) {
         canvas.setAttribute('aria-label', `First page of ${file.filename}`);
         container.replaceChildren(canvas);
       }
+      const blob = await canvasBlob(canvas);
+      if (blob && !disposed) await cache.put(file, 'preview', 1, {blob, width: canvas.width, height: canvas.height});
       page.cleanup();
     } finally {
       pdfLoads.delete(loading); await loading.destroy().catch(() => {});
@@ -67,7 +72,29 @@ export function createFilePreviews({request, userId, onAuthFailure}) {
         preview.setAttribute('aria-label', `Opening text of ${file.filename}`);
       }
       if (!disposed && container.isConnected) container.replaceChildren(preview);
+      if (!disposed) {
+        if (preview.tagName === 'CANVAS') {
+          const blob = await canvasBlob(preview);
+          if (blob) await cache.put(file, 'preview', 1, {blob});
+        } else await cache.put(file, 'preview', 1, {text: preview.textContent});
+      }
     } finally {controllers.delete(controller);}
+  }
+
+  async function renderCached(container, file) {
+    const entry = await cache.get(file);
+    if (disposed || !container.isConnected) return;
+    if (entry?.blob) {
+      const url = URL.createObjectURL(entry.blob); urls.add(url);
+      const image = document.createElement('img'); image.src = url;
+      image.alt = file.page_count ? `First page of ${file.filename}` : `Preview of ${file.filename}`;
+      container.replaceChildren(image); container.dataset.cached = 'true'; return;
+    }
+    if (entry?.text !== undefined) {
+      const text = document.createElement('pre'); text.className = 'file-text-excerpt'; text.textContent = entry.text;
+      container.replaceChildren(text); container.dataset.cached = 'true'; return;
+    }
+    return file.media_type === 'application/pdf' ? renderPdf(container, file) : renderFile(container, file);
   }
 
   function pump() {
@@ -75,7 +102,7 @@ export function createFilePreviews({request, userId, onAuthFailure}) {
       const {container, file} = queue.shift();
       if (!container.isConnected) continue;
       active++;
-      const operation = file.media_type === 'application/pdf' ? renderPdf(container, file) : renderFile(container, file);
+      const operation = renderCached(container, file);
       operation.catch(error => {
         if (disposed || !container.isConnected) return;
         container.textContent = 'Preview unavailable';
@@ -90,6 +117,7 @@ export function createFilePreviews({request, userId, onAuthFailure}) {
       disposed = true; observer.disconnect(); targets.clear(); queue.length = 0;
       for (const controller of controllers) controller.abort(); controllers.clear();
       for (const loading of pdfLoads) loading.destroy().catch(() => {}); pdfLoads.clear();
+      for (const url of urls) URL.revokeObjectURL(url); urls.clear();
     },
   };
 }

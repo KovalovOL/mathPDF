@@ -3,6 +3,7 @@
 import hashlib
 import io
 import json
+import logging
 import re
 import shutil
 import sqlite3
@@ -20,6 +21,10 @@ MAX_UPLOAD_BYTES = 25 * 1024 * 1024
 MEDIA_TYPES = {".pdf": "application/pdf", ".txt": "text/plain", ".md": "text/markdown",
                ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
                ".webp": "image/webp"}
+
+
+class DeletionChanged(Exception):
+    """The user must review a changed deletion impact before confirming again."""
 
 
 class Document(BaseModel):
@@ -208,3 +213,64 @@ class Workspace:
         if row is None:
             raise KeyError("Study set not found")
         return json.loads(row["payload"])
+
+    def _deletion_info(self, connection, kind: str, identifier: str, owner_id: str) -> dict:
+        table = 'documents' if kind == 'document' else 'study_sets'
+        row = connection.execute(f'SELECT * FROM {table} WHERE id=? AND owner_id=?',
+                                 (identifier, owner_id)).fetchone()
+        if row is None:
+            raise KeyError('File not found' if kind == 'document' else 'Study set not found')
+        primary, context = [], []
+        if kind == 'document':
+            for saved in connection.execute('SELECT id,title,payload FROM study_sets WHERE owner_id=?', (owner_id,)):
+                payload = json.loads(saved['payload'])
+                if payload['document']['id'] == identifier:
+                    primary.append({'id': saved['id'], 'title': saved['title']})
+                elif any(entry['document']['id'] == identifier for entry in payload.get('context_documents', [])):
+                    context.append({'id': saved['id'], 'title': saved['title']})
+        revision = hashlib.sha256(json.dumps([identifier, row['sha256'] if kind == 'document' else row['payload'],
+            sorted(entry['id'] for entry in primary), sorted(entry['id'] for entry in context)]).encode()).hexdigest()
+        return {'id': identifier, 'title': row['filename'] if kind == 'document' else row['title'],
+                'revision': revision, 'study_sets': primary, 'context_sets': context}
+
+    def deletion_info(self, kind: str, identifier: str, owner_id: str) -> dict:
+        with self.connection() as connection:
+            return self._deletion_info(connection, kind, identifier, owner_id)
+
+    def delete(self, kind: str, identifier: str, owner_id: str, revision: str) -> dict:
+        stored_name = None
+        with self.connection() as connection:
+            connection.execute('BEGIN IMMEDIATE')
+            impact = self._deletion_info(connection, kind, identifier, owner_id)
+            if revision != impact['revision']:
+                raise DeletionChanged('Related content changed. Review the deletion again before confirming.')
+            if kind == 'study-set':
+                connection.execute('DELETE FROM study_sets WHERE id=? AND owner_id=?', (identifier, owner_id))
+                return {'deleted_set_ids': [identifier]}
+            stored_name = connection.execute('SELECT stored_name FROM documents WHERE id=? AND owner_id=?',
+                                             (identifier, owner_id)).fetchone()['stored_name']
+            for entry in impact['study_sets']:
+                connection.execute('DELETE FROM study_sets WHERE id=? AND owner_id=?', (entry['id'], owner_id))
+            for entry in impact['context_sets']:
+                row = connection.execute('SELECT payload FROM study_sets WHERE id=? AND owner_id=?',
+                                         (entry['id'], owner_id)).fetchone()
+                payload = json.loads(row['payload'])
+                payload['context_documents'] = [context for context in payload['context_documents']
+                                                if context['document']['id'] != identifier]
+                # An explicit attachment deletion detaches context only. Do not
+                # normalize historical records or alter their items/metadata.
+                connection.execute('UPDATE study_sets SET payload=? WHERE id=? AND owner_id=?',
+                                   (json.dumps(payload, ensure_ascii=False), entry['id'], owner_id))
+            connection.execute('DELETE FROM documents WHERE id=? AND owner_id=?', (identifier, owner_id))
+        # Protect an identical file re-uploaded between commit and cleanup.
+        try:
+            with self.connection() as connection:
+                connection.execute('BEGIN IMMEDIATE')
+                if not connection.execute('SELECT 1 FROM documents WHERE stored_name=?', (stored_name,)).fetchone():
+                    path = (self.files / stored_name).resolve()
+                    if path.is_relative_to(self.files):
+                        path.unlink(missing_ok=True)
+        except OSError:
+            logging.getLogger(__name__).warning('Deleted document binary cleanup deferred')
+        return {'deleted_document_id': identifier, 'deleted_set_ids': [entry['id'] for entry in impact['study_sets']],
+                'detached_context_set_ids': [entry['id'] for entry in impact['context_sets']]}

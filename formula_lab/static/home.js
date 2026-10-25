@@ -2,6 +2,7 @@
 const home = id => document.getElementById(id);
 let uploading = false;
 let previews;
+let deleteIntent;
 const previewModule = import('/static/file-previews.js').catch(() => null);
 function node(tag, className, text) {
   const element = document.createElement(tag); element.className = className;
@@ -21,6 +22,45 @@ function row(title, metadata, url) {
   item.append(link); return item;
 }
 function chooseFiles() {if (!uploading) home('library-file-input').click();}
+function deleteButton(kind, id, title) {
+  const control = node('button', 'small delete-action', 'Delete'); control.type = 'button';
+  control.setAttribute('aria-label', `Delete ${title}`);
+  control.addEventListener('click', () => confirmDeletion(kind, id).catch(showError)); return control;
+}
+function showDeletion(impact) {
+  home('delete-heading').textContent = deleteIntent.kind === 'documents' ? 'Delete file?' : 'Delete study set?';
+  home('delete-message').textContent = `Permanently delete “${impact.title}”? This cannot be undone.`;
+  const count = impact.study_sets.length;
+  home('delete-warning').textContent = count ? `This will also permanently delete ${count} saved study ${count === 1 ? 'set' : 'sets'} that ${count === 1 ? 'uses' : 'use'} this file as the main source.` : '';
+  home('delete-context').textContent = impact.context_sets.length ? `${impact.context_sets.length} saved ${impact.context_sets.length === 1 ? 'set used' : 'sets used'} this file only as additional context. Those sets will remain; the context attachment will be removed.` : '';
+}
+async function confirmDeletion(kind, id) {
+  const impact = await MathPDFSession.api(`/api/${kind}/${encodeURIComponent(id)}/deletion`);
+  deleteIntent = {kind, id, impact}; showDeletion(impact);
+  home('delete-error').hidden = true; home('confirm-delete').disabled = false;
+  home('delete-dialog').showModal();
+}
+home('cancel-delete').addEventListener('click', () => home('delete-dialog').close());
+home('delete-dialog').addEventListener('cancel', event => {
+  if (home('confirm-delete').disabled) event.preventDefault();
+});
+home('delete-form').addEventListener('submit', async event => {
+  event.preventDefault(); if (!deleteIntent) return;
+  const intent = deleteIntent; home('confirm-delete').disabled = true; home('cancel-delete').disabled = true;
+  try {
+    const result = await MathPDFSession.api(`/api/${intent.kind}/${encodeURIComponent(intent.id)}`,
+      {method: 'DELETE', headers: {'If-Match': intent.impact.revision}});
+    if (result.deleted_document_id) {
+      try {await (await import('/static/visual-cache.js')).clearVisualCache(MathPDFSession.user.id, result.deleted_document_id);} catch {}
+    }
+    home('delete-dialog').close(); deleteIntent = null; await loadLibrary();
+  } catch (error) {
+    if (error.status === 409) {
+      try {intent.impact = await MathPDFSession.api(`/api/${intent.kind}/${encodeURIComponent(intent.id)}/deletion`); showDeletion(intent.impact);} catch {}
+    }
+    home('delete-error').textContent = error.message; home('delete-error').hidden = false;
+  } finally {home('confirm-delete').disabled = false; home('cancel-delete').disabled = false;}
+});
 async function loadLibrary() {
   const [files, sets, previewRenderer] = await Promise.all([MathPDFSession.api('/api/documents'), MathPDFSession.api('/api/study-sets'), previewModule]);
   previews?.destroy();
@@ -38,7 +78,8 @@ async function loadLibrary() {
     const footer = node('div', 'file-card-footer');
     const download = node('a', 'library-download', 'Download');
     download.href = `/api/documents/${encodeURIComponent(file.id)}/file?download=true`;
-    download.setAttribute('aria-label', `Download ${file.filename}`); footer.append(download); entry.append(footer);
+    download.setAttribute('aria-label', `Download ${file.filename}`);
+    footer.append(download, deleteButton('documents', file.id, file.filename)); entry.append(footer);
     previews?.observe(preview, file); return entry;
   }));
   if (!files.length) {
@@ -49,7 +90,8 @@ async function loadLibrary() {
   home('library-sets').replaceChildren(...sets.map(set => {
     const kind = set.mode === 'flashcards' ? (set.item_count === 1 ? 'flashcard' : 'flashcards') : (set.item_count === 1 ? 'problem' : 'problems');
     const date = new Date(set.updated_at).toLocaleDateString('en-GB', {day: 'numeric', month: 'short', year: 'numeric'});
-    return row(set.title, `${set.item_count} ${kind} · Saved ${date}`, `/workspace?${new URLSearchParams({set: set.id})}`);
+    const entry = row(set.title, `${set.item_count} ${kind} · Saved ${date}`, `/workspace?${new URLSearchParams({set: set.id})}`);
+    entry.append(deleteButton('study-sets', set.id, set.title)); return entry;
   }));
   if (!sets.length) home('library-sets').append(node('p', 'library-empty', 'Study sets you save will appear here.'));
 }
@@ -78,4 +120,11 @@ home('library-file-input').addEventListener('change', async () => {
 });
 addEventListener('beforeunload', event => {if (uploading) {event.preventDefault(); event.returnValue = '';}});
 addEventListener('pagehide', () => previews?.destroy());
-MathPDFSession.ready.then(async () => {await loadLibrary(); home('upload-files').disabled = false;}).catch(showError);
+MathPDFSession.ready.then(async user => {
+  for (const id of ['files-section', 'sets-section']) {
+    const section = home(id), key = `mathpdf-${user.id}-${id}-open`;
+    try {section.open = localStorage.getItem(key) !== 'false';} catch {}
+    section.addEventListener('toggle', () => {try {localStorage.setItem(key, String(section.open));} catch {}});
+  }
+  await loadLibrary(); home('upload-files').disabled = false;
+}).catch(showError);

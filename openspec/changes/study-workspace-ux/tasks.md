@@ -33,3 +33,12 @@
 - [x] 6.1 Remove required sample-PDF startup and container seeding; add empty-library upload guidance and retire the legacy seeded sample while preserving saved citations.
 - [x] 6.2 Add study-set close controls, save/discard/cancel handling for drafts, saved-set reopening, and persisted open-tab state.
 - [x] 6.3 Update documentation, manually inspect the revised workspace, and validate artifacts before the requested commit and push.
+
+## 7. Library management, phone layout and browser caching
+
+- [x] 7.1 Add confirmed owner-scoped file/set deletion with stale-impact protection, primary-only cascade and context detachment; verify ownership and legacy payload preservation.
+- [x] 7.2 Add bounded account-scoped visual preview/page caching with content keys and deletion/sign-out invalidation, falling back safely when storage is unavailable.
+- [x] 7.3 Add home deletion dialogs and collapsible sections with cached previews and account-specific preferences.
+- [x] 7.4 Add full desktop source collapse and mobile study focus/pull-down restoration while preserving source navigation, resize anchors and ordinary answer scrolling.
+- [x] 7.5 Integrate the ten-page cache into the source viewer and remove obsolete per-item generation progress text.
+- [ ] 7.6 Verify regression tests, local desktop/mobile behavior and cache reloads; update English documentation and deploy through the existing workflow.

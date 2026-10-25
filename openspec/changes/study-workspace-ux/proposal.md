@@ -17,6 +17,10 @@ The current workbench forces page selection before document exploration and disp
 - Preserve the PDF reading location and keep rendered pages visible throughout Fit width pane resizing.
 - Start without a bundled PDF and offer an upload action; retire the previously seeded sample from existing libraries.
 - Close study-set tabs with save-before-close choices for drafts and reopen saved sets through the library.
+- Add confirmed owner-scoped library deletion. Deleting a primary source cascades only its own saved sets; context-only sets survive with that attachment detached.
+- Add collapsible library sections and a source pane that can fully collapse on desktop and enter a study-only view on phones, with pull-down and button restoration.
+- Cache library previews and the ten most recently viewed PDF page images per account, with bounded storage and deletion/sign-out cleanup.
+- Remove obsolete per-item progress counts from single-request generation.
 
 ## Capabilities
 

@@ -17,15 +17,22 @@
     <h2 class="library-title">Your library</h2>
     <p id="library-error" class="error" role="alert" hidden></p>
     <p id="upload-status" class="upload-progress" role="status" hidden></p>
-    <section class="library-section" aria-labelledby="files-heading">
-      <div class="library-section-heading"><h3 id="files-heading">Files</h3><span id="files-count" class="muted"></span></div>
+    <details id="files-section" class="library-section" open>
+      <summary class="library-section-heading"><h3 id="files-heading">Files</h3><span id="files-count" class="muted"></span></summary>
       <div id="library-files" class="library-list"><p class="library-empty" role="status">Loading your files…</p></div>
-    </section>
-    <section class="library-section" aria-labelledby="sets-heading">
-      <div class="library-section-heading"><h3 id="sets-heading">Saved study sets</h3><span id="sets-count" class="muted"></span></div>
+    </details>
+    <details id="sets-section" class="library-section" open>
+      <summary class="library-section-heading"><h3 id="sets-heading">Saved study sets</h3><span id="sets-count" class="muted"></span></summary>
       <div id="library-sets" class="library-list"><p class="library-empty" role="status">Loading your study sets…</p></div>
-    </section>
+    </details>
   </main>
+  <dialog id="delete-dialog" aria-labelledby="delete-heading" aria-describedby="delete-message delete-warning delete-context">
+    <form id="delete-form">
+      <div class="dialog-header"><h2 id="delete-heading">Delete item?</h2></div>
+      <div class="dialog-body"><p id="delete-message"></p><p class="deletion-warning"><strong id="delete-warning"></strong></p><p id="delete-context" class="field-note"></p><p id="delete-error" class="error" role="alert" hidden></p></div>
+      <div class="dialog-footer"><button id="cancel-delete" type="button" class="secondary" autofocus>Cancel</button><button id="confirm-delete" type="submit" class="danger">Delete permanently</button></div>
+    </form>
+  </dialog>
   <input id="library-file-input" type="file" accept=".pdf,.txt,.md,.png,.jpg,.jpeg,.webp" multiple hidden>
 </body>
 </html>

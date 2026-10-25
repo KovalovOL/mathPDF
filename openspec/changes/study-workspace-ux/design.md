@@ -62,3 +62,15 @@ Export contains questions and an answer section. TeX remains the canonical edita
 ## Migration Plan
 
 Add a new SQLite workspace and managed file directory under the existing ignored data root. Preserve old source-font diagnostic files and routes. Generation responses gain document identities, context snapshots, and a set ID; existing single-document calls can still use the configured default PDF.
+
+## Authenticated library and responsive controls revision
+
+The application now has mandatory Google identity and owner-scoped storage. The earlier local-only and strict-formatting descriptions are historical; preserve the current shared renderer, non-blocking math policy and backward-compatible study payloads.
+
+Deletion uses an owner-protected impact read and a conditional DELETE. Recompute the impact inside the database transaction; reject stale confirmations rather than deleting newly related sets silently. Every library deletion opens a confirmation dialog. File deletion prominently states how many sets with that primary source will be permanently removed. As explicitly clarified by the owner, sets using the file only as additional context survive; detach that context snapshot without changing their items, formulas, primary citations or metadata. Remove the managed binary after the transaction and clear its local preview/page cache. Set deletion leaves files and other sets intact.
+
+Native disclosure controls collapse the Files and Saved study sets sections, remembering account-specific preferences. Keep the source iframe mounted when its pane is hidden. A file-bar button and dragging the desktop divider to its left edge collapse the source; a persistent Show PDF control restores its previous width. On phones, scrolling the outer workspace fully into practice hides the source and gives practice the available viewport. A downward pull at the top of practice or Show PDF restores it. Do not intercept scrolling within long answers, text selection or horizontal formulas. Source citations reveal the pane before navigating. Respect reduced motion and preserve reading anchors on restore.
+
+Use a small IndexedDB cache of derived visual previews, keyed by account, immutable document ID/content hash and cache revision. Library cache hits bypass original-file downloads and PDF.js loading. Cache at most ten viewed PDF page images per account as an LRU, with byte limits; show available cached images while the full source and selectable text load. This is a speed optimization, not offline authorization or a cache of generated mathematics. Verify the session and document ownership before displaying cached pages. Deletion and sign-out invalidate relevant entries and pending writes across tabs. Unavailable/cleared/quota-limited browser storage falls back to normal rendering without blocking use. Do not change private API responses to public-cacheable.
+
+Retain phase text, elapsed time, spinner, cancellation and deadlines during generation. Remove accepted/requested item counters, since the complete set arrives in one provider response.

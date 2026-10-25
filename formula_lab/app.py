@@ -23,7 +23,7 @@ from .diagnostics import (ClientDiagnostic, ClientReportLimit, configure_logging
                           job_context, log_exception, request_context, route_label, REQUEST_ID)
 from .study import GENERATION_SECONDS, MAX_ITEMS, GenerateRequest, GenerationError, StudyProvider, StudySet, generate_study, validate_study
 from .web_assets import ApplicationAssets, build_id, html_page
-from .workspace import MAX_UPLOAD_BYTES, Workspace
+from .workspace import MAX_UPLOAD_BYTES, DeletionChanged, Workspace
 
 
 PUBLIC_ROUTES = {"/login", "/auth/config", "/auth/google/login", "/auth/google/callback"}
@@ -133,6 +133,10 @@ def create_app(data_dir: Path = Path(".formula-lab"), provider: StudyProvider | 
     async def generation_busy(request, error):
         return JSONResponse({"detail": str(error)}, status_code=409)
 
+    @app.exception_handler(DeletionChanged)
+    async def deletion_changed(request, error):
+        return JSONResponse({'detail': str(error)}, status_code=409)
+
     @app.exception_handler(ValueError)
     async def invalid_request(request, error):
         return JSONResponse({"detail": str(error)}, status_code=400)
@@ -209,6 +213,21 @@ def create_app(data_dir: Path = Path(".formula-lab"), provider: StudyProvider | 
     def documents(request: Request):
         return workspace.documents(request.state.user.id)
 
+    @app.get('/api/documents/{identifier}')
+    def document_metadata(request: Request, identifier: str):
+        return workspace.document(identifier, request.state.user.id)
+
+    @app.get('/api/documents/{identifier}/deletion')
+    def document_deletion(request: Request, identifier: str):
+        return workspace.deletion_info('document', identifier, request.state.user.id)
+
+    @app.delete('/api/documents/{identifier}')
+    def delete_document(request: Request, identifier: str):
+        revision = request.headers.get('if-match', '').strip('"')
+        if not revision:
+            raise HTTPException(428, 'Review the deletion and confirm it first.')
+        return workspace.delete('document', identifier, request.state.user.id, revision)
+
     @app.post("/api/documents", status_code=201)
     async def upload_document(request: Request, file: UploadFile):
         try:
@@ -233,6 +252,17 @@ def create_app(data_dir: Path = Path(".formula-lab"), provider: StudyProvider | 
     @app.get("/api/study-sets/{identifier}")
     def study_set(request: Request, identifier: str):
         return StudySet.model_validate(workspace.study_set(identifier, request.state.user.id))
+
+    @app.get('/api/study-sets/{identifier}/deletion')
+    def set_deletion(request: Request, identifier: str):
+        return workspace.deletion_info('study-set', identifier, request.state.user.id)
+
+    @app.delete('/api/study-sets/{identifier}')
+    def delete_set(request: Request, identifier: str):
+        revision = request.headers.get('if-match', '').strip('"')
+        if not revision:
+            raise HTTPException(428, 'Review the deletion and confirm it first.')
+        return workspace.delete('study-set', identifier, request.state.user.id, revision)
 
     def validate_result(result: StudySet, owner: str):
         workspace.check_set_owner(result.id, owner)

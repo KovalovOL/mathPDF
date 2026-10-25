@@ -1,6 +1,7 @@
 /* Whole-document reading is independent of generation page selection. */
 import {getDocument, GlobalWorkerOptions, TextLayer} from '/static/vendor/pdfjs/pdf.mjs';
 import {scrollToSource, cancelNavigation} from '/static/pdf-source.js';
+import {createVisualCache, canvasBlob} from '/static/visual-cache.js';
 GlobalWorkerOptions.workerSrc = '/static/vendor/pdfjs/pdf.worker.mjs';
 const status = document.getElementById('status');
 const container = document.getElementById('pages');
@@ -8,7 +9,7 @@ const query = new URLSearchParams(location.search);
 const documentId = query.get('document');
 const records = [], nearby = new Set(), queue = [];
 const zoomLevels = ['fit', '1', '1.25', '1.5'];
-let pdf, busy = false, currentPage = 1, zoom = zoomLevels.includes(query.get('zoom')) ? query.get('zoom') : 'fit';
+let pdf, sourceDocument, visualCache, loading, busy = false, currentPage = 1, zoom = zoomLevels.includes(query.get('zoom')) ? query.get('zoom') : 'fit';
 let resizeTimer, pruneTimer, recoveryTimer, settleFrame, resizeAnchor, settleRequested = false, framePending = false, resizing = false, layoutWidth = 0;
 let navigationVersion = 0, navigationRecord, pendingNavigation;
 
@@ -48,7 +49,24 @@ async function ensureText(record, page) {
   return promise;
 }
 function announce() {
-  parent.postMessage({type: 'pdf-page', documentId, page: currentPage, pageCount: pdf.numPages}, location.origin);
+  parent.postMessage({type: 'pdf-page', documentId, page: currentPage, pageCount: pdf?.numPages || sourceDocument.page_count}, location.origin);
+}
+function cachePage(record) {
+  if (!visualCache || record.number !== currentPage || !record.renderedWidth || record.cachedWidth === record.renderedWidth) return;
+  const canvas = record.sheet.querySelector('canvas'); if (!canvas) return;
+  record.cachedWidth = record.renderedWidth;
+  canvasBlob(canvas).then(blob => {
+    if (blob) return visualCache.put(sourceDocument, 'page', record.number,
+      {blob, ratio: record.ratio, baseWidth: record.baseWidth});
+  }).catch(() => {});
+}
+function touchCachedPage() {
+  const record = records[currentPage - 1];
+  if (!visualCache || !record) return;
+  visualCache.get(sourceDocument, 'page', record.number).then(entry => {
+    // Another document/tab may have evicted this still-mounted canvas.
+    if (!entry && record.number === currentPage) {record.cachedWidth = 0; cachePage(record);}
+  }).catch(() => {});
 }
 function readingAnchor(point = 0) {
   let chosen, distance = Infinity;
@@ -89,7 +107,7 @@ function scheduleNearby() {
   for (const record of [...nearby].sort((a, b) => Math.abs(a.number - currentPage) - Math.abs(b.number - currentPage))) enqueue(record);
 }
 async function pump() {
-  if (busy || resizing) return;
+  if (!pdf || busy || resizing) return;
   busy = true;
   while (queue.length && !resizing) {
     const record = queue.shift(); record.queued = false;
@@ -118,10 +136,12 @@ async function pump() {
         transform: density === 1 ? null : [density, 0, 0, density, 0, 0]});
       await record.task.promise;
       if (record.near && record.version === version) {
-        const previous = record.sheet.querySelector('canvas');
+        const previous = record.sheet.querySelector('canvas, .cached-page');
         if (previous) previous.replaceWith(canvas); else record.sheet.prepend(canvas);
+        if (record.cachedUrl) {URL.revokeObjectURL(record.cachedUrl); record.cachedUrl = null;}
         record.sheet.querySelector('.page-error')?.remove(); record.renderedWidth = width;
         ensureText(record, page).catch(() => null);
+        cachePage(record);
       }
     } catch (error) {
       if (error.name !== 'RenderingCancelledException' && record.near && record.version === version) {
@@ -151,18 +171,22 @@ function pruneLater() {
       record.version++; record.task?.cancel(); record.pendingText?.cancel();
       record.pendingText = null; record.textPromise = null; record.textLayer = null; record.textContainer = null;
       record.renderedWidth = 0; record.sheet.replaceChildren();
+      if (record.cachedUrl) {URL.revokeObjectURL(record.cachedUrl); record.cachedUrl = null;}
     }
   }, 500);
 }
 function updateCurrent() {
   framePending = false;
-  if (!pdf || document.documentElement.clientWidth < 80) return;
+  if (!records.length || document.documentElement.clientWidth < 80) return;
   const anchor = readingAnchor(Math.min(160, innerHeight * .25));
-  if (anchor && anchor.record.number !== currentPage) {currentPage = anchor.record.number; announce();}
+  if (anchor && anchor.record.number !== currentPage) {
+    currentPage = anchor.record.number; announce(); touchCachedPage();
+  }
+  if (records[currentPage - 1]) cachePage(records[currentPage - 1]);
   scheduleNearby(); pruneLater();
 }
 async function jump(number, {animated = false} = {}) {
-  if (!pdf || !Number.isInteger(number) || number < 1 || number > records.length) return;
+  if (!records.length || !Number.isInteger(number) || number < 1 || number > records.length) return;
   const record = records[number - 1];
   const version = ++navigationVersion;
   navigationRecord = record;
@@ -170,6 +194,7 @@ async function jump(number, {animated = false} = {}) {
   await scrollToSource(scrollY + record.element.getBoundingClientRect().top - 12, animated);
   if (version !== navigationVersion) return;
   currentPage = number; announce();
+  touchCachedPage();
   navigationRecord = null;
   refreshNearby(); enqueue(record, true); scheduleNearby(); pruneLater();
 }
@@ -229,23 +254,46 @@ function syncViewport(settled = false) {
 }
 try {
   if (!documentId) throw new Error('No document selected.');
-  pdf = await getDocument({url: `/api/documents/${encodeURIComponent(documentId)}/file`,
+  const user = await MathPDFSession.ready;
+  sourceDocument = await MathPDFSession.api(`/api/documents/${encodeURIComponent(documentId)}`);
+  visualCache = createVisualCache(user.id);
+  loading = getDocument({url: `/api/documents/${encodeURIComponent(documentId)}/file`,
+    httpHeaders: {'X-MathPDF-User': user.id},
     cMapUrl: '/static/vendor/pdfjs/cmaps/', cMapPacked: true,
     standardFontDataUrl: '/static/vendor/pdfjs/standard_fonts/', wasmUrl: '/static/vendor/pdfjs/wasm/',
-    isEvalSupported: false}).promise;
-  const first = await pdf.getPage(1), normal = first.getViewport({scale: 1});
+    isEvalSupported: false});
+  loading.promise.catch(() => {});
+  const cached = new Map((await visualCache.pages(sourceDocument)).map(entry => [entry.page, entry]));
+  container.dataset.cachedPages = String(cached.size);
+  const normal = {width: cached.get(1)?.baseWidth || 612, height: 792};
   const fragment = document.createDocumentFragment();
   container.style.width = zoom === 'fit' ? '100%' : `${normal.width * Number(zoom)}px`;
   layoutWidth = container.getBoundingClientRect().width;
-  for (let number = 1; number <= pdf.numPages; number++) {
+  for (let number = 1; number <= sourceDocument.page_count; number++) {
     const element = document.createElement('figure'); element.className = 'pdf-page'; element.dataset.page = number;
     const label = document.createElement('figcaption'); label.className = 'page-label'; label.textContent = `Page ${number}`;
-    const sheet = document.createElement('div'); sheet.className = 'pdf-sheet'; sheet.style.height = `${layoutWidth * normal.height / normal.width}px`;
+    const entry = cached.get(number), ratio = entry?.ratio || normal.height / normal.width;
+    const sheet = document.createElement('div'); sheet.className = 'pdf-sheet'; sheet.style.height = `${layoutWidth * ratio}px`;
     element.append(label, sheet); fragment.append(element);
-    records.push({number, element, sheet, baseWidth: normal.width, ratio: normal.height / normal.width,
-      near: false, queued: false, task: null, version: 0, renderedWidth: 0});
+    const record = {number, element, sheet, baseWidth: entry?.baseWidth || normal.width, ratio,
+      near: false, queued: false, task: null, version: 0, renderedWidth: 0};
+    if (entry?.blob) {
+      const image = document.createElement('img'); image.className = 'cached-page'; image.loading = 'lazy';
+      record.cachedUrl = URL.createObjectURL(entry.blob); image.src = record.cachedUrl;
+      image.alt = `Original PDF page ${number}`; sheet.prepend(image);
+    }
+    records.push(record);
   }
-  container.append(fragment); status.hidden = true;
+  container.append(fragment);
+  status.hidden = cached.size > 0;
+  await jump(Number(query.get('page') || 1));
+  pdf = await loading.promise;
+  const first = await pdf.getPage(1), actual = first.getViewport({scale: 1}), anchor = readingAnchor();
+  for (const record of records) {
+    if (!cached.has(record.number)) {record.ratio = actual.height / actual.width; record.sheet.style.height = `${layoutWidth * record.ratio}px`;}
+    record.baseWidth = actual.width;
+  }
+  restoreAnchor(anchor); status.hidden = true;
   const observer = new IntersectionObserver(() => {updateCurrent();}, {rootMargin: '650px 0px'});
   records.forEach(record => observer.observe(record.element));
   addEventListener('scroll', () => {
@@ -274,9 +322,14 @@ try {
     navigationVersion++; navigationRecord = null; pendingNavigation = null; cancelNavigation();
   }, {passive: true});
   announce();
-  jump(Number(query.get('page') || 1));
+  scheduleNearby();
   parent.postMessage({type: 'pdf-ready', documentId}, location.origin);
 } catch (error) {
-  if (error.status === 401) parent.postMessage({type: 'session-expired'}, location.origin);
+  if (error.status === 401 || error.status === 409) parent.postMessage({type: 'session-expired'}, location.origin);
+  container.replaceChildren();
   status.hidden = false; status.textContent = 'Unable to preview this PDF. Download it to view the document.';
 }
+addEventListener('pagehide', () => {
+  loading?.destroy().catch(() => {});
+  for (const record of records) if (record.cachedUrl) URL.revokeObjectURL(record.cachedUrl);
+});

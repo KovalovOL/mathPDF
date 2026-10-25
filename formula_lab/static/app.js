@@ -5,7 +5,7 @@ const pendingUploads = new Map();
 let openDocumentIds = [];
 let activeDocumentId, activeSetId, config, generationActive = false, setEpoch = 0, saveIntent;
 let generationController;
-let statusTimer, practiceObserver, viewportNotice, viewportSettled = false, splitRatio = .5;
+let statusTimer, practiceObserver, viewportNotice, viewportSettled = false, layout, initializing = true;
 let preferencePrefix;
 
 function el(tag, className, text) {
@@ -38,7 +38,14 @@ function preference(key, value) {
   } catch {}
 }
 function fileUrl(id, download = false) {return `/api/documents/${encodeURIComponent(id)}/file${download ? '?download=true' : ''}`;}
-function readState(id) {if (!reading.has(id)) reading.set(id, {page: 1, zoom: 'fit'}); return reading.get(id);}
+function readState(id) {
+  if (!reading.has(id)) {
+    let stored; try {stored = JSON.parse(preference(`reading-${id}`));} catch {}
+    reading.set(id, {page: Number.isInteger(stored?.page) && stored.page > 0 ? stored.page : 1,
+      zoom: ['fit', '1', '1.25', '1.5'].includes(stored?.zoom) ? stored.zoom : 'fit'});
+  }
+  return reading.get(id);
+}
 function makeTab(text, selected, operation, unsaved = false) {
   const tab = button('', 'tab', operation);
   tab.setAttribute('role', 'tab'); tab.setAttribute('aria-selected', String(selected));
@@ -91,6 +98,7 @@ function updateDocumentToolbar() {
 }
 async function openDocument(id, targetPage, sourceRef = null) {
   const doc = documents.get(id) || pendingUploads.get(id); if (!doc) throw new Error('This source file is not available.');
+  if (!initializing || sourceRef) layout?.showSource({scroll: !!sourceRef});
   const state = readState(id);
   if (targetPage !== undefined) {
     if (!doc.page_count || !Number.isInteger(targetPage) || targetPage < 1 || targetPage > doc.page_count) throw new Error('That PDF page does not exist.');
@@ -205,6 +213,7 @@ window.addEventListener('message', event => {
   }
   if (!Number.isInteger(data.page) || data.page < 1 || data.page > doc.page_count) return;
   readState(doc.id).page = data.page;
+  preference(`reading-${doc.id}`, JSON.stringify(readState(doc.id)));
   if (activeDocumentId === doc.id && document.activeElement !== $('page')) updateDocumentToolbar();
 });
 
@@ -518,8 +527,8 @@ async function generate(event) {
   $('generation-progress-detail').textContent = 'Preparing source files…';
   function showProgress(job) {
     const phases = {preparing: 'Preparing source files',
-      generating: 'Generating your study set', checking: 'Checking formatting'};
-    $('generation-progress-detail').textContent = `${phases[job.phase] || 'Generating'} · ${job.accepted_count} / ${job.requested_count} ready`;
+      generating: 'Generating your study set', checking: 'Finishing your study set'};
+    $('generation-progress-detail').textContent = `${phases[job.phase] || 'Generating'}…`;
   }
   function pollDelay() {
     return new Promise((resolve, reject) => {
@@ -560,7 +569,7 @@ async function generate(event) {
       await api(`/api/study/jobs/${encodeURIComponent(jobId)}`, {method: 'DELETE', timeoutMs: 15000}).catch(() => {});
     }
     $('generation-progress').hidden = true; $('open-generation').setAttribute('aria-busy', 'false');
-    generationActive = false; updateGenerationAvailability(); $('open-generation').textContent = 'Generate study set';
+    generationActive = false; updateGenerationAvailability(); $('open-generation').textContent = 'Generate';
     if (!sets.get(activeSetId)?.data) renderPractice();
   }
 }
@@ -607,17 +616,6 @@ async function showSaved() {
   }));
   if (!saved.length) $('saved-list').append(el('p', 'field-note', 'No saved study sets yet.'));
 }
-function resizePanes(value) {
-  const width = $('workspace').clientWidth - 24;
-  if (width < 530) return;
-  const minimum = Math.max(.22, 240 / width), maximum = Math.min(.78, (width - 288) / width);
-  splitRatio = Math.min(maximum, Math.max(minimum, value));
-  $('workspace').style.setProperty('--source-size', `${splitRatio * 100}%`);
-  $('splitter').setAttribute('aria-valuenow', Math.round(splitRatio * 100));
-  $('splitter').setAttribute('aria-valuemin', Math.ceil(minimum * 100));
-  $('splitter').setAttribute('aria-valuemax', Math.floor(maximum * 100));
-  notifyPdfViewport();
-}
 function notifyPdfViewport(settled = false) {
   viewportSettled ||= settled;
   cancelAnimationFrame(viewportNotice);
@@ -626,29 +624,6 @@ function notifyPdfViewport(settled = false) {
     viewportSettled = false;
   });
 }
-$('splitter').addEventListener('pointerdown', event => {
-  if (event.button !== 0) return;
-  event.preventDefault(); $('splitter').setPointerCapture(event.pointerId); document.body.classList.add('resizing');
-});
-$('splitter').addEventListener('pointermove', event => {
-  if (!$('splitter').hasPointerCapture(event.pointerId)) return;
-  const box = $('workspace').getBoundingClientRect(); resizePanes((event.clientX - box.left - 12) / (box.width - 24));
-});
-function finishResize(event) {
-  if ($('splitter').hasPointerCapture(event.pointerId)) $('splitter').releasePointerCapture(event.pointerId);
-  document.body.classList.remove('resizing'); preference('split-ratio', splitRatio);
-  notifyPdfViewport(true);
-}
-$('splitter').addEventListener('pointerup', finishResize); $('splitter').addEventListener('pointercancel', finishResize);
-$('splitter').addEventListener('lostpointercapture', () => {
-  document.body.classList.remove('resizing'); preference('split-ratio', splitRatio); notifyPdfViewport(true);
-});
-$('splitter').addEventListener('keydown', event => {
-  if (['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) {
-    event.preventDefault(); resizePanes(event.key === 'Home' ? 0 : event.key === 'End' ? 1 : splitRatio + (event.key === 'ArrowRight' ? .03 : -.03)); preference('split-ratio', splitRatio); notifyPdfViewport(true);
-  }
-});
-addEventListener('resize', () => resizePanes(splitRatio));
 for (const container of [$('document-tabs'), $('set-tabs'), $('item-tabs')]) wireTabs(container);
 function chooseFiles() {
   ($('generation-dialog').open ? $('generation-dialog') : document.body).append($('file-input'));
@@ -664,6 +639,7 @@ $('previous-page').addEventListener('click', () => action(() => jumpPage(readSta
 $('next-page').addEventListener('click', () => action(() => jumpPage(readState(activeDocumentId).page + 1)));
 $('zoom').addEventListener('change', () => {
   readState(activeDocumentId).zoom = $('zoom').value;
+  preference(`reading-${activeDocumentId}`, JSON.stringify(readState(activeDocumentId)));
   views.get(activeDocumentId)?.querySelector('iframe')?.contentWindow.postMessage({type: 'pdf-zoom', zoom: $('zoom').value}, location.origin);
 });
 $('open-generation').addEventListener('click', () => action(openGeneration));
@@ -687,6 +663,8 @@ document.querySelectorAll('.close-dialog').forEach(control => control.addEventLi
 action(async () => {
   const user = await MathPDFSession.ready;
   preferencePrefix = `mathpdf-${user.id}-`;
+  const {createWorkspaceLayout} = await import('/static/workspace-layout.js');
+  layout = createWorkspaceLayout({preference, onViewport: notifyPdfViewport});
   const [loadedDocuments, configuration, saved] = await Promise.all([api('/api/documents'), api('/api/generation/config'), api('/api/study-sets')]);
   config = configuration; $('count').max = config.max_items; loadedDocuments.forEach(doc => documents.set(doc.id, doc));
   updateGenerationAvailability();
@@ -709,8 +687,8 @@ action(async () => {
   if (selectedSet) await openSet(selectedSet); else {renderSetTabs(); renderPractice();}
   if (requestedSet && sets.get(requestedSet)?.data) {
     const source = sets.get(requestedSet).data.document;
-    await openDocument(source.id, sets.get(requestedSet).data.pages[0]);
+    await openDocument(source.id, preference(`reading-${source.id}`) ? readState(source.id).page : sets.get(requestedSet).data.pages[0]);
   }
-  const storedRatio = Number(preference('split-ratio')); resizePanes(storedRatio > 0 && storedRatio < 1 ? storedRatio : .5);
+  initializing = false;
   if (!config.configured) message('Generation is currently unavailable. You can still read files and open saved sets.', true, 10000);
 });

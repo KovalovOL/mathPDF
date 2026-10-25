@@ -6,6 +6,49 @@ Provides a document and practice workspace for exploring source material before 
 
 ## ADDED Requirements
 
+### Requirement: Confirm library deletion
+The library SHALL offer owner-scoped deletion of files and saved sets with explicit confirmation before every deletion. File confirmation SHALL prominently identify primary-source sets that will also be deleted. A stale impact confirmation SHALL require renewed review.
+
+#### Scenario: Delete a primary source
+- **WHEN** a learner confirms file deletion
+- **THEN** that file and only sets with that primary source are deleted
+- **AND** sets using it only as context survive with that attachment detached and study content preserved
+
+#### Scenario: Delete one saved set
+- **WHEN** a learner confirms deletion of a saved set
+- **THEN** only that owned set is deleted, retaining its uploaded files and other sets
+
+### Requirement: Collapsible responsive reading
+The library sections SHALL be collapsible. The source pane SHALL fully collapse through an explicit control or the desktop divider's left edge, and SHALL restore without losing reading position. Mobile study focus SHALL support restoring the source by a downward pull at the top of practice or an explicit control.
+
+#### Scenario: Focus on practice on a phone
+- **WHEN** the learner scrolls the outer workspace fully into practice
+- **THEN** the source hides and practice uses the available viewport
+- **AND** ordinary scrolling inside a long answer remains available
+
+#### Scenario: Restore a hidden source
+- **WHEN** a learner chooses Show PDF, pulls down at the top of mobile practice or follows a source citation
+- **THEN** the existing viewer reappears with its reading state intact
+
+### Requirement: Bounded private visual caching
+The browser SHALL cache derived library previews and up to ten recently viewed PDF page images per account, keyed by document content and cache revision. Session and ownership checks SHALL precede cached page display. Deletion and sign-out SHALL invalidate affected caches. Cache failures SHALL fall back to normal rendering.
+
+#### Scenario: Reload the library
+- **WHEN** a valid preview exists in the current account's cache
+- **THEN** the thumbnail appears without downloading and rendering the original again
+
+#### Scenario: Reopen a recently viewed page
+- **WHEN** its cached image is available after authorization
+- **THEN** that image can appear while the source PDF and selectable text load
+- **AND** page-image cache entries remain bounded by count and bytes
+
+### Requirement: Single-request waiting text
+Generation waiting SHALL retain phase, elapsed time and cancellation without showing obsolete accepted/requested item progress.
+
+#### Scenario: Wait for the complete response
+- **WHEN** a set is being generated
+- **THEN** no zero-of-N or accepted-item counter appears
+
 ### Requirement: Start with an upload prompt
 The application SHALL start without a required or automatically imported bundled PDF. An empty library SHALL show an Upload PDF action, and generation SHALL require a selected PDF. Existing installations SHALL hide the old bundled sample from the library through a one-time content-hash migration while retaining citation sources for saved sets.
 
