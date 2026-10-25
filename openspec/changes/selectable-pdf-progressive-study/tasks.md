@@ -3,7 +3,7 @@
 ## 1. PDF reading
 
 - [x] 1.1 Add selectable PDF.js text layers with resize, rotation, cancellation, and pruning support; inspect layer lifecycle and JavaScript syntax.
-- [x] 1.2 Add ready-handshaked citation navigation, brief cancellable scrolling, and unique quotation highlights; inspect cross-frame validation and fallback behavior, and document reader limitations.
+- [x] 1.2 Add ready-handshaked page citation navigation and brief cancellable scrolling; inspect cross-frame validation and document reader limitations. Remove fragment highlighting per the revised user preference.
 
 ## 2. Study quality
 
@@ -15,3 +15,10 @@
 
 - [x] 3.1 Review the complete diff, run static syntax and strict OpenSpec validation, and record the scope of checks without making paid generation requests.
 - [x] 3.2 Commit and push the change using the existing deployment workflow; observe the deployment result and record any remaining limitations.
+
+## 4. Production generation recovery
+
+- [x] 4.1 Handle incomplete provider responses before JSON parsing, shorten plans/batches, and return rejected candidates with renderer diagnostics for repair; inspect bounds and safe logs.
+- [x] 4.2 Accept renderer-validated delimited math in prose, enforce the selected source scope, and avoid rejecting distinct planned activities as paraphrases; inspect validation and renderer parity.
+- [x] 4.3 Add owner-scoped background generation jobs with progress, cancellation, expiration and browser deadlines; inspect ownership, cleanup and terminal UI states.
+- [ ] 4.4 Update documentation, run static checks, deploy the fix, and inspect the production container state and deployment result.

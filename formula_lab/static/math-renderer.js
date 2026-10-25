@@ -45,11 +45,6 @@
         event.preventDefault(); onSource(block.source);
       });
       caption.append(link);
-      if (block.source.line_start != null) {
-        const start = block.source.line_start, end = block.source.line_end;
-        caption.append(document.createTextNode(` · ${start === end ? `line ${start}` : `lines ${start}–${end}`} (model-reported)`));
-      }
-      if (block.source.quote) caption.title = block.source.quote;
       figure.append(caption);
     }
     if (!editable) return figure;

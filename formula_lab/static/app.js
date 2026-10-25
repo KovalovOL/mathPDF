@@ -4,6 +4,7 @@ const documents = new Map(), views = new Map(), reading = new Map(), sets = new 
 const pendingUploads = new Map();
 let openDocumentIds = [];
 let activeDocumentId, activeSetId, config, generationActive = false, setEpoch = 0, saveIntent;
+let generationController;
 let statusTimer, practiceObserver, viewportNotice, viewportSettled = false, splitRatio = .5;
 let preferencePrefix;
 
@@ -128,7 +129,7 @@ async function openDocument(id, targetPage, sourceRef = null) {
   if (targetPage !== undefined) {
     const iframe = view.querySelector('iframe');
     if (iframe) {
-      const navigation = {type: 'go-to-page', page: targetPage, animated: !!sourceRef, quote: sourceRef?.quote || null};
+      const navigation = {type: 'go-to-page', page: targetPage, animated: !!sourceRef};
       if (iframe.dataset.ready) iframe.contentWindow.postMessage(navigation, location.origin);
       else iframe.pendingNavigation = navigation;
     }
@@ -506,14 +507,53 @@ async function generate(event) {
     $('generation-elapsed').textContent = `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
   }
   updateElapsed(); const timer = setInterval(updateElapsed, 1000);
+  const controller = new AbortController(); generationController = controller;
+  const deadline = setTimeout(() => controller.abort(new Error('Generation timed out. Please try again.')),
+    ((config.generation_timeout_seconds || 600) + 30) * 1000);
+  let jobId, terminal = false;
+  $('cancel-generation').disabled = false;
+  $('generation-progress-detail').textContent = 'Preparing source files…';
+  function showProgress(job) {
+    const phases = {preparing: 'Preparing source files', planning: 'Planning a varied sequence',
+      generating: 'Generating the next items', checking: 'Checking formulas'};
+    $('generation-progress-detail').textContent = `${phases[job.phase] || 'Generating'} · ${job.accepted_count} / ${job.requested_count} ready`;
+  }
+  function pollDelay() {
+    return new Promise((resolve, reject) => {
+      if (controller.signal.aborted) {reject(controller.signal.reason); return;}
+      const aborted = () => {clearTimeout(wait); reject(controller.signal.reason);};
+      const wait = setTimeout(() => {controller.signal.removeEventListener('abort', aborted); resolve();}, 1200);
+      controller.signal.addEventListener('abort', aborted, {once: true});
+    });
+  }
   try {
-    const data = await api('/api/study/generate', {method: 'POST', body: JSON.stringify(request)});
+    let job = await api('/api/study/jobs', {method: 'POST', body: JSON.stringify(request), signal: controller.signal, timeoutMs: 15000});
+    jobId = job.id;
+    showProgress(job);
+    while (job.status === 'running') {
+      await pollDelay();
+      job = await api(`/api/study/jobs/${encodeURIComponent(jobId)}`, {signal: controller.signal, timeoutMs: 15000});
+      showProgress(job);
+    }
+    terminal = true;
+    if (job.status === 'failed') throw new Error(job.error || 'Generation failed. Please try again.');
+    if (job.status !== 'completed') {message('Generation cancelled.'); return;}
+    const data = job.result;
     if (data.items.length !== request.count) throw new Error('The complete requested set was not returned. Please try again.');
     sets.set(data.id, {id: data.id, title: data.title, data, saved: false, itemIndex: 0, flipped: false});
     await openSet(data.id);
     message(`Created ${data.items.length} ${data.mode === 'flashcards' ? 'flashcards' : 'problems'}.`);
+  } catch (error) {
+    if (controller.signal.reason?.name === 'AbortError') {message('Generation cancelled.'); return;}
+    throw error;
   } finally {
-    clearInterval(timer); $('generation-progress').hidden = true; $('open-generation').setAttribute('aria-busy', 'false');
+    clearInterval(timer); clearTimeout(deadline); generationController = null;
+    if (jobId && !terminal) {
+      $('cancel-generation').disabled = true;
+      $('generation-progress-detail').textContent = 'Stopping generation…';
+      await api(`/api/study/jobs/${encodeURIComponent(jobId)}`, {method: 'DELETE', timeoutMs: 15000}).catch(() => {});
+    }
+    $('generation-progress').hidden = true; $('open-generation').setAttribute('aria-busy', 'false');
     generationActive = false; updateGenerationAvailability(); $('open-generation').textContent = 'Generate study set';
     if (!sets.get(activeSetId)?.data) renderPractice();
   }
@@ -625,6 +665,7 @@ $('source-document').addEventListener('change', sourceChanged);
 $('source-scope').addEventListener('change', () => {updateRangeDisabled(); updateGenerationSummary();});
 for (const input of [$('source-from'), $('source-to'), $('mode'), $('count')]) input.addEventListener('input', updateGenerationSummary);
 $('generate-form').addEventListener('submit', event => action(() => generate(event)));
+$('cancel-generation').addEventListener('click', () => generationController?.abort());
 $('save-set').addEventListener('click', () => openSaveDialog(activeSetId));
 $('save-dialog').addEventListener('cancel', () => {if (saveIntent) saveIntent.cancelled = true;});
 $('save-form').addEventListener('submit', saveSet);

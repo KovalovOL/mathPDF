@@ -19,12 +19,28 @@ window.MathPDFSession = (() => {
     return response;
   }
   async function api(path, options = {}) {
-    const headers = options.body instanceof FormData ? {} : {'Content-Type': 'application/json'};
-    const response = await request(path, {...options, headers: {...headers, ...options.headers}});
-    let data;
-    try {data = await response.json();} catch {throw new Error('The server returned an unreadable response.');}
-    if (!response.ok) throw new Error(typeof data.detail === 'string' ? data.detail : 'The request could not be completed.');
-    return data;
+    const {timeoutMs = options.body instanceof FormData ? 180000 : 30000, signal, ...settings} = options;
+    const controller = new AbortController();
+    const cancelled = () => controller.abort(signal.reason);
+    if (signal?.aborted) cancelled(); else signal?.addEventListener('abort', cancelled, {once: true});
+    const timer = setTimeout(() => controller.abort(new Error('The server did not respond in time. Please try again.')), timeoutMs);
+    try {
+      const headers = settings.body instanceof FormData ? {} : {'Content-Type': 'application/json'};
+      const response = await request(path, {...settings, signal: controller.signal, headers: {...headers, ...settings.headers}});
+      let data;
+      try {data = await response.json();} catch {
+        if (controller.signal.aborted) throw controller.signal.reason;
+        throw new Error(response.ok ? 'The server returned an unreadable response.' : `The server could not complete the request (HTTP ${response.status}). Please try again.`);
+      }
+      if (!response.ok) throw new Error(typeof data?.detail === 'string' ? data.detail : `The request could not be completed (HTTP ${response.status}).`);
+      return data;
+    } catch (error) {
+      if (controller.signal.aborted) throw controller.signal.reason || new Error('The request was cancelled.');
+      if (error instanceof TypeError) throw new Error('Could not reach the server. Check your connection and try again.');
+      throw error;
+    } finally {
+      clearTimeout(timer); signal?.removeEventListener('abort', cancelled);
+    }
   }
   const ready = api('/api/me').then(identity => {
     user = identity;

@@ -37,8 +37,9 @@
       <div class="pane-toolbar"><span id="set-status" class="muted">Study material</span><div class="result-actions"><button id="save-set" class="small secondary" disabled>Save</button><button id="export-set" class="small secondary" disabled>Download PDF</button></div></div>
       <div id="generation-progress" class="generation-progress" role="status" aria-live="polite" hidden>
         <span class="generation-spinner" aria-hidden="true"></span>
-        <div class="generation-progress-copy"><strong id="generation-progress-label">Generating study material…</strong><span>Checking source formulas and completing your set. You can keep reading.</span></div>
+        <div class="generation-progress-copy"><strong id="generation-progress-label">Generating study material…</strong><span id="generation-progress-detail">Preparing source files…</span></div>
         <span id="generation-elapsed" class="generation-elapsed" aria-hidden="true">0:00</span>
+        <button id="cancel-generation" class="small secondary" type="button">Cancel</button>
       </div>
       <div id="item-tabs" class="item-tabs tab-list" role="tablist" aria-label="Study items" hidden></div>
       <div id="practice-content" class="practice-content"><p class="empty-state">Generate a study set to start practicing.</p></div>

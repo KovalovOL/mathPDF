@@ -1,5 +1,7 @@
 """Validate generated TeX with the exact renderer and options used by the UI."""
 
+from asyncio import timeout, wait_for
+
 from playwright.async_api import Error as BrowserError, async_playwright
 
 from .pdf_export import STATIC, ExportError, chromium_executable
@@ -16,7 +18,7 @@ class MathValidator:
         self.playwright = None
         self.browser = None
         self.page = None
-        self.cache: dict[tuple[str, bool], bool] = {}
+        self.cache: dict[tuple[str, bool], str | None] = {}
 
     async def __aenter__(self):
         return self
@@ -25,12 +27,17 @@ class MathValidator:
         try:
             if self.browser:
                 try:
-                    await self.browser.close()
-                except BrowserError:
+                    async with timeout(10):
+                        await self.browser.close()
+                except (BrowserError, TimeoutError):
                     pass
         finally:
             if self.playwright:
-                await self.playwright.stop()
+                try:
+                    async with timeout(5):
+                        await self.playwright.stop()
+                except (BrowserError, TimeoutError):
+                    pass
 
     async def _start(self):
         self.playwright = await async_playwright().start()
@@ -42,19 +49,19 @@ class MathValidator:
         await self.page.add_script_tag(path=str(STATIC / "vendor/katex/katex.min.js"))
         await self.page.add_script_tag(path=str(STATIC / "math-renderer.js"))
 
-    async def invalid(self, expressions: list[tuple[str, bool]]) -> bool:
+    async def errors(self, expressions: list[tuple[str, bool]]) -> list[str]:
         pending = list(dict.fromkeys(expression for expression in expressions if expression not in self.cache))
         try:
             if pending:
                 if self.page is None:
                     await self._start()
-                results = await self.page.evaluate("""expressions => expressions.map(([latex, display]) => {
+                results = await wait_for(self.page.evaluate("""expressions => expressions.map(([latex, display]) => {
                     const target = document.createElement('div');
-                    return window.MathPDF.renderMath(target, latex, display);
-                })""", pending)
+                    return window.MathPDF.renderMath(target, latex, display) ? null : target.textContent.slice(0, 400);
+                })""", pending), timeout=20)
                 self.cache.update(zip(pending, results))
-            return any(not self.cache[expression] for expression in expressions)
-        except (BrowserError, ExportError, OSError):
+            return list(dict.fromkeys(self.cache[expression] for expression in expressions if self.cache[expression]))
+        except (BrowserError, ExportError, OSError, TimeoutError):
             raise MathValidationError(
                 "Formula validation could not start. Configure Chromium on the server and try again."
             ) from None

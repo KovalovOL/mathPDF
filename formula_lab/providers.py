@@ -5,7 +5,7 @@ import logging
 from functools import lru_cache
 from typing import Literal
 
-from openai import APIError, AsyncOpenAI, LengthFinishReasonError
+from openai import APIError, AsyncOpenAI, pydantic_function_tool
 from pydantic import Field, ValidationError
 
 from .study import (BATCH_SIZE, MAX_ITEMS, GeneratedContent, GenerationError, InputDocument, LearningGoal,
@@ -54,7 +54,7 @@ class OpenAIProvider:
         self.model = model
 
     async def _request(self, documents: list[InputDocument], system: str, task: str,
-                       response_format: type[StrictModel]) -> StrictModel:
+                       response_format: type[StrictModel], *, phase: str) -> StrictModel:
         content = []
         for entry in documents:
             content.append({"type": "input_text", "text": entry.label})
@@ -64,13 +64,17 @@ class OpenAIProvider:
             else:
                 content.append({"type": "input_file", "filename": entry.filename, "file_data": data_url})
         content.append({"type": "input_text", "text": task})
+        # Use the SDK's public strict-schema converter, then inspect completion
+        # status BEFORE parsing. responses.parse attempts to parse truncated JSON.
+        function = pydantic_function_tool(response_format)["function"]
         try:
             async with AsyncOpenAI(api_key=self.api_key, timeout=120, max_retries=0) as client:
-                response = await client.responses.parse(
+                response = await client.responses.create(
                     model=self.model,
                     instructions=system,
                     input=[{"role": "user", "content": content}],
-                    text_format=response_format,
+                    text={"format": {"type": "json_schema", "name": function["name"],
+                                     "strict": True, "schema": function["parameters"]}},
                     max_output_tokens=12000,
                     store=False,
                 )
@@ -83,31 +87,36 @@ class OpenAIProvider:
                 400: "The generation service could not process these files. Try fewer pages or different files.",
             }
             raise GenerationError(messages.get(status, "The generation service is unavailable or timed out. Try again later.")) from None
-        except ValidationError as error:
-            logging.getLogger(__name__).warning("Study response validation: %s", error.errors(
-                include_input=False, include_context=False, include_url=False))
-            raise RetryableGenerationError("invalid_response", "The study content needs to be regenerated.") from None
-        except (LengthFinishReasonError, ValueError) as error:
-            logging.getLogger(__name__).warning("Study response parse failed: %s", type(error).__name__)
-            raise RetryableGenerationError("incomplete_response", "The study response was incomplete.") from None
         if any(part.type == "refusal" for output in response.output if output.type == "message"
                for part in output.content):
             raise GenerationError("The generation service could not create material from these pages. "
                                   "Try different source pages.")
-        if response.status != "completed" or response.output_parsed is None:
-            raise RetryableGenerationError("incomplete_response", "The study response was incomplete.")
-        return response.output_parsed.result
+        if response.status != "completed":
+            reason = getattr(response.incomplete_details, "reason", None)
+            logging.getLogger(__name__).warning("Study provider phase=%s status=%s reason=%s output_tokens=%s",
+                phase, response.status, reason, getattr(response.usage, "output_tokens", None))
+            if reason == "content_filter":
+                raise GenerationError("The generation service could not complete this material. Try different source pages.")
+            code = "output_limit" if reason == "max_output_tokens" else "incomplete_response"
+            raise RetryableGenerationError(code, "The study response was incomplete.")
+        try:
+            return response_format.model_validate_json(response.output_text).result
+        except ValidationError as error:
+            # Do not log model content, quotes, prompts or error messages containing input.
+            fields = [{"type": entry["type"], "loc": entry["loc"]} for entry in error.errors()]
+            logging.getLogger(__name__).warning("Study provider phase=%s invalid_fields=%s", phase, fields)
+            raise RetryableGenerationError("invalid_response", "The study content needs to be regenerated.") from None
 
     async def plan(self, documents: list[InputDocument], system: str, task: str,
                    *, count: int) -> PlanResult:
-        result = await self._request(documents, system, task, plan_response_format(count))
+        result = await self._request(documents, system, task, plan_response_format(count), phase="planning")
         insufficient = isinstance(result, InsufficientSource)
         return PlanResult(goals=[] if insufficient else result.goals, provider="openai", model=self.model,
                           insufficient_source=insufficient)
 
     async def generate(self, documents: list[InputDocument], system: str, task: str,
                        *, count: int) -> ProviderResult:
-        result = await self._request(documents, system, task, batch_response_format(count))
+        result = await self._request(documents, system, task, batch_response_format(count), phase="generating")
         insufficient = isinstance(result, InsufficientSource)
         content = GeneratedContent(items=[], notes=[result.reason]) if insufficient else GeneratedContent(
             items=result.items, notes=result.notes)

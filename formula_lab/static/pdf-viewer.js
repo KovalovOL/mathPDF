@@ -1,6 +1,6 @@
 /* Whole-document reading is independent of generation page selection. */
 import {getDocument, GlobalWorkerOptions, TextLayer} from '/static/vendor/pdfjs/pdf.mjs';
-import {quotationRange, scrollToSource, cancelNavigation} from '/static/pdf-source.js';
+import {scrollToSource, cancelNavigation} from '/static/pdf-source.js';
 GlobalWorkerOptions.workerSrc = '/static/vendor/pdfjs/pdf.worker.mjs';
 const status = document.getElementById('status');
 const container = document.getElementById('pages');
@@ -10,7 +10,7 @@ const records = [], nearby = new Set(), queue = [];
 const zoomLevels = ['fit', '1', '1.25', '1.5'];
 let pdf, busy = false, currentPage = 1, zoom = zoomLevels.includes(query.get('zoom')) ? query.get('zoom') : 'fit';
 let resizeTimer, pruneTimer, recoveryTimer, settleFrame, resizeAnchor, settleRequested = false, framePending = false, resizing = false, layoutWidth = 0;
-let navigationVersion = 0, navigationRecord, pendingNavigation, highlightedRecord, highlightTimer;
+let navigationVersion = 0, navigationRecord, pendingNavigation;
 
 function textViewport(record, page) {
   return page.getViewport({scale: record.sheet.getBoundingClientRect().width / page.getViewport({scale: 1}).width});
@@ -46,28 +46,6 @@ async function ensureText(record, page) {
   })();
   record.textPromise = promise;
   return promise;
-}
-function clearHighlight() {
-  clearTimeout(highlightTimer);
-  highlightedRecord?.sheet.classList.remove('source-page');
-  highlightedRecord?.sheet.querySelector('.source-highlights')?.remove();
-  highlightedRecord = null;
-}
-function highlightRange(record, range) {
-  record.sheet.querySelector('.source-highlights')?.remove();
-  if (!range) return null;
-  const bounds = record.sheet.getBoundingClientRect(), overlay = document.createElement('div');
-  overlay.className = 'source-highlights'; overlay.setAttribute('aria-hidden', 'true');
-  let top = null;
-  for (const rect of range.getClientRects()) {
-    if (!rect.width || !rect.height) continue;
-    const mark = document.createElement('span'); mark.className = 'source-highlight';
-    Object.assign(mark.style, {left: `${rect.left - bounds.left}px`, top: `${rect.top - bounds.top}px`,
-      width: `${rect.width}px`, height: `${rect.height}px`});
-    overlay.append(mark); top = top === null ? rect.top : Math.min(top, rect.top);
-  }
-  record.sheet.append(overlay);
-  return top;
 }
 function announce() {
   parent.postMessage({type: 'pdf-page', documentId, page: currentPage, pageCount: pdf.numPages}, location.origin);
@@ -183,31 +161,13 @@ function updateCurrent() {
   if (anchor && anchor.record.number !== currentPage) {currentPage = anchor.record.number; announce();}
   scheduleNearby(); pruneLater();
 }
-async function jump(number, {animated = false, quote = null} = {}) {
+async function jump(number, {animated = false} = {}) {
   if (!pdf || !Number.isInteger(number) || number < 1 || number > records.length) return;
   const record = records[number - 1];
   const version = ++navigationVersion;
   navigationRecord = record;
-  cancelNavigation(); clearHighlight();
-  let range = null;
-  if (quote) {
-    try {
-      const page = await pdf.getPage(number), normal = page.getViewport({scale: 1});
-      if (version !== navigationVersion) return;
-      const anchor = readingAnchor(); record.ratio = normal.height / normal.width;
-      record.sheet.style.height = `${layoutWidth * record.ratio}px`; restoreAnchor(anchor);
-      const layer = await ensureText(record, page);
-      if (version !== navigationVersion) return;
-      if (layer) range = quotationRange(layer, quote);
-    } catch { /* Page navigation remains available if text extraction fails. */ }
-  }
-  if (version !== navigationVersion) return;
-  highlightedRecord = record;
-  const fragmentTop = highlightRange(record, range);
-  if (fragmentTop === null && animated) record.sheet.classList.add('source-page');
-  highlightTimer = setTimeout(clearHighlight, 4500);
-  const top = fragmentTop ?? record.element.getBoundingClientRect().top;
-  await scrollToSource(scrollY + top - (fragmentTop === null ? 12 : Math.min(120, innerHeight * .2)), animated);
+  cancelNavigation();
+  await scrollToSource(scrollY + record.element.getBoundingClientRect().top - 12, animated);
   if (version !== navigationVersion) return;
   currentPage = number; announce();
   navigationRecord = null;
@@ -226,7 +186,7 @@ function resize() {
     record.version++; record.task?.cancel(); record.pendingText?.cancel();
     record.pendingText = null; record.textPromise = null; resizeText(record);
   }
-  navigationVersion++; navigationRecord = null; cancelNavigation(); clearHighlight();
+  navigationVersion++; navigationRecord = null; cancelNavigation();
   restoreAnchor(anchor); refreshNearby();
   clearTimeout(resizeTimer);
   resizeTimer = setTimeout(() => settleViewport(true), 120);
@@ -302,8 +262,7 @@ try {
     if (!event.data || typeof event.data !== 'object') return;
     if (event.data.type === 'go-to-page') {
       navigationVersion++; navigationRecord = null; cancelNavigation();
-      pendingNavigation = {page: Number(event.data.page), options: {
-        animated: !!event.data.animated, quote: typeof event.data.quote === 'string' ? event.data.quote.slice(0, 1200) : null}};
+      pendingNavigation = {page: Number(event.data.page), options: {animated: !!event.data.animated}};
       syncViewport(true);
     }
     if (event.data.type === 'pdf-viewport') syncViewport(!!event.data.settled);

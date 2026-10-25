@@ -3,15 +3,16 @@
 import hashlib
 import io
 import json
-import math
+import logging
 import re
+from collections import Counter
 from asyncio import timeout, to_thread
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from difflib import SequenceMatcher
 from pathlib import Path
 from string import Template
-from typing import Literal, Protocol
+from typing import Callable, Literal, Protocol
 from uuid import uuid4
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -21,10 +22,13 @@ from .math_validation import MathValidator, MathValidationError
 
 
 MAX_ITEMS = 50
-BATCH_SIZE = 5
+BATCH_SIZE = 2
 EXTRA_ATTEMPTS = 3
 PLAN_ATTEMPTS = 2
 GENERATION_SECONDS = 600
+Progress = Callable[[dict], None]
+logger = logging.getLogger(__name__)
+INLINE_MATH = re.compile(r"\\\(([\s\S]*?)\\\)|\\\[([\s\S]*?)\\\]|\$\$([\s\S]*?)\$\$|\$([^$\n]+)\$")
 
 
 class StrictModel(BaseModel):
@@ -134,11 +138,11 @@ class ProviderResult(StrictModel):
 
 class LearningGoal(StrictModel):
     step: int = Field(ge=1, le=MAX_ITEMS)
-    topic: str = Field(min_length=1, max_length=160)
-    objective: str = Field(min_length=1, max_length=320)
+    topic: str = Field(min_length=1, max_length=80)
+    objective: str = Field(min_length=1, max_length=180)
     activity: Literal["recognition", "explanation", "application", "comparison", "error_analysis", "justification", "synthesis"]
-    challenge: str = Field(min_length=1, max_length=400)
-    source_pages: list[int] = Field(min_length=1, max_length=10)
+    challenge: str = Field(min_length=1, max_length=180)
+    source_pages: list[int] = Field(min_length=1, max_length=5)
 
 
 class PlanResult(StrictModel):
@@ -172,9 +176,10 @@ PROMPTS = Path(__file__).parent / "prompts"
 def load_prompts(request: GenerateRequest, documents: list[InputDocument], *,
                  accepted: list[StudyItem] | None = None, feedback: list[str] | None = None,
                  total_count: int | None = None, plan: list[LearningGoal] | None = None,
-                 goal_steps: list[int] | None = None, planning: bool = False) -> tuple[str, str, dict[str, str]]:
+                 goal_steps: list[int] | None = None, planning: bool = False,
+                 rejected: list[dict] | None = None) -> tuple[str, str, dict[str, str]]:
     names = (["plan-system.md", "learning-plan.md"] if planning else ["study-system.md", f"{request.mode}.md"]) + [
-        "context.md", "attachment-label.md", "comment.md", "continuation.md", "goals.md"]
+        "context.md", "attachment-label.md", "comment.md", "continuation.md", "goals.md", "concise.md"]
     resources = {name: (PROMPTS / name).read_text(encoding="utf-8") for name in names}
     source = documents[0]
     mapping = ", ".join(f"{index + 1} -> {page}" for index, page in enumerate(source.pages))
@@ -197,7 +202,8 @@ def load_prompts(request: GenerateRequest, documents: list[InputDocument], *,
         task += "\n\n" + Template(resources["continuation.md"]).substitute(
             total_count=total_count or request.count, batch_count=request.count,
             accepted=json.dumps([item.model_dump(mode="json") for item in accepted or []], ensure_ascii=False),
-            feedback=json.dumps(feedback or []))
+            feedback=json.dumps(feedback or []), rejected=json.dumps(rejected or [], ensure_ascii=False))
+    task += "\n\n" + resources["concise.md"]
     hashes = {name: hashlib.sha256(text.encode()).hexdigest() for name, text in resources.items()}
     return resources[names[0]], task, hashes
 
@@ -260,7 +266,7 @@ def validate_item(item: StudyItem, mode: str, document_id: str, pages: list[int]
     if mode == "flashcards" and not any(isinstance(block, MathBlock) for block in item.question):
         raise RetryableGenerationError("missing_question_formula", "A flashcard question is missing its formula.")
     if strict_blocks:
-        prose = [item.title] + [block.text for block in item.question + item.answer if isinstance(block, TextBlock)]
+        prose = [item.title] + [INLINE_MATH.sub("", block.text) for block in item.question + item.answer if isinstance(block, TextBlock)]
         prose += [block.change for block in maths if block.change]
         if any(re.search(r"\\(?:[A-Za-z]+|[{}\[\]()])|\$", text) for text in prose):
             raise RetryableGenerationError("math_in_text", "Mathematical expressions need formatted math blocks.")
@@ -286,6 +292,18 @@ def prose_in_math(latex: str) -> bool:
     return len(re.findall(r"\b[A-Za-z]{3,}\b", without_commands)) >= 14
 
 
+def item_expressions(item: StudyItem) -> list[tuple[str, bool]]:
+    expressions = []
+    for block in item.question + item.answer:
+        if isinstance(block, MathBlock):
+            expressions.extend((text, block.display) for text in [block.latex, block.original_latex] if text is not None)
+        else:
+            for match in INLINE_MATH.finditer(block.text):
+                expressions.append((next(part for part in match.groups() if part is not None),
+                                    match[2] is not None or match[3] is not None))
+    return expressions
+
+
 def validate_study(content: GeneratedContent, mode: str, document_id: str, pages: list[int]):
     for item in content.items:
         validate_item(item, mode, document_id, pages)
@@ -300,7 +318,7 @@ def question_fingerprint(item: StudyItem) -> str:
     return hashlib.sha256(json.dumps(blocks, ensure_ascii=False).encode()).hexdigest()
 
 
-def question_repeats(item: StudyItem, previous: list[StudyItem]) -> bool:
+def question_repeats(item: StudyItem, previous: list[StudyItem], activities: dict[int, str]) -> bool:
     def formula_signature(candidate):
         return tuple(sorted(re.sub(r"\s+", "", block.latex) for block in candidate.question if isinstance(block, MathBlock)))
 
@@ -312,6 +330,8 @@ def question_repeats(item: StudyItem, previous: list[StudyItem]) -> bool:
     for other in previous:
         if fingerprint == question_fingerprint(other):
             return True
+        if activities.get(item.goal_step) != activities.get(other.goal_step):
+            continue
         # A conservative paraphrase guard: different formulas are often legitimate exercises.
         # For prose-only questions compare the source formulas in their answers as well.
         left = formulas or tuple(sorted(block.latex for block in item.answer if isinstance(block, MathBlock)))
@@ -338,19 +358,22 @@ def validate_plan(goals: list[LearningGoal], count: int, pages: list[int]):
         if not set(goal.source_pages).issubset(pages) or len(set(goal.source_pages)) != len(goal.source_pages):
             raise RetryableGenerationError("invalid_plan_source", "A learning goal cites unavailable pages.")
         normalized = " ".join(re.findall(r"\w+", goal.objective.casefold()))
-        if any(normalized == text or (goal.activity == activity and
-               SequenceMatcher(None, normalized, text).ratio() >= .9) for text, activity in seen):
+        topic = " ".join(re.findall(r"\w+", goal.topic.casefold()))
+        if any(topic == old_topic and goal.activity == activity and (normalized == text or
+               SequenceMatcher(None, normalized, text).ratio() >= .9) for text, activity, old_topic in seen):
             raise RetryableGenerationError("duplicate_goal", "The learning plan repeats an objective.")
-        seen.append((normalized, goal.activity))
+        seen.append((normalized, goal.activity, topic))
     required_activities = 3 if count >= 8 else 2 if count >= 4 else 1
     if len({goal.activity for goal in goals}) < required_activities:
         raise RetryableGenerationError("insufficient_variety", "The learning plan needs more varied reasoning activities.")
 
 
 async def create_plan(documents: list[InputDocument], request: GenerateRequest,
-                      provider: StudyProvider) -> tuple[list[LearningGoal], dict]:
+                      provider: StudyProvider, progress: Progress) -> tuple[list[LearningGoal], dict]:
     feedback = []
     for attempt in range(1, PLAN_ATTEMPTS + 1):
+        progress({"phase": "planning", "attempt": attempt})
+        logger.info("Study planning attempt=%s requested=%s", attempt, request.count)
         system, task, hashes = load_prompts(request, documents, planning=True, feedback=feedback)
         try:
             result = await provider.plan(documents, system, task, count=request.count)
@@ -361,57 +384,76 @@ async def create_plan(documents: list[InputDocument], request: GenerateRequest,
             return result.goals, {"planning_attempts": attempt, "plan_provider": result.provider, "plan_model": result.model,
                                   "prompt_hashes": hashes, "learning_plan": [goal.model_dump() for goal in result.goals]}
         except RetryableGenerationError as error:
+            logger.warning("Study plan rejected attempt=%s code=%s", attempt, error.code)
             feedback = [error.code]
     raise GenerationError("We couldn't plan a varied study sequence from these pages. "
                           "Try again, choose more source pages, or request fewer items.")
 
 
 async def collect_study(documents: list[InputDocument], request: GenerateRequest,
-                        provider: StudyProvider) -> tuple[GeneratedContent, dict]:
-    plan, planning = await create_plan(documents, request, provider)
+                        provider: StudyProvider, progress: Progress) -> tuple[GeneratedContent, dict]:
+    plan, planning = await create_plan(documents, request, provider, progress)
     accepted: dict[int, StudyItem] = {}
     notes: list[str] = []
     feedback: list[str] = []
+    rejected: list[dict] = []
+    rejection_counts: Counter = Counter()
+    activities = {goal.step: goal.activity for goal in plan}
     source = documents[0]
-    limit = math.ceil(request.count / BATCH_SIZE) + EXTRA_ATTEMPTS
+    limit = request.count + EXTRA_ATTEMPTS
+    batch_size = BATCH_SIZE
     async with MathValidator() as validator:
         for attempt in range(1, limit + 1):
-            goal_steps = [goal.step for goal in plan if goal.step not in accepted][:BATCH_SIZE]
+            goal_steps = [goal.step for goal in plan if goal.step not in accepted][:batch_size]
             batch_count = len(goal_steps)
             batch = request.model_copy(update={"count": batch_count})
             previous = [accepted[step] for step in sorted(accepted)]
             system, task, hashes = load_prompts(batch, documents, accepted=previous, plan=plan, goal_steps=goal_steps,
-                                              feedback=feedback, total_count=request.count)
+                                              feedback=feedback, total_count=request.count, rejected=rejected)
+            progress({"phase": "generating", "accepted_count": len(accepted), "attempt": attempt})
+            logger.info("Study batch attempt=%s accepted=%s requested=%s batch=%s", attempt, len(accepted), request.count, batch_count)
             try:
                 result = await provider.generate(documents, system, task, count=batch_count)
             except RetryableGenerationError as error:
                 feedback = [error.code]
+                rejection_counts.update(feedback)
+                if error.code in {"output_limit", "invalid_response", "incomplete_response"}:
+                    batch_size = 1
+                logger.warning("Study batch rejected attempt=%s code=%s", attempt, error.code)
                 continue
             if result.insufficient_source:
                 raise GenerationError(f"The selected pages could not support all {request.count} items. "
                                       "Choose more source pages or request fewer items.")
             feedback = []
+            rejected = []
             if len(result.content.items) > batch_count:
                 feedback = ["wrong_count"]
+                rejection_counts.update(feedback)
                 continue
             for item in result.content.items:
+                diagnostics = []
+                progress({"phase": "checking", "accepted_count": len(accepted), "attempt": attempt})
                 try:
                     if item.goal_step not in goal_steps or item.goal_step in accepted:
                         raise RetryableGenerationError("wrong_goal", "A study item has an unexpected learning goal.")
-                    goal = plan[item.goal_step - 1]
-                    validate_item(item, request.mode, source.document.id, goal.source_pages, strict_blocks=True)
-                    if question_repeats(item, list(accepted.values())):
+                    validate_item(item, request.mode, source.document.id, source.pages, strict_blocks=True)
+                    if question_repeats(item, list(accepted.values()), activities):
                         raise RetryableGenerationError("duplicate_question", "A study question repeats an earlier item.")
-                    expressions = [(text, block.display) for block in item.question + item.answer if isinstance(block, MathBlock)
-                                   for text in [block.latex, block.original_latex] if text is not None]
-                    if await validator.invalid(expressions):
+                    diagnostics = await validator.errors(item_expressions(item))
+                    if diagnostics:
                         raise RetryableGenerationError("invalid_math", "A formula needs its formatting repaired.")
                 except RetryableGenerationError as error:
                     feedback.append(error.code)
+                    rejected.append({"code": error.code, "diagnostics": diagnostics, "item": item.model_dump(mode="json")})
                     continue
                 accepted[item.goal_step] = item
+                progress({"accepted_count": len(accepted)})
             if len(result.content.items) < batch_count:
                 feedback.append("wrong_count")
+            rejection_counts.update(feedback)
+            logger.info("Study batch reviewed attempt=%s accepted=%s requested=%s rejected=%s",
+                        attempt, len(accepted), request.count, dict(Counter(feedback)))
+            batch_size = BATCH_SIZE
             for note in result.content.notes:
                 if note.strip() and note not in notes and len(notes) < 10:
                     notes.append(note)
@@ -420,17 +462,25 @@ async def collect_study(documents: list[InputDocument], request: GenerateRequest
                 validate_study(content, request.mode, source.document.id, source.pages)
                 return content, {**planning, "provider": result.provider, "model": result.model,
                                  "prompt_hashes": {**planning["prompt_hashes"], **hashes}, "math_check": "katex",
+                                 "rejection_counts": dict(rejection_counts),
                                  "requested_count": request.count, "generation_attempts": attempt}
-    raise GenerationError(f"We couldn't complete all {request.count} valid items. "
-                          "No partial set was created. Try again, select more pages, or request fewer items.")
+    reasons = {"invalid_math": "formula formatting", "math_in_text": "unformatted math in prose",
+               "duplicate_question": "repeated questions", "output_limit": "truncated model responses",
+               "invalid_response": "invalid model responses", "invalid_source": "source references",
+               "wrong_goal": "learning goal identifiers", "prose_in_math": "prose inside formulas"}
+    detail = ", ".join(reasons.get(code, code.replace("_", " ")) for code, _ in rejection_counts.most_common(3))
+    raise GenerationError(f"Generation stopped after accepting {len(accepted)} of {request.count} items. "
+                          f"Repeated issues: {detail or 'incomplete responses'}. No partial set was created. Try again.")
 
 
 async def generate_study(workspace: Workspace, owner_id: str, request: GenerateRequest,
-                         provider: StudyProvider) -> StudySet:
-    documents = await to_thread(prepare_documents, workspace, request, owner_id)
+                         provider: StudyProvider, progress: Progress | None = None) -> StudySet:
+    progress = progress or (lambda _: None)
     try:
         async with timeout(GENERATION_SECONDS):
-            content, metadata = await collect_study(documents, request, provider)
+            progress({"phase": "preparing", "accepted_count": 0})
+            documents = await to_thread(prepare_documents, workspace, request, owner_id)
+            content, metadata = await collect_study(documents, request, provider, progress)
     except TimeoutError:
         raise GenerationError(f"Generation timed out before all {request.count} items were ready. "
                               "Try again with fewer items or fewer source pages.") from None

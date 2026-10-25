@@ -2,7 +2,9 @@
 
 import argparse
 import asyncio
+import logging
 import os
+from contextlib import asynccontextmanager
 from pathlib import Path
 from urllib.parse import quote, urlencode
 
@@ -15,7 +17,8 @@ from starlette.concurrency import run_in_threadpool
 from .auth import Authentication, AuthConfig, FLOW_SECONDS, LoginError, SESSION_SECONDS, safe_next
 from .pdf_export import ExportError, export_pdf
 from .providers import OpenAIProvider
-from .study import MAX_ITEMS, GenerateRequest, GenerationError, StudyProvider, StudySet, generate_study, validate_study
+from .generation_jobs import GenerationBusy, GenerationJobs
+from .study import GENERATION_SECONDS, MAX_ITEMS, GenerateRequest, GenerationError, StudyProvider, StudySet, generate_study, validate_study
 from .workspace import MAX_UPLOAD_BYTES, Workspace
 
 
@@ -24,16 +27,30 @@ PUBLIC_ASSETS = {".css", ".js", ".mjs", ".svg", ".png", ".ico", ".woff", ".woff2
 
 
 def create_app(data_dir: Path = Path(".formula-lab"), provider: StudyProvider | None = None) -> FastAPI:
+    application_logger = logging.getLogger("formula_lab")
+    if not application_logger.handlers:
+        handler = logging.StreamHandler()
+        handler.setFormatter(logging.Formatter("%(levelname)s: %(message)s"))
+        application_logger.addHandler(handler)
+    application_logger.setLevel(logging.INFO)
+    application_logger.propagate = False
     load_dotenv(Path.cwd() / ".env", override=False)
     workspace = Workspace(data_dir)
     auth = Authentication(workspace, AuthConfig.from_environment())
-    app = FastAPI(title="mathPDF", docs_url="/api/docs", redoc_url=None)
+    generation_lock = asyncio.Lock()
+    jobs = GenerationJobs(workspace, generation_lock)
+
+    @asynccontextmanager
+    async def lifespan(app):
+        yield
+        await jobs.close()
+
+    app = FastAPI(title="mathPDF", docs_url="/api/docs", redoc_url=None, lifespan=lifespan)
     app.state.workspace, app.state.auth = workspace, auth
     static = Path(__file__).parent / "static"
     model = os.getenv("OPENAI_MODEL", "gpt-4.1-mini")
     key = os.getenv("OPENAI_API_KEY") or os.getenv("OPENAI_KEY", "")
     app.state.provider = provider or (OpenAIProvider(key, model) if key else None)
-    generation_lock = asyncio.Lock()
     export_lock = asyncio.Lock()
 
     @app.middleware("http")
@@ -71,7 +88,12 @@ def create_app(data_dir: Path = Path(".formula-lab"), provider: StudyProvider | 
     @app.exception_handler(ExportError)
     @app.exception_handler(GenerationError)
     async def generation_failed(request, error):
+        logging.getLogger(__name__).warning("Study request failed path=%s error_type=%s", request.url.path, type(error).__name__)
         return JSONResponse({"detail": str(error)}, status_code=502)
+
+    @app.exception_handler(GenerationBusy)
+    async def generation_busy(request, error):
+        return JSONResponse({"detail": str(error)}, status_code=409)
 
     @app.exception_handler(ValueError)
     async def invalid_request(request, error):
@@ -142,7 +164,8 @@ def create_app(data_dir: Path = Path(".formula-lab"), provider: StudyProvider | 
     @app.get("/api/generation/config")
     def generation_config():
         return {"configured": app.state.provider is not None, "max_pages": 100, "max_items": MAX_ITEMS,
-                "max_context_files": 6, "max_upload_mb": 25, "default_document_id": None}
+                "max_context_files": 6, "max_upload_mb": 25, "default_document_id": None,
+                "generation_timeout_seconds": GENERATION_SECONDS}
 
     @app.get("/api/documents")
     def documents(request: Request):
@@ -217,6 +240,20 @@ def create_app(data_dir: Path = Path(".formula-lab"), provider: StudyProvider | 
             raise HTTPException(409, "A generation request is already running. Wait for it to finish.")
         async with generation_lock:
             return await generate_study(workspace, request.state.user.id, selection, app.state.provider)
+
+    @app.post("/api/study/jobs", status_code=202)
+    async def start_generation(request: Request, selection: GenerateRequest):
+        if app.state.provider is None:
+            raise HTTPException(503, "The generation service is unavailable. Try again later.")
+        return (await jobs.start(request.state.user.id, selection, app.state.provider)).snapshot()
+
+    @app.get("/api/study/jobs/{job_id}")
+    async def generation_status(request: Request, job_id: str):
+        return jobs.get(job_id, request.state.user.id).snapshot()
+
+    @app.delete("/api/study/jobs/{job_id}")
+    async def cancel_generation(request: Request, job_id: str):
+        return (await jobs.cancel(job_id, request.state.user.id)).snapshot()
 
     app.mount("/static", StaticFiles(directory=static), name="static")
     return app

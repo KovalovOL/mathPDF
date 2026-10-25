@@ -23,7 +23,7 @@ Generation SHALL instruct the provider to vary learning goals and reasoning acti
 - **AND** generation either completes the requested count or returns an actionable failure
 
 ### Requirement: Renderable mathematical output
-Newly generated formulas SHALL pass the same strict mathematical renderer settings used by the application. Raw TeX commands in prose and obvious exercise prose placed in formula blocks SHALL be rejected for repair.
+Newly generated formulas SHALL pass the same strict mathematical renderer settings used by the application. Undelimited TeX commands in prose and obvious exercise prose placed in formula blocks SHALL be rejected for repair. Correctly delimited prose mathematics SHALL be accepted only after renderer validation.
 
 #### Scenario: Provider places TeX in a text list
 - **WHEN** a text block contains undelimited TeX commands
@@ -39,3 +39,15 @@ Existing saved sets SHALL remain readable without newly required planning fields
 #### Scenario: Open an older set
 - **WHEN** a saved item lacks a learning goal identifier
 - **THEN** it remains readable and exportable
+
+### Requirement: Bounded generation progress
+The workspace SHALL run generation through short owner-scoped job requests, display the actual phase and accepted count, and terminate waiting on completion, failure, cancellation, or deadline. Restarted or expired jobs SHALL produce an actionable interruption message.
+
+#### Scenario: Generation takes several minutes
+- **WHEN** generation is still running
+- **THEN** short status requests show its phase and accepted count without holding one browser request open for the whole generation
+- **AND** the learner can cancel it
+
+#### Scenario: Another account requests a job
+- **WHEN** an account requests a job belonging to another account
+- **THEN** the service returns the same not-found result used for an unknown job
