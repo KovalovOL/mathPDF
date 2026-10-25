@@ -109,14 +109,17 @@ class CompactItem(StrictModel):
             return output
         question, answer = blocks(self.question), blocks(self.answer)
         main = blocks([self.formula])[0]
-        destination = question if mode == "flashcards" else answer
-        existing = question if mode == "flashcards" else question + answer
+        if mode == "flashcards":
+            # Recall cards must not disclose the answer formula before flipping,
+            # even when a provider repeats it in the question array.
+            answer = [block for block in question if block["kind"] == "math"] + answer
+            question = [block for block in question if block["kind"] == "text"]
+            if not question:
+                question = [{"kind": "text", "text": "Recall the formula."}]
+        existing = answer if mode == "flashcards" else question + answer
         if not any(block["kind"] == "math" and block["latex"] == main["latex"]
                    and block["source"]["page"] == main["source"]["page"] for block in existing):
-            if mode == "flashcards":
-                destination.append(main)
-            else:
-                destination.insert(0, main)
+            answer.insert(0, main)
         return StudyItem(goal_step=index, title=self.title, question=question, answer=answer)
 
 

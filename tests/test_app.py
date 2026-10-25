@@ -1,6 +1,7 @@
 """Current authenticated application routes; identities/provider are test fixtures."""
 import io
 import time
+import pytest
 
 from fastapi.testclient import TestClient
 from pypdf import PdfWriter
@@ -19,12 +20,12 @@ class FixtureProvider:
         for i in range(1, count + 1):
             items.append(StudyItem.model_validate({
                 'goal_step': i, 'title': f'Expression {i}',
-                'question': [{'kind': 'text', 'text': f'Identify expression {i}.'},
-                             {'kind': 'math', 'latex': f'x_{i}', 'display': True,
+                'question': [{'kind': 'text', 'text': f'Recall expression {i}.'}],
+                'answer': [{'kind': 'math', 'latex': f'x_{i}', 'display': True,
                               'source': {'document_id': documents[0].document.id, 'page': 1,
                                          'line_start': None, 'line_end': None, 'quote': None},
-                              'original_latex': None, 'change': None}],
-                'answer': [{'kind': 'text', 'text': f'Test explanation {i}.'}]}))
+                              'original_latex': None, 'change': None},
+                           {'kind': 'text', 'text': f'Test explanation {i}.'}]}))
         return ProviderResult(content=GeneratedContent(items=items, notes=[]), provider='fixture', model='fixture')
 
 
@@ -76,6 +77,7 @@ def test_job_exact_count_render_validation_save_and_restart(tmp_path):
         assert job['status'] == 'completed', job.get('error')
         result = job['result']
         assert len(result['items']) == job['accepted_count'] == 5
+        assert all(block['kind'] == 'text' for item in result['items'] for block in item['question'])
         assert [item['goal_step'] for item in result['items']] == [1,2,3,4,5]
         assert result['metadata']['math_check'] == 'on_display'
         assert result['metadata']['generation_attempts'] == 1
@@ -94,14 +96,20 @@ def test_job_exact_count_render_validation_save_and_restart(tmp_path):
         assert len(client.get('/api/study-sets/' + result['id']).json()['items']) == 5
 
 
-def test_raw_math_completes_saves_and_exports(tmp_path):
+@pytest.mark.parametrize('legacy_front_formula', [False, True])
+def test_raw_math_completes_saves_and_exports(tmp_path, legacy_front_formula):
     from pypdf import PdfReader
 
     class RawProvider(FixtureProvider):
         async def generate(self, *args, **kwargs):
             result = await super().generate(*args, **kwargs)
             result.content.items[0].question[0].text = r'Explain x \in A in words.'
-            result.content.items[0].question[1].latex = r'\unknownCommand{x}'
+            result.content.items[0].answer[0].latex = r'\unknownCommand{x}'
+            result.content.items[0].answer[0].original_latex = 'x'
+            result.content.items[0].answer[0].change = 'Answer-only variant explanation.'
+            if legacy_front_formula:
+                for item in result.content.items:
+                    item.question.append(item.answer.pop(0))
             return result
 
     app = create_app(tmp_path, RawProvider())
@@ -120,4 +128,11 @@ def test_raw_math_completes_saves_and_exports(tmp_path):
         assert exported.status_code == 200
         assert exported.content.startswith(b'%PDF')
         pdf = PdfReader(io.BytesIO(exported.content))
-        assert 'unknownCommand' in '\n'.join(page.extract_text() for page in pdf.pages)
+        questions, answers = '\n'.join(page.extract_text() for page in pdf.pages).split('Answers', 1)
+        assert 'unknownCommand' not in questions
+        assert 'Expression 1' not in questions
+        assert 'Answer-only variant explanation.' not in questions
+        assert 'Card 1' in questions
+        assert 'unknownCommand' in answers
+        assert 'Expression 1' in answers
+        assert answers.count('Answer-only variant explanation.') == 1

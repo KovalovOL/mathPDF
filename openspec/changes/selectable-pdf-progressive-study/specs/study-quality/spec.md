@@ -6,6 +6,19 @@ Create varied study material grounded in the selected PDF, with progressive lear
 
 ## ADDED Requirements
 
+### Requirement: Flashcard answers appear only after reveal
+Flashcard fronts SHALL show only a self-contained recall question without answer hints. Titles, answer formulas, explanations and citations SHALL appear only on the back. External prompts SHALL enforce this separation, without another provider request. Hidden faces SHALL be inaccessible to assistive technology and keyboard focus.
+
+#### Scenario: Recall a vector definition
+- **WHEN** a card asks which two properties define a vector
+- **THEN** the front displays that question without the definition formula or a source link
+- **AND** flipping reveals the formula, explanation, title and citation
+
+#### Scenario: Reopen or export an older flashcard
+- **WHEN** an older card includes its answer formula in the question array
+- **THEN** the workspace and exported question section omit that formula and the item title
+- **AND** the answer side or section retains the formula, citation and variant explanation
+
 ### Requirement: Single-request progressive learning sequence
 Generation SHALL request the complete set of distinct source-grounded items in one provider request, ordered in increasing intended difficulty. It SHALL NOT make separate planning, batching, repair, or automatic retry requests. Difficulty remains a model assessment.
 

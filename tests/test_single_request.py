@@ -113,7 +113,8 @@ def test_adapter_has_one_http_attempt_and_expands_compact_blocks(source, monkeyp
     provider = OpenAIProvider('test-only-key', 'test-model')
     if case == 'completed':
         result = asyncio.run(provider.generate([source], 'system', 'task', count=1, mode='flashcards'))
-        formula = result.content.items[0].question[1]
+        assert all(block.kind == 'text' for block in result.content.items[0].question)
+        formula = result.content.items[0].answer[0]
         assert formula.source.document_id == source.document.id
         assert formula.source.page == 4
         assert formula.source.quote is formula.original_latex is formula.change is None
@@ -136,8 +137,9 @@ def test_compact_variant_expands_original_and_change(source):
         variant={'original': r'x \in A', 'change': 'Negate the membership relation.'})
     compact = set_response_format(1).model_validate(payload).result.items[0]
     expanded = compact.expand(source.document.id, 1)
-    assert expanded.question[1].original_latex == r'x \in A'
-    assert expanded.question[1].change == 'Negate the membership relation.'
+    assert all(block.kind == 'text' for block in expanded.question)
+    assert expanded.answer[1].original_latex == r'x \in A'
+    assert expanded.answer[1].change == 'Negate the membership relation.'
 
 
 @pytest.mark.parametrize('tex', [r'x \in A', r'\{1,2\}', r'\frac{a}{b}',
@@ -187,13 +189,38 @@ def test_required_formula_cannot_be_omitted_or_replaced_with_prose():
         set_response_format(1).model_validate(payload)
 
 
-def test_central_problem_formula_is_in_answer_without_spoiling_question(source):
+@pytest.mark.parametrize('mode', ['flashcards', 'problems'])
+def test_central_formula_is_in_answer_without_spoiling_question(source, mode):
     payload = compact_payload()
     payload['result']['items'][0]['question'] = ['Explain this relation.']
     compact = set_response_format(1).model_validate(payload).result.items[0]
-    expanded = compact.expand(source.document.id, 1, mode='problems')
+    expanded = compact.expand(source.document.id, 1, mode=mode)
     assert all(block.kind == 'text' for block in expanded.question)
     assert expanded.answer[0].kind == 'math'
+    from formula_lab.study import validate_item
+    validate_item(expanded, mode, source.document.id, source.pages)
+
+
+def test_flashcard_prompt_requires_recall_without_answer_hints(source):
+    system, task, _ = load_prompts(GenerateRequest(mode='flashcards', count=5), [source])
+    assert 'Do not reveal or hint at the correct answer on the front' in task
+    assert 'BACK displays the title, required central formula' in task
+    assert 'never on the flashcard front' in system
+
+
+def test_problem_question_inputs_stay_in_question(source):
+    compact = set_response_format(1).model_validate(compact_payload()).result.items[0]
+    expanded = compact.expand(source.document.id, 1, mode='problems')
+    assert expanded.question[1].kind == 'math'
+
+
+def test_formula_only_flashcard_keeps_question_and_answer(source):
+    payload = compact_payload()
+    entry = payload['result']['items'][0]
+    entry['question'] = [entry['formula']]
+    expanded = set_response_format(1).model_validate(payload).result.items[0].expand(source.document.id, 1)
+    assert expanded.question[0].text == 'Recall the formula.'
+    assert expanded.answer[0].latex == r'x \in A'
 
 
 def test_multiple_extra_escape_layers_and_exact_formula_prose_reuse(source):
@@ -203,9 +230,9 @@ def test_multiple_extra_escape_layers_and_exact_formula_prose_reuse(source):
     payload = compact_payload()
     payload['result']['items'][0]['question'] = ['Explain this relation.', tex.replace('\\', '\\\\')]
     expanded = set_response_format(1).model_validate(payload).result.items[0].expand(source.document.id, 1)
-    assert expanded.question[1].kind == 'math'
-    assert expanded.question[1].source.page == 4
-    assert sum(block.kind == 'math' for block in expanded.question) == 1
+    assert all(block.kind == 'text' for block in expanded.question)
+    assert expanded.answer[0].source.page == 4
+    assert sum(block.kind == 'math' for block in expanded.answer) == 1
 
 
 def test_dangling_escape_cleanup_preserves_valid_set_delimiters():

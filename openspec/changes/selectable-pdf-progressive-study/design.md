@@ -19,6 +19,7 @@ See proposal.md for motivation. The reader uses vendored PDF.js 6.4.299 and reta
 5. Use a compact provider response: a required central formula for every item, prose strings and additional formula objects with TeX, original page, and an optional variant description. Fill canonical citation document IDs, null line/quote fields, and display defaults in the adapter. This reduces generated syntax without changing saved sets, the renderer, or export.
 6. Load the external formula guide and normalize common encoding errors locally. Validate counts, required formula presence, citations and exact duplicates. Do not preflight mathematical syntax or launch Chromium during generation. The UI and export typeset supported expressions and preserve unsupported TeX as readable text; no extra provider request is made.
 7. Add a conservative legacy renderer for standalone TeX lines; retain ordinary paragraphs and escape all generated prose. No arbitrary provider HTML is executed.
+8. Flashcards use recall questions written without the answer or hints. Put the central formula and any question-array formula objects on the answer side in the provider adapter. The shared display helper also relocates formula blocks in older cards without changing stored records. Show titles, citations and variant explanations only on the back; use neutral accessible card labels. Apply the same separation to exported questions/answers. Problems retain their question inputs. This is local processing, with no additional provider request.
 
 ## Risks / Trade-offs
 

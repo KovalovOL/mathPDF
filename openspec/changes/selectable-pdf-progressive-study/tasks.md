@@ -47,3 +47,9 @@
 - [x] 8.1 Remove formatting rejection and server browser startup from generation; add safe raw-text fallbacks in the workspace and PDF export.
 - [x] 8.2 Update regression tests and verify malformed math remains usable/saveable/exportable without another provider request.
 - [x] 8.3 Update English documentation, deploy, and inspect the live build.
+
+## 9. Question-only flashcard fronts
+
+- [x] 9.1 Move flashcard formulas to answers, remove the front-formula validation rule, and update external prompts for recall questions without answer hints.
+- [x] 9.2 Keep titles, formulas, citations and variant explanations on the back in the workspace and PDF export, including older saved cards and drafts.
+- [ ] 9.3 Add regression coverage, verify front/back behavior locally, update English documentation, and deploy through the existing workflow.

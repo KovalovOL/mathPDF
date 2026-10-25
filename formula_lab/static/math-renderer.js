@@ -121,5 +121,31 @@
       else container.append(element('p', 'error', 'Unsupported content block.'));
     }
   }
-  window.MathPDF = {renderMath, renderBlocks, mathBlock};
+
+  function flashcardSides(item) {
+    // Older saved sets and browser drafts put the answer formula in question.
+    // Project both faces without mutating those records or losing citations.
+    const question = item.question.filter(block => block.kind === 'text');
+    const answer = [], seen = new Set();
+    for (const block of [...item.question.filter(block => block.kind === 'math'), ...item.answer]) {
+      if (block.kind === 'math') {
+        const key = JSON.stringify([block.latex, block.source, block.original_latex, block.change]);
+        if (seen.has(key)) continue;
+        seen.add(key);
+      }
+      answer.push(block);
+    }
+    return {...item, question: question.length ? question : [{kind: 'text', text: 'Recall the formula.'}], answer};
+  }
+
+  function variantBlocks(item) {
+    const seen = new Set();
+    return [...item.question, ...item.answer].filter(block => {
+      if (block.kind !== 'math' || !block.original_latex) return false;
+      const key = JSON.stringify([block.latex, block.source, block.original_latex, block.change]);
+      if (seen.has(key)) return false;
+      seen.add(key); return true;
+    });
+  }
+  window.MathPDF = {renderMath, renderBlocks, mathBlock, flashcardSides, variantBlocks};
 })();

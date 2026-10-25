@@ -259,7 +259,7 @@ function sourceOptions(result) {
 }
 function renderAnswer(container, item, result) {
   const options = sourceOptions(result); MathPDF.renderBlocks(container, item.answer, options);
-  for (const block of item.question.filter(entry => entry.kind === 'math' && entry.original_latex)) {
+  for (const block of MathPDF.variantBlocks(item)) {
     container.append(el('p', 'text-block', block.change));
     container.append(el('p', 'field-note', 'Original source formula'));
     container.append(MathPDF.mathBlock({...block, latex: block.original_latex}, options));
@@ -280,16 +280,18 @@ function selectItem(index) {
   record.itemIndex = index; record.flipped = false; renderPractice();
 }
 function flashcard(record, item) {
+  item = MathPDF.flashcardSides(item);
   const deck = el('div', 'deck'), card = el('section', 'flashcard');
-  card.tabIndex = 0; card.setAttribute('aria-label', `${item.title}. Press Space to flip this card.`);
+  card.tabIndex = 0; card.setAttribute('aria-label', `Card ${record.itemIndex + 1}. Press Space to flip this card.`);
   const inner = el('div', 'card-inner');
   const front = el('div', 'card-face card-front'), back = el('div', 'card-face card-back');
   const frontLabel = el('div', 'card-label'); frontLabel.append(el('span', '', 'Question'), el('span', '', `${record.itemIndex + 1} / ${record.data.items.length}`));
-  const frontBody = el('div', 'card-body'); frontBody.append(el('h2', '', item.title));
-  const question = el('div', 'card-blocks'); MathPDF.renderBlocks(question, item.question, sourceOptions(record.data)); frontBody.append(question);
+  const frontBody = el('div', 'card-body');
+  const question = el('div', 'card-blocks'); MathPDF.renderBlocks(question, item.question, {editable: false}); frontBody.append(question);
   front.append(frontLabel, frontBody, el('p', 'card-hint', 'Click the card or press Space to flip'));
   const backLabel = el('div', 'card-label'); backLabel.append(el('span', '', 'Answer'), el('span', '', `${record.itemIndex + 1} / ${record.data.items.length}`));
-  const backBody = el('div', 'card-body'); renderAnswer(backBody, item, record.data);
+  const backBody = el('div', 'card-body'); backBody.append(el('h2', '', item.title));
+  const answer = el('div', 'card-blocks'); renderAnswer(answer, item, record.data); backBody.append(answer);
   back.append(backLabel, backBody, el('p', 'card-hint', 'Click to return to the question'));
   inner.append(front, back); card.append(inner);
   function updateFace() {

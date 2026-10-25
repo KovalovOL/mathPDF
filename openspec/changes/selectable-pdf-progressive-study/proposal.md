@@ -11,6 +11,7 @@ The PDF reader currently paints pages without selectable text. Study generation 
 - Generate the complete varied, progressively ordered set in one provider request, with no separate planning call.
 - Supply a detailed external formula-writing guide and render formulas on display with a readable raw-text fallback, without blocking the set or requesting model repairs.
 - Safely render unambiguous standalone TeX lines in older saved material.
+- Keep flashcard fronts question-only; show answer formulas, titles, explanations and source citations after flipping, including older cards and PDF exports.
 - Use a compact provider response to reduce output tokens; retain exact counts, bounded owner-scoped progress, cancellation, and clear terminal failures.
 
 ## Capabilities

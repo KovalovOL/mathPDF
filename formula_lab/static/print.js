@@ -7,12 +7,13 @@
     document.getElementById('source').textContent = `${result.document.filename} · source pages ${result.pages.join(', ')}`;
     const options = {editable: false, linkSources: false, sourceLabel: ref => `${result.document.filename} · page ${ref.page}`};
     for (const [index, item] of result.items.entries()) {
+      const card = result.mode === 'flashcards', content = card ? MathPDF.flashcardSides(item) : item;
       for (const side of ['question', 'answer']) {
         const section = document.createElement('section'); section.className = 'print-item';
-        section.append(element('h3', `${index + 1}. ${item.title}`));
-        const blocks = document.createElement('div'); MathPDF.renderBlocks(blocks, item[side], options);
+        section.append(element('h3', card && side === 'question' ? `Card ${index + 1}` : `${index + 1}. ${item.title}`));
+        const blocks = document.createElement('div'); MathPDF.renderBlocks(blocks, content[side], options);
         section.append(blocks);
-        if (side === 'answer') for (const block of item.question.filter(b => b.kind === 'math' && b.original_latex)) {
+        if (side === 'answer') for (const block of MathPDF.variantBlocks(content)) {
           section.append(element('p', block.change));
           section.append(MathPDF.mathBlock({...block, latex: block.original_latex}, options));
         }

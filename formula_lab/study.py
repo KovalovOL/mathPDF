@@ -225,8 +225,6 @@ def validate_item(item: StudyItem, mode: str, document_id: str, pages: list[int]
     maths = [block for block in item.question + item.answer if isinstance(block, MathBlock)]
     if not maths:
         raise ContentValidationError("missing_formula", "A study item is missing its source formula.")
-    if mode == "flashcards" and not any(isinstance(block, MathBlock) for block in item.question):
-        raise ContentValidationError("missing_question_formula", "A flashcard question is missing its formula.")
     for block in maths:
         if block.source.document_id is None:
             block.source.document_id = document_id
