@@ -33,4 +33,4 @@
 
 - [x] 6.1 Initialize the validation browser in standards mode and check known-valid math before provider requests; add real-renderer regression tests.
 - [x] 6.2 Reproduce generation through the local API and browser with the real configured provider, checking exact counts and rendered formulas.
-- [ ] 6.3 Deploy the verified fix and record test results and live renderer checks.
+- [x] 6.3 Deploy the verified fix and record test results and live renderer checks.
