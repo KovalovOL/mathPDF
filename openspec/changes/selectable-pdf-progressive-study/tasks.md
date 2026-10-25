@@ -27,4 +27,4 @@
 
 - [x] 5.1 Add correlated HTTP/job/provider logs and safe unexpected-error JSON responses; inspect request context propagation and redaction.
 - [x] 5.2 Add browser JSON/content-type diagnostics, bounded authenticated error reports, and versioned uncached application assets; inspect telemetry ownership and asset serving.
-- [ ] 5.3 Document log commands and diagnostic limits, run static checks, deploy, and inspect live response headers and container logs.
+- [x] 5.3 Document log commands and diagnostic limits, run static checks, deploy, and inspect live response headers and container logs.
