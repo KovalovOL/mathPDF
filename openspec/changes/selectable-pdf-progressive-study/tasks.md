@@ -22,3 +22,9 @@
 - [x] 4.2 Accept renderer-validated delimited math in prose, enforce the selected source scope, and avoid rejecting distinct planned activities as paraphrases; inspect validation and renderer parity.
 - [x] 4.3 Add owner-scoped background generation jobs with progress, cancellation, expiration and browser deadlines; inspect ownership, cleanup and terminal UI states.
 - [x] 4.4 Update documentation, run static checks, deploy the fix, and inspect the production container state and deployment result.
+
+## 5. API failure diagnostics
+
+- [x] 5.1 Add correlated HTTP/job/provider logs and safe unexpected-error JSON responses; inspect request context propagation and redaction.
+- [x] 5.2 Add browser JSON/content-type diagnostics, bounded authenticated error reports, and versioned uncached application assets; inspect telemetry ownership and asset serving.
+- [ ] 5.3 Document log commands and diagnostic limits, run static checks, deploy, and inspect live response headers and container logs.

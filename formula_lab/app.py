@@ -6,19 +6,23 @@ import logging
 import os
 from contextlib import asynccontextmanager
 from pathlib import Path
+from time import perf_counter
 from urllib.parse import quote, urlencode
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse, Response
-from fastapi.staticfiles import StaticFiles
+from pydantic import ValidationError
 from starlette.concurrency import run_in_threadpool
 
 from .auth import Authentication, AuthConfig, FLOW_SECONDS, LoginError, SESSION_SECONDS, safe_next
 from .pdf_export import ExportError, export_pdf
 from .providers import OpenAIProvider
 from .generation_jobs import GenerationBusy, GenerationJobs
+from .diagnostics import (ClientDiagnostic, ClientReportLimit, configure_logging, correlation_id,
+                          job_context, log_exception, request_context, route_label, REQUEST_ID)
 from .study import GENERATION_SECONDS, MAX_ITEMS, GenerateRequest, GenerationError, StudyProvider, StudySet, generate_study, validate_study
+from .web_assets import ApplicationAssets, build_id, html_page
 from .workspace import MAX_UPLOAD_BYTES, Workspace
 
 
@@ -27,23 +31,23 @@ PUBLIC_ASSETS = {".css", ".js", ".mjs", ".svg", ".png", ".ico", ".woff", ".woff2
 
 
 def create_app(data_dir: Path = Path(".formula-lab"), provider: StudyProvider | None = None) -> FastAPI:
-    application_logger = logging.getLogger("formula_lab")
-    if not application_logger.handlers:
-        handler = logging.StreamHandler()
-        handler.setFormatter(logging.Formatter("%(levelname)s: %(message)s"))
-        application_logger.addHandler(handler)
-    application_logger.setLevel(logging.INFO)
-    application_logger.propagate = False
+    configure_logging()
+    logger = logging.getLogger(__name__)
     load_dotenv(Path.cwd() / ".env", override=False)
     workspace = Workspace(data_dir)
     auth = Authentication(workspace, AuthConfig.from_environment())
     generation_lock = asyncio.Lock()
     jobs = GenerationJobs(workspace, generation_lock)
+    client_reports = ClientReportLimit()
 
     @asynccontextmanager
     async def lifespan(app):
-        yield
-        await jobs.close()
+        configure_logging()
+        logger.info("Application started build=%s http_diagnostics=enabled", build_id())
+        try:
+            yield
+        finally:
+            await jobs.close()
 
     app = FastAPI(title="mathPDF", docs_url="/api/docs", redoc_url=None, lifespan=lifespan)
     app.state.workspace, app.state.auth = workspace, auth
@@ -85,6 +89,40 @@ def create_app(data_dir: Path = Path(".formula-lab"), provider: StudyProvider | 
             response.headers["Vary"] = "Cookie"
         return response
 
+    @app.middleware("http")
+    async def request_diagnostics(request: Request, call_next):
+        reference = correlation_id(request.headers.get("x-mathpdf-request-id"))
+        request.state.request_id = reference
+        token = request_context.set(reference)
+        started = perf_counter()
+        route = route_label(request.url.path)
+        is_api = route.startswith("/api/")
+        polling = request.method == "GET" and route == "/api/study/jobs/{id}"
+        job_id = request.url.path.rsplit("/", 1)[-1] if route == "/api/study/jobs/{id}" else ""
+        job_token = job_context.set(job_id if REQUEST_ID.fullmatch(job_id) else "-")
+        quiet = polling or route == "/api/client-errors"
+        if is_api and not quiet:
+            logger.info("HTTP started method=%s route=%s build=%s", request.method, route, build_id())
+        try:
+            try:
+                response = await call_next(request)
+            except Exception as error:
+                log_exception(logger, f"HTTP exception method={request.method} route={route}", error)
+                response = JSONResponse({"detail": "An unexpected server error occurred. Use the reference to locate its logs.",
+                                         "request_id": reference}, status_code=500)
+                response.headers["Cache-Control"] = "no-store"
+            response.headers["X-MathPDF-Request-ID"] = reference
+            response.headers["X-MathPDF-Build"] = build_id()
+            level = logging.ERROR if response.status_code >= 500 else logging.WARNING if response.status_code >= 400 else logging.DEBUG if quiet else logging.INFO
+            if is_api or response.status_code >= 400:
+                logger.log(level, "HTTP finished method=%s route=%s status=%s content_type=%s bytes=%s duration_ms=%s build=%s",
+                    request.method, route, response.status_code, response.headers.get("content-type", "-"),
+                    response.headers.get("content-length", "-"), round((perf_counter() - started) * 1000), build_id())
+            return response
+        finally:
+            request_context.reset(token)
+            job_context.reset(job_token)
+
     @app.exception_handler(ExportError)
     @app.exception_handler(GenerationError)
     async def generation_failed(request, error):
@@ -107,7 +145,7 @@ def create_app(data_dir: Path = Path(".formula-lab"), provider: StudyProvider | 
     def login(request: Request, next: str = "/"):
         if request.state.user:
             return RedirectResponse(safe_next(next), status_code=303)
-        return FileResponse(static / "login.html")
+        return html_page("login.html")
 
     @app.get("/auth/config", include_in_schema=False)
     def auth_config():
@@ -150,7 +188,7 @@ def create_app(data_dir: Path = Path(".formula-lab"), provider: StudyProvider | 
 
     @app.get("/", include_in_schema=False)
     def home():
-        return FileResponse(static / "home.html")
+        return html_page("home.html")
 
     @app.get("/workspace", include_in_schema=False)
     def index(request: Request, document: str | None = None, set: str | None = None):
@@ -159,7 +197,7 @@ def create_app(data_dir: Path = Path(".formula-lab"), provider: StudyProvider | 
             workspace.document(document, owner)
         if set:
             workspace.study_set(set, owner)
-        return FileResponse(static / "index.html")
+        return html_page("index.html")
 
     @app.get("/api/generation/config")
     def generation_config():
@@ -255,7 +293,23 @@ def create_app(data_dir: Path = Path(".formula-lab"), provider: StudyProvider | 
     async def cancel_generation(request: Request, job_id: str):
         return (await jobs.cancel(job_id, request.state.user.id)).snapshot()
 
-    app.mount("/static", StaticFiles(directory=static), name="static")
+    @app.post("/api/client-errors", status_code=204)
+    async def client_error(request: Request):
+        if not client_reports.allow(request.state.user.id):
+            return Response(status_code=204)
+        data = bytearray()
+        async for chunk in request.stream():
+            data.extend(chunk)
+            if len(data) > 4096:
+                raise HTTPException(413, "Diagnostic report exceeds the size limit.")
+        try:
+            report = ClientDiagnostic.model_validate_json(bytes(data))
+        except ValidationError:
+            raise HTTPException(422, "Invalid diagnostic report.") from None
+        logger.warning("Browser API failure report=%s", report.model_dump_json())
+        return Response(status_code=204)
+
+    app.mount("/static", ApplicationAssets(directory=static), name="static")
     return app
 
 

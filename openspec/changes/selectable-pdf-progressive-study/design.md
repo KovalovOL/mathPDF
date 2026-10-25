@@ -41,3 +41,9 @@ The plan's supporting pages are guidance within the user's selected primary page
 Keep job state in memory for this single-process deployment: reserve the existing global generation lock at creation, bind jobs to their owner, expose short create/status/cancel endpoints, and expire completed results after 15 minutes. Cancel pending tasks on shutdown. Restarted jobs are lost explicitly, never shown as successful. No queue service, worker, migration, or new dependency is needed. Keep the synchronous endpoint for compatibility; the workspace uses jobs with per-request and overall deadlines.
 
 The affected user requested ten flashcards. They explicitly revised source navigation to page references with smooth scrolling, without fragment highlighting. New generation sets quotation and line fields to null, reducing output overhead while retaining old-set compatibility.
+
+## API diagnostics
+
+A later unreadable-response report had no generation entries in VPS logs. Deployed code hashes matched the repository; a public unauthenticated API read returned JSON, and JavaScript assets lacked cache-control headers. The exact failing response is not known. Add request/build identifiers, route/status/content-type/duration logs, safe stack locations for unhandled errors, and context propagation into generation jobs/provider calls. Keep polling success logs at DEBUG to avoid flooding logs.
+
+The browser records status, content type, redirect state, route and correlation ID for failed JSON responses. A bounded authenticated diagnostic endpoint receives only allowlisted metadata, never response bodies, cookies, headers, prompts or PDF content. Serve primary HTML with content-versioned local JS/CSS URLs and require asset revalidation to prevent stale UI code after deployment. API errors remain English and display a reference for log lookup. No external logging service or new dependency is required.

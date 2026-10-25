@@ -536,7 +536,10 @@ async function generate(event) {
       showProgress(job);
     }
     terminal = true;
-    if (job.status === 'failed') throw new Error(job.error || 'Generation failed. Please try again.');
+    if (job.status === 'failed') {
+      const reference = /^[a-f0-9]{32}$/.test(job.request_id || '') ? ` Reference: ${job.request_id}` : '';
+      throw new Error((job.error || 'Generation failed. Please try again.') + reference);
+    }
     if (job.status !== 'completed') {message('Generation cancelled.'); return;}
     const data = job.result;
     if (data.items.length !== request.count) throw new Error('The complete requested set was not returned. Please try again.');

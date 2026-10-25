@@ -74,6 +74,8 @@ Document tabs + continuous PDF viewer
 
 [Workspace behavior and API](docs/workspace.md) describes the request contract, persistence, controls, and export. [The earlier fidelity report](docs/fidelity-report.md) concerns the separate source-font diagnostic experiment. Its Python modules remain as offline tooling; shared legacy diagnostic HTTP endpoints are no longer exposed by the web application.
 
+[Diagnostics](docs/diagnostics.md) explains request references, browser failure reports, asset versions, and `docker compose logs` commands for the VPS.
+
 ## VPS deployment
 
 The single GitHub Actions job in `.github/workflows/deploy.yml` deploys pushes to `main` and also supports manual runs. It syncs the repository to `/opt/mathPDF`, writes `.env` directly on the VPS from `APP_ENV`, and runs `docker compose up -d --build`. All deployment commands are inline in the workflow.

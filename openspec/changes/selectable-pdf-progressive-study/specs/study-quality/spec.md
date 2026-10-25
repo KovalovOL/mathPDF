@@ -51,3 +51,15 @@ The workspace SHALL run generation through short owner-scoped job requests, disp
 #### Scenario: Another account requests a job
 - **WHEN** an account requests a job belonging to another account
 - **THEN** the service returns the same not-found result used for an unknown job
+
+### Requirement: Diagnosable generation requests
+Generation requests SHALL carry a correlation identifier through HTTP, jobs and provider logs. API failures SHALL identify the HTTP status and correlation identifier. Unreadable responses SHALL report their content type and redirect state without logging response bodies, credentials, source content or OAuth query parameters.
+
+#### Scenario: Browser receives an unexpected HTML response
+- **WHEN** an API request receives HTML instead of JSON
+- **THEN** the browser displays diagnostic status and a reference identifier
+- **AND** it submits a bounded owner-authenticated diagnostic event without the response body
+
+#### Scenario: Unexpected server exception
+- **WHEN** an API handler fails unexpectedly before its response starts
+- **THEN** it returns a JSON error with a reference identifier and records sanitized stack locations

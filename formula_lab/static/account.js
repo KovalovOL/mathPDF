@@ -1,6 +1,40 @@
 /* Shared identity and authenticated requests for the library and workspace. */
 window.MathPDFSession = (() => {
   let user, redirecting = false;
+  let diagnosticCount = 0;
+  const clientBuild = document.querySelector('meta[name="mathpdf-build"]')?.content || null;
+  const newReference = () => crypto.randomUUID().replaceAll('-', '');
+  function routeLabel(path) {
+    try {
+      const pathname = new URL(path, location.origin).pathname;
+      if (pathname.startsWith('/api/')) {
+        const label = pathname.replace(/[a-f0-9]{32}|[a-f0-9-]{36}/g, '{id}');
+        return /^\/api\/[A-Za-z0-9_/{}/.-]{1,160}$/.test(label) ? label : '/api/other';
+      }
+      return ['/', '/workspace', '/login'].includes(pathname) ? pathname : '/other';
+    } catch {return '/other';}
+  }
+  function reportFailure(event, path, method, reference, response, receivedBytes) {
+    const echoed = response?.headers.get('X-MathPDF-Request-ID');
+    const build = response?.headers.get('X-MathPDF-Build');
+    const mime = (response?.headers.get('Content-Type') || '').split(';')[0].trim().toLowerCase();
+    const length = Number(response?.headers.get('Content-Length') ?? NaN);
+    const report = {event, request_id: /^[a-f0-9]{32}$/.test(echoed || '') ? echoed : reference,
+      route: routeLabel(path), method: (method || 'GET').toUpperCase(), status: response?.status || null,
+      received_bytes: receivedBytes, expected_bytes: Number.isSafeInteger(length) && length >= 0 && length <= 104857600 ? length : null,
+      content_type: /^[A-Za-z0-9.+/-]{0,80}$/.test(mime) ? mime : '', redirected: !!response?.redirected,
+      response_route: routeLabel(response?.url || '/other'),
+      server_build: /^[a-f0-9]{12}$/.test(build || '') ? build : null,
+      client_build: /^[a-f0-9]{12}$/.test(clientBuild || '') ? clientBuild : null};
+    console.error('mathPDF API failure', report);
+    if (user && diagnosticCount++ < 10) {
+      // Do not use api() here: a failing diagnostic request must never recurse.
+      fetch('/api/client-errors', {method: 'POST', credentials: 'same-origin', cache: 'no-store', keepalive: true,
+        headers: {'Content-Type': 'application/json', 'X-MathPDF-User': user.id, 'X-MathPDF-Request-ID': newReference()},
+        body: JSON.stringify(report)}).catch(() => {});
+    }
+    return report.request_id;
+  }
   function signIn() {
     if (!redirecting) {
       redirecting = true;
@@ -10,6 +44,7 @@ window.MathPDFSession = (() => {
   }
   async function request(path, options = {}) {
     const headers = {...options.headers};
+    if (!headers['X-MathPDF-Request-ID']) headers['X-MathPDF-Request-ID'] = newReference();
     if (user) headers['X-MathPDF-User'] = user.id;
     const response = await fetch(path, {...options, headers, credentials: 'same-origin', cache: 'no-store'});
     if (response.status === 401) signIn();
@@ -24,19 +59,41 @@ window.MathPDFSession = (() => {
     const cancelled = () => controller.abort(signal.reason);
     if (signal?.aborted) cancelled(); else signal?.addEventListener('abort', cancelled, {once: true});
     const timer = setTimeout(() => controller.abort(new Error('The server did not respond in time. Please try again.')), timeoutMs);
+    const reference = newReference();
+    let response, reported = false, receivedBytes = null;
+    function failure(message, event) {
+      reported = true;
+      const id = reportFailure(event, path, settings.method, reference, response, receivedBytes);
+      return new Error(`${message} Reference: ${id}`);
+    }
     try {
       const headers = settings.body instanceof FormData ? {} : {'Content-Type': 'application/json'};
-      const response = await request(path, {...settings, signal: controller.signal, headers: {...headers, ...settings.headers}});
-      let data;
-      try {data = await response.json();} catch {
-        if (controller.signal.aborted) throw controller.signal.reason;
-        throw new Error(response.ok ? 'The server returned an unreadable response.' : `The server could not complete the request (HTTP ${response.status}). Please try again.`);
+      response = await request(path, {...settings, signal: controller.signal,
+        headers: {...headers, ...settings.headers, 'X-MathPDF-Request-ID': reference}});
+      if (response.status === 204) return null;
+      const mime = (response.headers.get('Content-Type') || '').split(';')[0].trim().toLowerCase();
+      if (mime !== 'application/json' && !mime.endsWith('+json')) {
+        const error = failure(`Expected JSON but received ${mime || 'an unknown content type'} (HTTP ${response.status}). Reload this page.`, 'unexpected_content_type');
+        if (response.redirected && routeLabel(response.url) === '/login') signIn();
+        throw error;
       }
-      if (!response.ok) throw new Error(typeof data?.detail === 'string' ? data.detail : `The request could not be completed (HTTP ${response.status}).`);
+      let data;
+      try {
+        const text = await response.text();
+        receivedBytes = new TextEncoder().encode(text).length;
+        data = JSON.parse(text);
+      } catch {
+        if (controller.signal.aborted) throw controller.signal.reason;
+        throw failure(`The API response contains invalid or empty JSON (HTTP ${response.status}, ${mime}).`, 'invalid_json');
+      }
+      if (!response.ok) throw failure(`${typeof data?.detail === 'string' ? data.detail : 'The request could not be completed'} (HTTP ${response.status}).`, 'http_error');
       return data;
     } catch (error) {
-      if (controller.signal.aborted) throw controller.signal.reason || new Error('The request was cancelled.');
-      if (error instanceof TypeError) throw new Error('Could not reach the server. Check your connection and try again.');
+      if (controller.signal.aborted) {
+        if (controller.signal.reason?.name === 'AbortError') throw controller.signal.reason;
+        throw reported ? error : failure(controller.signal.reason?.message || 'The request timed out.', 'timeout');
+      }
+      if (error instanceof TypeError && !reported) throw failure('Could not reach the server. Check your connection and try again.', 'network_error');
       throw error;
     } finally {
       clearTimeout(timer); signal?.removeEventListener('abort', cancelled);

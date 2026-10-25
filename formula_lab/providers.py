@@ -3,6 +3,7 @@
 import base64
 import logging
 from functools import lru_cache
+from time import perf_counter
 from typing import Literal
 
 from openai import APIError, AsyncOpenAI, pydantic_function_tool
@@ -67,6 +68,9 @@ class OpenAIProvider:
         # Use the SDK's public strict-schema converter, then inspect completion
         # status BEFORE parsing. responses.parse attempts to parse truncated JSON.
         function = pydantic_function_tool(response_format)["function"]
+        logger = logging.getLogger(__name__)
+        started = perf_counter()
+        logger.info("Provider request started phase=%s", phase)
         try:
             async with AsyncOpenAI(api_key=self.api_key, timeout=120, max_retries=0) as client:
                 response = await client.responses.create(
@@ -81,12 +85,16 @@ class OpenAIProvider:
         except APIError as error:
             # SDK errors can include request/response details; never forward them.
             status = getattr(error, "status_code", None)
+            logger.warning("Provider request failed phase=%s status=%s error_type=%s duration_ms=%s",
+                           phase, status, type(error).__name__, round((perf_counter() - started) * 1000))
             messages = {
                 401: "Generation is unavailable because of a server configuration problem.",
                 429: "The generation service has reached its usage limit. Please try again later.",
                 400: "The generation service could not process these files. Try fewer pages or different files.",
             }
             raise GenerationError(messages.get(status, "The generation service is unavailable or timed out. Try again later.")) from None
+        logger.info("Provider request finished phase=%s status=%s output_tokens=%s duration_ms=%s",
+                    phase, response.status, getattr(response.usage, "output_tokens", None), round((perf_counter() - started) * 1000))
         if any(part.type == "refusal" for output in response.output if output.type == "message"
                for part in output.content):
             raise GenerationError("The generation service could not create material from these pages. "

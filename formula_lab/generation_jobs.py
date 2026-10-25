@@ -8,6 +8,7 @@ from uuid import uuid4
 
 from .study import GenerateRequest, GenerationError, StudyProvider, StudySet, generate_study
 from .workspace import Workspace
+from .diagnostics import job_context, log_exception, request_context
 
 
 class GenerationBusy(Exception):
@@ -19,6 +20,7 @@ class GenerationJob:
     owner_id: str
     requested_count: int
     id: str = field(default_factory=lambda: uuid4().hex)
+    request_id: str = field(default_factory=request_context.get)
     status: str = "running"
     phase: str = "preparing"
     accepted_count: int = 0
@@ -34,7 +36,7 @@ class GenerationJob:
                 setattr(self, key, values[key])
 
     def snapshot(self):
-        return {"id": self.id, "status": self.status, "phase": self.phase,
+        return {"id": self.id, "request_id": self.request_id, "status": self.status, "phase": self.phase,
                 "accepted_count": self.accepted_count, "requested_count": self.requested_count,
                 "attempt": self.attempt, "error": self.error,
                 "result": self.result if self.status == "completed" else None}
@@ -62,6 +64,7 @@ class GenerationJobs:
         await self.lock.acquire()
         job = GenerationJob(owner_id, selection.count)
         self.jobs[job.id] = job
+        logging.getLogger(__name__).info("Study job created job_id=%s requested=%s mode=%s", job.id, selection.count, selection.mode)
         job.task = asyncio.create_task(self.run(job, selection, provider))
         return job
 
@@ -74,12 +77,15 @@ class GenerationJobs:
 
     async def run(self, job: GenerationJob, selection: GenerateRequest, provider: StudyProvider):
         logger = logging.getLogger(__name__)
+        token = job_context.set(job.id)
+        logger.info("Study job started requested=%s", job.requested_count)
         try:
             job.result = await generate_study(self.workspace, job.owner_id, selection, provider, job.progress)
             job.status = "completed"
             logger.info("Study job completed requested=%s accepted=%s", job.requested_count, job.accepted_count)
         except asyncio.CancelledError:
             job.status = "cancelled"
+            logger.info("Study job cancelled accepted=%s requested=%s", job.accepted_count, job.requested_count)
         except (GenerationError, ValueError) as error:
             job.status, job.error = "failed", str(error)
             logger.warning("Study job failed requested=%s accepted=%s error_type=%s",
@@ -88,11 +94,12 @@ class GenerationJobs:
             job.status, job.error = "failed", "A selected file is no longer available. Reopen your library and try again."
         except Exception as error:
             job.status, job.error = "failed", "Generation failed unexpectedly. Please try again."
-            logger.error("Study job failed exception_type=%s", type(error).__name__)
+            log_exception(logger, "Study job failed unexpectedly", error)
         finally:
             job.finished_at = monotonic()
             self.lock.release()
             self.prune()
+            job_context.reset(token)
 
     async def cancel(self, job_id: str, owner_id: str) -> GenerationJob:
         job = self.get(job_id, owner_id)
