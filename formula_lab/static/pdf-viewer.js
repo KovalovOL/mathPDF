@@ -1,7 +1,7 @@
 /* Whole-document reading is independent of generation page selection. */
 import {getDocument, GlobalWorkerOptions, TextLayer} from '/static/vendor/pdfjs/pdf.mjs';
 import {scrollToSource, cancelNavigation} from '/static/pdf-source.js';
-import {createVisualCache, canvasBlob} from '/static/visual-cache.js';
+import {createVisualCache, canvasBlob, cachedImage} from '/static/visual-cache.js';
 GlobalWorkerOptions.workerSrc = '/static/vendor/pdfjs/pdf.worker.mjs';
 const status = document.getElementById('status');
 const container = document.getElementById('pages');
@@ -9,7 +9,7 @@ const query = new URLSearchParams(location.search);
 const documentId = query.get('document');
 const records = [], nearby = new Set(), queue = [];
 const zoomLevels = ['fit', '1', '1.25', '1.5'];
-let pdf, sourceDocument, visualCache, loading, busy = false, currentPage = 1, zoom = zoomLevels.includes(query.get('zoom')) ? query.get('zoom') : 'fit';
+let pdf, sourceDocument, visualCache, loading, disposed = false, busy = false, currentPage = 1, zoom = zoomLevels.includes(query.get('zoom')) ? query.get('zoom') : 'fit';
 let resizeTimer, pruneTimer, recoveryTimer, settleFrame, resizeAnchor, settleRequested = false, framePending = false, resizing = false, layoutWidth = 0;
 let navigationVersion = 0, navigationRecord, pendingNavigation;
 
@@ -277,10 +277,13 @@ try {
     element.append(label, sheet); fragment.append(element);
     const record = {number, element, sheet, baseWidth: entry?.baseWidth || normal.width, ratio,
       near: false, queued: false, task: null, version: 0, renderedWidth: 0};
-    if (entry?.blob) {
-      const image = document.createElement('img'); image.className = 'cached-page'; image.loading = 'lazy';
-      record.cachedUrl = URL.createObjectURL(entry.blob); image.src = record.cachedUrl;
-      image.alt = `Original PDF page ${number}`; sheet.prepend(image);
+    if (entry?.bytes || entry?.blob) {
+      const version = record.version;
+      cachedImage(entry, `Original PDF page ${number}`).then(decoded => {
+        if (!decoded) {visualCache.remove(sourceDocument, 'page', number, entry); return;}
+        if (disposed || record.version !== version || sheet.querySelector('canvas')) {URL.revokeObjectURL(decoded.url); return;}
+        record.cachedUrl = decoded.url; decoded.image.className = 'cached-page'; sheet.prepend(decoded.image);
+      });
     }
     records.push(record);
   }
@@ -322,7 +325,7 @@ try {
     navigationVersion++; navigationRecord = null; pendingNavigation = null; cancelNavigation();
   }, {passive: true});
   announce();
-  scheduleNearby();
+  scheduleNearby(); pump(); // Initial navigation can queue pages before the PDF is ready.
   parent.postMessage({type: 'pdf-ready', documentId}, location.origin);
 } catch (error) {
   if (error.status === 401 || error.status === 409) parent.postMessage({type: 'session-expired'}, location.origin);
@@ -330,6 +333,7 @@ try {
   status.hidden = false; status.textContent = 'Unable to preview this PDF. Download it to view the document.';
 }
 addEventListener('pagehide', () => {
+  disposed = true;
   loading?.destroy().catch(() => {});
   for (const record of records) if (record.cachedUrl) URL.revokeObjectURL(record.cachedUrl);
 });

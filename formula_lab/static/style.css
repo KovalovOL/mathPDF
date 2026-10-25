@@ -87,6 +87,8 @@ button.danger { background: #ad293d; border-color: #ad293d; }
 .tab-close { flex: 0 0 28px; border: 0; border-radius: 0; padding: .25rem .5rem; font-size: 1.15rem; background: transparent; color: #65738b; }
 .tab-close:hover { background: #dfe5ee; }
 .tab-action { border: 0; border-left: 1px solid var(--border); background: transparent; color: #364c70; padding: .6rem .8rem; font-size: .85rem; border-radius: 0; }
+.viewer-toggle { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 42px; width: 42px; padding: 0; border-left: 0; border-right: 1px solid var(--border); }
+.viewer-toggle svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
 .pane-toolbar { height: 45px; padding: 0 12px; display: flex; align-items: center; gap: .6rem; border-bottom: 1px solid var(--border); flex-shrink: 0; min-width: 0; }
 .pdf-controls, #page-form { display: flex; align-items: center; gap: .35rem; }
 #page-form label, #page-count { font-size: .8rem; color: #647087; white-space: nowrap; }
@@ -216,7 +218,7 @@ dialog::backdrop { background: #17233d6b; }
   .workspace.source-collapsed .practice-content, .workspace.source-collapsed .card-body { overscroll-behavior-y: contain; }
   .splitter { display: none; }
   .tab-action, .tab-close { min-height: 44px; }
-  #hide-source { font-size: .75rem; padding-inline: 8px; }
+  .viewer-toggle { flex-basis: 44px; width: 44px; }
   #add-files { padding-inline: 8px; }
   .practice-content { padding: 12px; }
   .card-face { padding: 18px; }

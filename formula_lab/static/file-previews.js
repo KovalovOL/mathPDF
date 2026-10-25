@@ -1,5 +1,5 @@
 /* Lazy file previews use the same owner-protected originals as the workspace. */
-import {createVisualCache, canvasBlob} from '/static/visual-cache.js';
+import {createVisualCache, canvasBlob, cachedImage} from '/static/visual-cache.js';
 let pdfModule;
 
 export function createFilePreviews({request, userId, onAuthFailure}) {
@@ -84,17 +84,19 @@ export function createFilePreviews({request, userId, onAuthFailure}) {
   async function renderCached(container, file) {
     const entry = await cache.get(file);
     if (disposed || !container.isConnected) return;
-    if (entry?.blob) {
-      const url = URL.createObjectURL(entry.blob); urls.add(url);
-      const image = document.createElement('img'); image.src = url;
-      image.alt = file.page_count ? `First page of ${file.filename}` : `Preview of ${file.filename}`;
-      container.replaceChildren(image); container.dataset.cached = 'true'; return;
+    if (entry?.bytes || entry?.blob) {
+      const decoded = await cachedImage(entry, file.page_count ? `First page of ${file.filename}` : `Preview of ${file.filename}`);
+      if (decoded) {
+        if (disposed || !container.isConnected) {URL.revokeObjectURL(decoded.url); return;}
+        urls.add(decoded.url); container.replaceChildren(decoded.image); container.dataset.cached = 'true'; return;
+      }
+      await cache.remove(file, 'preview', 1, entry);
     }
     if (entry?.text !== undefined) {
       const text = document.createElement('pre'); text.className = 'file-text-excerpt'; text.textContent = entry.text;
       container.replaceChildren(text); container.dataset.cached = 'true'; return;
     }
-    return file.media_type === 'application/pdf' ? renderPdf(container, file) : renderFile(container, file);
+    if (!disposed && container.isConnected) return file.media_type === 'application/pdf' ? renderPdf(container, file) : renderFile(container, file);
   }
 
   function pump() {

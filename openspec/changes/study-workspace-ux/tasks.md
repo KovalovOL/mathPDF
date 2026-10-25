@@ -42,3 +42,9 @@
 - [x] 7.4 Add full desktop source collapse and mobile study focus/pull-down restoration while preserving source navigation, resize anchors and ordinary answer scrolling.
 - [x] 7.5 Integrate the ten-page cache into the source viewer and remove obsolete per-item generation progress text.
 - [x] 7.6 Verify regression tests, local desktop/mobile behavior and cache reloads; update English documentation and deploy through the existing workflow.
+
+## 8. Safari cache recovery and compact viewer controls
+
+- [x] 8.1 Store derived images as byte buffers, read older Blob cache entries compatibly and recover unreadable images without displaying broken thumbnails; cover library and PDF page caches.
+- [x] 8.2 Replace source show/hide text with accessible icons and place the expanded viewer's collapse control at the far left of its file bar.
+- [ ] 8.3 Verify cache migration/recovery and desktop/mobile controls, update English documentation and deploy through the existing workflow.

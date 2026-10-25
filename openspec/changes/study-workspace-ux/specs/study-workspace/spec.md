@@ -30,6 +30,11 @@ The library sections SHALL be collapsible. The source pane SHALL fully collapse 
 - **WHEN** a learner chooses Show PDF, pulls down at the top of mobile practice or follows a source citation
 - **THEN** the existing viewer reappears with its reading state intact
 
+#### Scenario: Use compact source controls
+- **WHEN** the source pane is expanded
+- **THEN** an accessible icon at the far left of its file bar collapses it
+- **AND** a corresponding accessible restore icon appears when the source is collapsed
+
 ### Requirement: Bounded private visual caching
 The browser SHALL cache derived library previews and up to ten recently viewed PDF page images per account, keyed by document content and cache revision. Session and ownership checks SHALL precede cached page display. Deletion and sign-out SHALL invalidate affected caches. Cache failures SHALL fall back to normal rendering.
 
@@ -41,6 +46,12 @@ The browser SHALL cache derived library previews and up to ten recently viewed P
 - **WHEN** its cached image is available after authorization
 - **THEN** that image can appear while the source PDF and selectable text load
 - **AND** page-image cache entries remain bounded by count and bytes
+
+#### Scenario: Recover an unreadable cached image
+- **WHEN** an older cached Blob cannot be read or an image cannot be decoded after a browser restart
+- **THEN** the browser treats only that derived entry as a cache miss and renders from the authorized original
+- **AND** no broken cached image is inserted in the library or PDF page
+- **AND** readable older entries remain usable while new image entries use byte buffers
 
 ### Requirement: Single-request waiting text
 Generation waiting SHALL retain phase, elapsed time and cancellation without showing obsolete accepted/requested item progress.

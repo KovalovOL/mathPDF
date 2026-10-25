@@ -50,33 +50,65 @@ export async function clearVisualCache(userId, fileId) {
 export function createVisualCache(userId) {
   const allowed = file => !blockedUsers.has(userId) && !blockedFiles.has(`${userId}:${file.id}`);
   const key = (file, kind, page) => `${REVISION}:${userId}:${kind}:${file.id}:${file.sha256}:${page}`;
+  async function remove(file, kind = 'preview', page = 1, expected) {
+    await transaction(store => {
+      const request = store.get(key(file, kind, page));
+      request.onsuccess = () => {
+        const entry = request.result;
+        if (entry && (!expected || (entry.written ? entry.written === expected.written : entry.used === expected.used))) store.delete(entry.key);
+      };
+    });
+  }
+  async function restore(file, entry) {
+    if (!entry || !allowed(file)) return null;
+    if (entry.blob) {
+      // Never write an IndexedDB-backed Blob back to IndexedDB (WebKit 240216).
+      try {
+        entry = {...entry, bytes: await imageBytes(entry.blob), mediaType: entry.blob.type};
+        delete entry.blob;
+        await transaction(store => {if (allowed(file)) store.put(entry);});
+      } catch {await remove(file, entry.kind, entry.page, entry); return null;}
+    }
+    return allowed(file) ? entry : null;
+  }
   return {
+    remove,
     async get(file, kind = 'preview', page = 1) {
       if (!allowed(file)) return null;
-      return transaction((store, done) => {
+      const entry = await transaction((store, done) => {
         const request = store.get(key(file, kind, page));
         request.onsuccess = () => {
           const entry = request.result;
-          if (entry && allowed(file)) {entry.used = Date.now(); store.put(entry); done(entry);}
+          if (entry && allowed(file)) {
+            if (!entry.blob) {entry.used = Date.now(); store.put(entry);}
+            done(entry);
+          }
         };
       });
+      return restore(file, entry);
     },
     async pages(file) {
       if (!allowed(file)) return [];
-      return await transaction((store, done) => {
+      const entries = await transaction((store, done) => {
         const request = store.getAll(); request.onsuccess = () => done(request.result.filter(entry =>
           entry.userId === userId && entry.fileId === file.id && entry.hash === file.sha256 &&
           entry.revision === REVISION && entry.kind === 'page'));
       }) || [];
+      return (await Promise.all(entries.map(entry => restore(file, entry)))).filter(Boolean);
     },
     async put(file, kind, page, value) {
       if (!allowed(file)) return;
-      const size = value.blob?.size || (value.text?.length || 0) * 2;
+      let stored = {...value};
+      if (value.blob) {
+        try {stored.bytes = await imageBytes(value.blob); stored.mediaType = value.blob.type; delete stored.blob;}
+        catch {return;}
+      }
+      const size = stored.bytes?.byteLength || (stored.text?.length || 0) * 2;
       if (size > 6 * 1024 * 1024) return;
       await transaction(store => {
         if (!allowed(file)) return;
-        const entry = {...value, key: key(file, kind, page), revision: REVISION, userId,
-          fileId: file.id, hash: file.sha256, kind, page, size, used: Date.now()};
+        const entry = {...stored, key: key(file, kind, page), revision: REVISION, userId,
+          fileId: file.id, hash: file.sha256, kind, page, size, used: Date.now(), written: `${Date.now()}:${Math.random()}`};
         store.put(entry);
         const request = store.getAll();
         request.onsuccess = () => {
@@ -91,6 +123,29 @@ export function createVisualCache(userId) {
       });
     },
   };
+}
+
+async function imageBytes(blob) {
+  let timer;
+  try {
+    return await Promise.race([blob.arrayBuffer(), new Promise((_, reject) => {
+      timer = setTimeout(() => reject(new Error('Cached image unavailable')), 1500);
+    })]);
+  } finally {clearTimeout(timer);}
+}
+
+export async function cachedImage(entry, alt) {
+  let url, timer;
+  try {
+    const image = new Image();
+    const blob = entry.bytes ? new Blob([entry.bytes], {type: entry.mediaType}) : entry.blob;
+    url = URL.createObjectURL(blob); image.alt = alt; image.src = url;
+    await Promise.race([image.decode(), new Promise((_, reject) => {
+      timer = setTimeout(() => reject(new Error('Cached image unavailable')), 1500);
+    })]);
+    return {image, url};
+  } catch {if (url) URL.revokeObjectURL(url); return null;}
+  finally {clearTimeout(timer);}
 }
 
 export function canvasBlob(canvas) {

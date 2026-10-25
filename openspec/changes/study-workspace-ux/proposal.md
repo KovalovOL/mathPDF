@@ -21,6 +21,7 @@ The current workbench forces page selection before document exploration and disp
 - Add collapsible library sections and a source pane that can fully collapse on desktop and enter a study-only view on phones, with pull-down and button restoration.
 - Cache library previews and the ten most recently viewed PDF page images per account, with bounded storage and deletion/sign-out cleanup.
 - Remove obsolete per-item progress counts from single-request generation.
+- Recover unreadable Safari cached images and use compact, accessible source-pane icons with the expanded collapse control at the left edge.
 
 ## Capabilities
 

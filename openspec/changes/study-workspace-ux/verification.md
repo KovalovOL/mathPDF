@@ -27,3 +27,15 @@ A disposable loopback application used its own data directory, ordinary authenti
 The page cache contains derived page images, not full offline PDFs or cached private API responses. Authoritative metadata access precedes cache display; selectable text arrives with the authorized PDF. Browser storage may be evicted or unavailable, in which case ordinary rendering remains available. Real-device gesture and browser-specific repaint behavior has not been exhaustively tested.
 
 Application commit `9c3bc26` was pushed to `main`. [GitHub Actions run 40243930243](https://github.com/KovalovOL/mathPDF/actions/runs/40243930243) completed successfully. The live protected `/api/me` returned HTTP 401 with build `baedc7e9bc83`, matching the verified local application. The six checked static assets (`home.js`, `app.js`, `style.css`, `workspace-layout.js`, `visual-cache.js`, `pdf-viewer.js`) matched local SHA-256 hashes. No production account data was accessed. The disposable local server/tab were closed and the browser viewport restored.
+
+## Safari cache recovery and icon follow-up (2026-10-26)
+
+- Persist derived image bytes/MIME types instead of Blob objects. Readable legacy Blob entries migrate locally; unreadable ones become cache misses. Cached images decode before insertion, and a failed cache entry triggers ordinary source rendering. Guard removal against a newer replacement. The study-set schema and historical fixtures remain unchanged.
+- [WebKit issue 240216](https://bugs.webkit.org/show_bug.cgi?id=240216) describes repeated IndexedDB Blob read/write corruption consistent with the reported broken thumbnails. The precise browser-internal failure was not reproduced; legacy read failures and decode failures were simulated in isolated runtime checks.
+- Native Safari loaded the disposable authenticated library and displayed its six previews after reload. Its source pane exposed the new accessible icon at the left of the file bar; restore brought back a rendered PDF. Safari itself was not quit/restarted, preserving the user's unrelated browser session.
+- Found and fixed an initial render-queue stall: navigation could enqueue pages before the PDF parser was ready, and without a later resize the queue never started. An isolated delayed-PDF check now verifies rendering begins without a pointer/resize event and replaces an invalid cached page.
+- Browser checks confirmed icon-only Hide/Show controls, the leftmost collapse position, retained page 5 after hide/restore, and 44-pixel phone targets without document overflow at 320 × 568.
+- Full regression suite: **96 passed**, one existing Starlette/httpx deprecation warning, 21.19 seconds. Changed JavaScript syntax, whitespace and strict OpenSpec checks passed. No external model request was made.
+- Screenshots: ignored `artifacts/ui/safari-cached-previews.png` and `artifacts/ui/viewer-icon-left.png`.
+
+Follow-up deployment verification will be recorded after the existing workflow completes.
