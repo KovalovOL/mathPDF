@@ -20,6 +20,9 @@ See proposal.md for motivation. The reader uses vendored PDF.js 6.4.299 and reta
 6. Load the external formula guide and normalize common encoding errors locally. Validate counts, required formula presence, citations and exact duplicates. Do not preflight mathematical syntax or launch Chromium during generation. The UI and export typeset supported expressions and preserve unsupported TeX as readable text; no extra provider request is made.
 7. Add a conservative legacy renderer for standalone TeX lines; retain ordinary paragraphs and escape all generated prose. No arbitrary provider HTML is executed.
 8. Flashcards use recall questions written without the answer or hints. Put the central formula and any question-array formula objects on the answer side in the provider adapter. The shared display helper also relocates formula blocks in older cards without changing stored records. Show titles, citations and variant explanations only on the back; use neutral accessible card labels. Apply the same separation to exported questions/answers. Problems retain their question inputs. This is local processing, with no additional provider request.
+9. Add compact paragraphs with ordered prose/inline-math parts. The adapter supplies math delimiters; the model does not need to manage delimiters inside explanations. Constrain prose in the generation schema while keeping local parsing permissive for formatting errors. Retain canonical saved text/math blocks. Load reusable English examples of layout structures, with explicit instructions to copy symbols, rows and source notation rather than substitute equivalent formulas. Remove only exactly repeated standalone expressions on each side; preserve inline explanatory uses, variant metadata and distinct source citations.
+10. Recover complete supported bare environments before scanning legacy prose. Recognize bounded unambiguous TeX fragments with balanced arguments and adjacent mathematical operands, keeping English outside math. Do not guess a missing right-hand side, change logical operators, decode HTML entities as mathematical corrections, or convert a diagram into an invented equation. These changes are local display improvements, not proof of source fidelity or mathematical correctness.
+11. Allow a page-only central reference for material expressed only in prose or a diagram. Expand it into an optional canonical item citation and require that citation to be in the selected primary source scope. The answer displays the citation in both workspace and export. This removes the artificial requirement to fabricate a mathematical equation for a vector definition. Existing items without the optional citation remain compatible.
 
 ## Risks / Trade-offs
 
@@ -31,7 +34,7 @@ See proposal.md for motivation. The reader uses vendored PDF.js 6.4.299 and reta
 
 ## Migration Plan
 
-Deploy with the existing workflow. No database migration is required: new goal identifiers are optional for persisted sets. Rollback restores the previous assets and generator; new metadata is backward compatible.
+Deploy with the existing workflow. No database schema migration is required: new goal identifiers and item citations are optional, and the new reader accepts old saved sets. A rollback to a strict reader predating the optional item citation must also retain that citation-reading support to open newly saved payloads; old readers reject unknown fields. Do not rewrite or delete owned saved sets as part of deployment.
 
 ## Historical production recovery (superseded by single-request generation)
 

@@ -7,6 +7,7 @@ h3 { font-size: 11pt; margin: 0 0 3mm; }
 .source, .citation { font-size: 8pt; color: #4d5969; overflow-wrap: anywhere; }
 .print-item { break-inside: avoid; padding: 4mm 0; border-bottom: 1px solid #cdd3db; }
 .text-block { white-space: pre-wrap; overflow-wrap: anywhere; margin: 0 0 3mm; }
+.display-math { display: block; max-width: 100%; margin-block: 3mm; }
 .math-block { margin: 4mm 0; }
 .math-output { font-size: 12pt; width: 100%; padding: 2mm 0; overflow: visible; }
 .raw-formula { font-family: monospace; white-space: pre-wrap; overflow-wrap: anywhere; }

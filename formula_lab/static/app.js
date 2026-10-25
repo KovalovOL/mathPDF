@@ -259,6 +259,7 @@ function sourceOptions(result) {
 }
 function renderAnswer(container, item, result) {
   const options = sourceOptions(result); MathPDF.renderBlocks(container, item.answer, options);
+  if (item.source) container.append(MathPDF.citation(item.source, options));
   for (const block of MathPDF.variantBlocks(item)) {
     container.append(el('p', 'text-block', block.change));
     container.append(el('p', 'field-note', 'Original source formula'));

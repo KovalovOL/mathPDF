@@ -19,7 +19,10 @@ class InsufficientSource(StrictModel):
     reason: str = Field(min_length=1, max_length=1000)
 
 
-Prose = Annotated[str, Field(min_length=1, max_length=8000)]
+# The constrained provider decoder keeps mathematical syntax out of prose.
+# Parsing stays permissive so an older/nonconforming response is still usable.
+Prose = Annotated[str, Field(min_length=1, max_length=8000,
+    json_schema_extra={"pattern": r"^[A-Za-z\u00C0-\u024F0-9 \t\r\n.,;:!?'\"()/%’‘“”–—…-]*$"})]
 
 
 def normalize_model_tex(latex: str) -> str:
@@ -78,18 +81,38 @@ class Formula(StrictModel):
         return self
 
 
+class InlineMath(StrictModel):
+    math: str = Field(min_length=1, max_length=5000)
+
+
+class Paragraph(StrictModel):
+    parts: list[Prose | InlineMath] = Field(min_length=1, max_length=40)
+
+
+class SourcePage(StrictModel):
+    page: int = Field(ge=1)
+
+
 class CompactItem(StrictModel):
     title: str = Field(min_length=1, max_length=180)
-    formula: Formula
-    question: list[Prose | Formula] = Field(min_length=1, max_length=40)
-    answer: list[Prose | Formula] = Field(min_length=1, max_length=40)
+    formula: Formula | SourcePage
+    question: list[Prose | Formula | Paragraph] = Field(min_length=1, max_length=40)
+    answer: list[Prose | Formula | Paragraph] = Field(min_length=1, max_length=40)
 
     def expand(self, document_id: str, index: int, mode: str = "flashcards") -> StudyItem:
-        known = [self.formula] + [entry for entry in self.question + self.answer if isinstance(entry, Formula)]
+        known = ([self.formula] if isinstance(self.formula, Formula) else []) + [
+            entry for entry in self.question + self.answer if isinstance(entry, Formula)]
 
         def blocks(entries):
             output = []
             for entry in entries:
+                if isinstance(entry, Paragraph):
+                    # Explicit parts use canonical delimiters supplied locally;
+                    # no model guessing, renderer startup or second request.
+                    text = "".join(part if isinstance(part, str) else
+                                   r"\(" + normalize_model_tex(part.math) + r"\)" for part in entry.parts)
+                    output.append({"kind": "text", "text": text})
+                    continue
                 if isinstance(entry, str):
                     text = normalize_model_tex(entry)
                     # A model may repeat its typed formula as a bare prose entry.
@@ -108,7 +131,7 @@ class CompactItem(StrictModel):
                 })
             return output
         question, answer = blocks(self.question), blocks(self.answer)
-        main = blocks([self.formula])[0]
+        main = blocks([self.formula])[0] if isinstance(self.formula, Formula) else None
         if mode == "flashcards":
             # Recall cards must not disclose the answer formula before flipping,
             # even when a provider repeats it in the question array.
@@ -117,20 +140,48 @@ class CompactItem(StrictModel):
             if not question:
                 question = [{"kind": "text", "text": "Recall the formula."}]
         existing = answer if mode == "flashcards" else question + answer
-        if not any(block["kind"] == "math" and block["latex"] == main["latex"]
-                   and block["source"]["page"] == main["source"]["page"] for block in existing):
+        if main and not any(block["kind"] == "math" and block["latex"] == main["latex"]
+                   and block["source"]["page"] == main["source"]["page"]
+                   and block["original_latex"] == main["original_latex"]
+                   and block["change"] == main["change"] for block in existing):
             answer.insert(0, main)
-        return StudyItem(goal_step=index, title=self.title, question=question, answer=answer)
+        # Ignore only outer whitespace when comparing exact duplicates.
+        # Do not equate alternative symbols, layout, punctuation or citations.
+        for side in (question, answer):
+            seen = set()
+            unique = []
+            for block in side:
+                if block["kind"] == "math":
+                    key = (block["latex"].strip(), block["source"]["page"], block["original_latex"], block["change"])
+                    if key in seen:
+                        continue
+                    seen.add(key)
+                unique.append(block)
+            side[:] = unique
+        source = None if main else {"document_id": document_id, "page": self.formula.page,
+                                    "line_start": None, "line_end": None, "quote": None}
+        return StudyItem(goal_step=index, title=self.title, question=question, answer=answer, source=source)
 
 
-@lru_cache(maxsize=MAX_ITEMS)
-def set_response_format(count: int) -> type[StrictModel]:
+class FlashcardOutput(CompactItem):
+    question: list[Prose] = Field(min_length=1, max_length=1)
+    answer: list[Formula | Paragraph] = Field(min_length=1, max_length=40)
+
+
+class ProblemOutput(CompactItem):
+    answer: list[Formula | Paragraph] = Field(min_length=1, max_length=40)
+
+
+@lru_cache(maxsize=MAX_ITEMS * 3)
+def set_response_format(count: int, mode: str | None = None) -> type[StrictModel]:
     if not 1 <= count <= MAX_ITEMS:
         raise ValueError("Invalid requested item count.")
 
+    item_type = FlashcardOutput if mode == "flashcards" else ProblemOutput if mode == "problems" else CompactItem
+
     class CompletedSet(StrictModel):
         status: Literal["completed"]
-        items: list[CompactItem] = Field(min_length=count, max_length=count)
+        items: list[item_type] = Field(min_length=count, max_length=count)
 
     class SetResponse(StrictModel):
         result: CompletedSet | InsufficientSource
@@ -154,7 +205,7 @@ class OpenAIProvider:
             else:
                 content.append({"type": "input_file", "filename": entry.filename, "file_data": data_url})
         content.append({"type": "input_text", "text": task})
-        response_format = set_response_format(count)
+        response_format = set_response_format(count, mode)
         function = pydantic_function_tool(response_format)["function"]
         logger = logging.getLogger(__name__)
         started = perf_counter()
@@ -191,7 +242,9 @@ class OpenAIProvider:
                            getattr(response.incomplete_details, "reason", None), getattr(response.usage, "output_tokens", None))
             raise GenerationError("The model did not complete the requested set. No partial set was created. Please try again.")
         try:
-            result = response_format.model_validate_json(response.output_text).result
+            # A broad local reader preserves old/nonconforming formatting;
+            # the stricter generation schema guides only this one model call.
+            result = set_response_format(count).model_validate_json(response.output_text).result
             if isinstance(result, InsufficientSource):
                 return ProviderResult(content=GeneratedContent(items=[], notes=[]), provider="openai", model=self.model,
                                       insufficient_source=True)

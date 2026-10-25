@@ -13,6 +13,7 @@
         section.append(element('h3', card && side === 'question' ? `Card ${index + 1}` : `${index + 1}. ${item.title}`));
         const blocks = document.createElement('div'); MathPDF.renderBlocks(blocks, content[side], options);
         section.append(blocks);
+        if (side === 'answer' && content.source) section.append(MathPDF.citation(content.source, options));
         if (side === 'answer') for (const block of MathPDF.variantBlocks(content)) {
           section.append(element('p', block.change));
           section.append(MathPDF.mathBlock({...block, latex: block.original_latex}, options));

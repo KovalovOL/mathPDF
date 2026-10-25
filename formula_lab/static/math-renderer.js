@@ -8,6 +8,36 @@
     return node;
   }
 
+  function displayRows(latex, display) {
+    if (!display || /\\begin\{/.test(latex)) return latex;
+    const rows = []; let depth = 0, start = 0;
+    for (let index = 0; index < latex.length; index++) {
+      if (latex[index] === '\\') {
+        if (latex[index + 1] === '\\' && depth === 0) {
+          rows.push(latex.slice(start, index)); start = index + 2;
+        }
+        index++; // Escaped braces and nested row breaks remain untouched.
+      } else if (latex[index] === '{') depth++;
+      else if (latex[index] === '}') depth--;
+      if (depth < 0) return latex;
+    }
+    if (!rows.length || depth !== 0) return latex;
+    rows.push(latex.slice(start));
+    return '\\begin{aligned}' + rows.map(row => /(?<!\\)&/.test(row) ? row : '&' + row).join('\\\\') + '\\end{aligned}';
+  }
+
+  function completeTextGroup(latex) {
+    // One missing closing brace on a terminal text label is syntactic only.
+    // Never infer the scope of an unfinished fraction, exponent or overbar.
+    const groups = [];
+    for (let index = 0; index < latex.length; index++) {
+      if (latex[index] === '\\' && /[{}\\]/.test(latex[index + 1] || '')) {index++; continue;}
+      if (latex[index] === '{') groups.push(/\\text$/.test(latex.slice(0, index)));
+      else if (latex[index] === '}') {if (!groups.length) return latex; groups.pop();}
+    }
+    return groups.length === 1 && groups[0] ? latex + '}' : latex;
+  }
+
   function renderMath(container, latex, display = true) {
     container.replaceChildren();
     container.classList.remove('math-error', 'math-fallback');
@@ -16,7 +46,7 @@
       if (typeof latex !== 'string' || !latex.trim()) throw new Error('Enter a formula.');
       if (latex.length > 5000) throw new Error('Formula exceeds 5,000 characters.');
       if (!window.katex) throw new Error('The math renderer could not be loaded.');
-      window.katex.render(latex, container, {
+      window.katex.render(displayRows(completeTextGroup(latex), display), container, {
         displayMode: display, output: 'htmlAndMathml',
         throwOnError: true, trust: false, strict: 'error',
         maxExpand: 1000, maxSize: 20,
@@ -31,25 +61,27 @@
     }
   }
 
-  function mathBlock(block, {onSource, editable = true, sourceUrl, sourceLabel, linkSources = true} = {}) {
+  function citation(source, {onSource, sourceUrl, sourceLabel, linkSources = true} = {}, tag = 'p') {
+    const caption = element(tag, 'citation');
+    const label = sourceLabel ? sourceLabel(source) : `Page ${source.page}`;
+    const link = element(linkSources ? 'a' : 'span', '', label);
+    if (linkSources) {
+      link.href = sourceUrl ? sourceUrl(source) : `/source.pdf#page=${source.page}`;
+      link.target = '_blank'; link.rel = 'noopener';
+    }
+    if (linkSources && onSource) link.addEventListener('click', event => {
+      event.preventDefault(); onSource(source);
+    });
+    caption.append(link); return caption;
+  }
+
+  function mathBlock(block, options = {}) {
+    const {editable = true} = options;
     const figure = element('figure', 'math-block');
     const output = element('div', 'math-output');
     renderMath(output, block.latex, block.display);
     figure.append(output);
-    if (block.source) {
-      const caption = element('figcaption', 'citation');
-      const label = sourceLabel ? sourceLabel(block.source) : `Page ${block.source.page}`;
-      const link = element(linkSources ? 'a' : 'span', '', label);
-      if (linkSources) {
-        link.href = sourceUrl ? sourceUrl(block.source) : `/source.pdf#page=${block.source.page}`;
-        link.target = '_blank'; link.rel = 'noopener';
-      }
-      if (linkSources && onSource) link.addEventListener('click', event => {
-        event.preventDefault(); onSource(block.source);
-      });
-      caption.append(link);
-      figure.append(caption);
-    }
+    if (block.source) figure.append(citation(block.source, options, 'figcaption'));
     if (!editable) return figure;
     const details = element('details', 'math-editor');
     details.append(element('summary', '', 'Edit formula'));
@@ -71,53 +103,60 @@
     return figure;
   }
 
-  function renderDelimitedText(container, text) {
-    // Models sometimes put delimited inline TeX in prose. Parse only math
-    // delimiters; every other character remains a DOM text node.
-    const pattern = /\\\(([\s\S]*?)\\\)|\\\[([\s\S]*?)\\\]|\$\$([\s\S]*?)\$\$|\$([^$\n]+)\$/g;
+  // Bounded legacy recovery for mathematical fragments, not English sentences.
+  // No operator substitutions, entity decoding or missing-content inference.
+  let group = String.raw`\{[^{}\n]*\}`;
+  for (let depth = 0; depth < 3; depth++) group = String.raw`\{(?:[^{}\n]|${group})*\}`;
+  const argument = String.raw`(?:${group}|[A-Za-z0-9])`;
+  const parens = String.raw`\((?:[^()\n]|\([^()\n]*\))*\)`;
+  const command = String.raw`\\[A-Za-z]+(?:\s*${group}){0,2}`;
+  const atom = String.raw`(?:\\(?:neg|lnot)\s*)*(?:${command}|\\[&{}]|[A-Za-z](?![A-Za-z])|\d+(?:\.\d+)?|\|[^|\n]+\|)(?:${parens}|[_^]${argument}|!)*`;
+  const operator = String.raw`(?:\\(?:Rightarrow|Leftarrow|Leftrightarrow|rightarrow|leftarrow|leftrightarrow|implies|iff|lor|vee|land|wedge|cap|cup|in|notin|subseteq|subset|supseteq|supset|times|cdot|equiv|neq|leq|geq|downarrow|uparrow|oplus|setminus|mid)\b|\\&|[=+*/<>−-])`;
+  const bareMath = new RegExp(String.raw`(?<![A-Za-z\\])${atom}(?:\s*${operator}\s*${atom})*(?![A-Za-z])`, 'g');
+
+  function renderLegacyText(container, text) {
     let position = 0;
-    for (const match of text.matchAll(pattern)) {
-      container.append(document.createTextNode(text.slice(position, match.index)));
+    for (const match of text.matchAll(bareMath)) {
+      const expression = match[0];
+      // Plain words, sentence numbers, initials and articles stay plain text.
+      if (!/[\\^_=|!]/.test(expression) && !/^[A-Za-z]\(/.test(expression)) continue;
+      const withoutCommands = expression.replace(/\\[A-Za-z]+/g, '');
+      if (/\b[A-Za-z]{3,}\b/.test(withoutCommands)) continue;
       const math = element('span', 'inline-math');
-      const display = match[2] !== undefined || match[3] !== undefined;
-      renderMath(math, match[1] ?? match[2] ?? match[3] ?? match[4], display);
-      container.append(math); position = match.index + match[0].length;
+      if (!renderMath(math, expression, false)) continue;
+      container.append(document.createTextNode(text.slice(position, match.index)), math);
+      position = match.index + expression.length;
     }
     container.append(document.createTextNode(text.slice(position)));
   }
 
   function renderText(container, text) {
-    // Older sets sometimes contain a whole TeX expression on a prose list line.
-    // Only recover clearly mathematical standalone lines; never typeset an English paragraph.
-    if (['$', '\\(', '\\['].some(marker => text.includes(marker))) {
-      renderDelimitedText(container, text); return;
+    // Explicit delimiters and complete environments take precedence over any
+    // legacy fragment scanning. Preserve every source character inside math.
+    const pattern = /\\\(([\s\S]*?)\\\)|\\\[([\s\S]*?)\\\]|\$\$([\s\S]*?)\$\$|\$([^$\n]+)\$|(\\begin\{(aligned|alignedat|gathered|array|matrix|pmatrix|bmatrix|Bmatrix|vmatrix|Vmatrix|smallmatrix|cases)\}[\s\S]*?\\end\{\6\})/g;
+    let position = 0;
+    for (const match of text.matchAll(pattern)) {
+      renderLegacyText(container, text.slice(position, match.index));
+      const display = match[2] !== undefined || match[3] !== undefined || match[5] !== undefined;
+      const math = element('span', display ? 'inline-math display-math' : 'inline-math');
+      renderMath(math, match[1] ?? match[2] ?? match[3] ?? match[4] ?? match[5], display);
+      container.append(math); position = match.index + match[0].length;
     }
-    const lines = text.split('\n');
-    lines.forEach((line, index) => {
-      if (index) container.append(document.createTextNode('\n'));
-      const prefix = line.match(/^\s*(?:(?:\d+[.)]|[-*•])\s+)?/)[0];
-      const expression = line.slice(prefix.length).trim();
-      const withoutCommands = expression.replace(/\\[A-Za-z]+/g, '');
-      const standalone = /\\[A-Za-z]+/.test(expression) &&
-        /^(?:[\\\d+\-({\[]|[A-Za-z](?=[\s_^=<>]))/.test(expression) &&
-        !/\b[A-Za-z]{3,}\b/.test(withoutCommands);
-      if (standalone) {
-        const math = element('span', 'inline-math');
-        if (renderMath(math, expression, false)) {
-          container.append(document.createTextNode(prefix), math); return;
-        }
-      }
-      renderDelimitedText(container, line);
-    });
+    renderLegacyText(container, text.slice(position));
   }
 
   function renderBlocks(container, blocks, options = {}) {
     container.replaceChildren();
+    const seen = new Set();
     for (const block of blocks) {
       if (block.kind === 'text') {
         const paragraph = element('p', 'text-block'); renderText(paragraph, block.text); container.append(paragraph);
       }
-      else if (block.kind === 'math') container.append(mathBlock(block, options));
+      else if (block.kind === 'math') {
+        const key = JSON.stringify([block.latex.trim(), block.source, block.original_latex, block.change, block.display]);
+        if (seen.has(key)) continue;
+        seen.add(key); container.append(mathBlock(block, options));
+      }
       else container.append(element('p', 'error', 'Unsupported content block.'));
     }
   }
@@ -147,5 +186,5 @@
       seen.add(key); return true;
     });
   }
-  window.MathPDF = {renderMath, renderBlocks, mathBlock, flashcardSides, variantBlocks};
+  window.MathPDF = {renderMath, renderBlocks, mathBlock, citation, flashcardSides, variantBlocks};
 })();

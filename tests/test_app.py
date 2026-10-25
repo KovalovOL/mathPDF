@@ -136,3 +136,31 @@ def test_raw_math_completes_saves_and_exports(tmp_path, legacy_front_formula):
         assert 'unknownCommand' in answers
         assert 'Expression 1' in answers
         assert answers.count('Answer-only variant explanation.') == 1
+
+
+def test_prose_definition_saves_exports_and_enforces_its_page_reference(tmp_path):
+    from pypdf import PdfReader
+    from formula_lab.study import Citation
+
+    class DefinitionProvider(FixtureProvider):
+        async def generate(self,*args,**kwargs):
+            result=await super().generate(*args,**kwargs)
+            for item in result.content.items:
+                item.answer.pop(0)
+                item.source=Citation(document_id=None,page=1,line_start=None,line_end=None,quote=None)
+            return result
+
+    app=create_app(tmp_path,DefinitionProvider())
+    with TestClient(app) as client:
+        sign_in(client,app)
+        doc=upload(client)
+        result=client.post('/api/study/generate',json={
+            'document_id':doc['id'],'pages':[1],'mode':'flashcards','count':1}).json()
+        assert result['items'][0]['source']['document_id']==doc['id']
+        assert client.post('/api/study-sets',json=result).status_code==200
+        exported=client.post('/api/study/export.pdf',json=result)
+        assert exported.status_code==200
+        text='\n'.join(p.extract_text() for p in PdfReader(io.BytesIO(exported.content)).pages)
+        assert 'notes.pdf · page 1' in text.split('Answers',1)[1]
+        result['items'][0]['source']['document_id']='f'*32
+        assert client.post('/api/study-sets',json=result).status_code==502

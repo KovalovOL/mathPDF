@@ -77,6 +77,7 @@ class StudyItem(StrictModel):
     title: str = Field(min_length=1, max_length=180)
     question: list[Block] = Field(min_length=1, max_length=40)
     answer: list[Block] = Field(min_length=1, max_length=40)
+    source: Citation | None = None
 
 
 class GeneratedContent(StrictModel):
@@ -150,7 +151,7 @@ PROMPTS = Path(__file__).parent / "prompts"
 
 
 def load_prompts(request: GenerateRequest, documents: list[InputDocument]) -> tuple[str, str, dict[str, str]]:
-    names = ["study-system.md", f"{request.mode}.md", "formula-guide.md",
+    names = ["study-system.md", f"{request.mode}.md", "formula-guide.md", "math-patterns.md",
              "context.md", "attachment-label.md", "comment.md"]
     resources = {name: (PROMPTS / name).read_text(encoding="utf-8") for name in names}
     source = documents[0]
@@ -167,7 +168,8 @@ def load_prompts(request: GenerateRequest, documents: list[InputDocument]) -> tu
     if request.comment.strip():
         task += "\n\n" + Template(resources["comment.md"]).substitute(comment=json.dumps(request.comment.strip(), ensure_ascii=False))
     hashes = {name: hashlib.sha256(text.encode()).hexdigest() for name, text in resources.items()}
-    return resources["study-system.md"] + "\n\n" + resources["formula-guide.md"], task, hashes
+    system = "\n\n".join(resources[name] for name in ("study-system.md", "formula-guide.md", "math-patterns.md"))
+    return system, task, hashes
 
 
 def selected_pdf(path: Path, pages: list[int]) -> bytes:
@@ -223,13 +225,14 @@ def prepare_documents(workspace: Workspace, request: GenerateRequest, owner_id: 
 
 def validate_item(item: StudyItem, mode: str, document_id: str, pages: list[int]):
     maths = [block for block in item.question + item.answer if isinstance(block, MathBlock)]
-    if not maths:
-        raise ContentValidationError("missing_formula", "A study item is missing its source formula.")
-    for block in maths:
-        if block.source.document_id is None:
-            block.source.document_id = document_id
-        if block.source.page not in pages or block.source.document_id != document_id:
-            raise ContentValidationError("invalid_source", "A formula references pages outside the selected source.")
+    if not maths and item.source is None:
+        raise ContentValidationError("missing_formula", "A study item is missing its source formula or page reference.")
+    sources = [block.source for block in maths] + ([item.source] if item.source else [])
+    for source in sources:
+        if source.document_id is None:
+            source.document_id = document_id
+        if source.page not in pages or source.document_id != document_id:
+            raise ContentValidationError("invalid_source", "A study item references pages outside the selected source.")
 
 
 def item_expressions(item: StudyItem) -> list[tuple[str, bool]]:

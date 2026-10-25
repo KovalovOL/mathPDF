@@ -53,3 +53,9 @@
 - [x] 9.1 Move flashcard formulas to answers, remove the front-formula validation rule, and update external prompts for recall questions without answer hints.
 - [x] 9.2 Keep titles, formulas, citations and variant explanations on the back in the workspace and PDF export, including older saved cards and drafts.
 - [x] 9.3 Add regression coverage, verify front/back behavior locally, update English documentation, and deploy through the existing workflow.
+
+## 10. Reusable LaTeX structure and source notation
+
+- [x] 10.1 Add explicit inline mathematical segments to the compact provider contract, reusable source-preserving LaTeX examples, and exact-formula deduplication without extra model requests.
+- [x] 10.2 Recover unambiguous legacy environments and bare inline TeX safely in the shared renderer, preserving symbols and source references without inferring missing expressions.
+- [ ] 10.3 Add screenshot-derived regressions, verify real generation and PDF/browser display against the supplied sources, update English documentation and deploy.

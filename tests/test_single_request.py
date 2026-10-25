@@ -8,7 +8,7 @@ import pytest
 
 from formula_lab.providers import OpenAIProvider, set_response_format
 from formula_lab.study import (GeneratedContent, GenerationError, GenerateRequest, InputDocument,
-                               ProviderResult, StudyItem, collect_study, load_prompts)
+                               ProviderResult, StudyItem, collect_study, load_prompts, PROMPTS)
 from formula_lab.workspace import Document
 
 
@@ -77,6 +77,8 @@ def test_prompts_load_guide_and_preserve_selected_page_mapping(source):
     assert '1 -> 4, 2 -> 5' in task
     assert 'Short examples' in task
     assert 'formula-guide.md' in hashes
+    assert 'math-patterns.md' in hashes
+    assert 'Reusable LaTeX structures' in system
     assert not any('plan' in name or 'continuation' in name for name in hashes)
     assert source.label
 
@@ -247,3 +249,88 @@ def test_only_unambiguous_standalone_tex_is_delimited_locally():
     assert normalize_model_prose('An ordinary English explanation.') == 'An ordinary English explanation.'
     assert normalize_model_prose(r'Explain x \in A in words.') == r'Explain x \in A in words.'
     assert normalize_model_prose(r'Already $x \in A$.') == r'Already $x \in A$.'
+
+
+def test_explicit_paragraph_parts_supply_math_delimiters_locally(source):
+    payload = compact_payload()
+    payload['result']['items'][0]['answer'] = [{'parts': [
+        'The coefficient ', {'math': r'\binom{n}{m}'}, ' counts ', {'math': 'm'}, ' selections.']}]
+    expanded = set_response_format(1).model_validate(payload).result.items[0].expand(source.document.id, 1)
+    assert expanded.answer[-1].text == r'The coefficient \(\binom{n}{m}\) counts \(m\) selections.'
+    assert expanded.answer[0].source.page == 4
+
+
+def test_page_only_source_preserves_prose_without_manufacturing_formula(source):
+    from formula_lab.study import validate_item, ContentValidationError
+    payload = compact_payload()
+    entry = payload['result']['items'][0]
+    entry.update(formula={'page':4},question=['What defines vector equality?'],
+                 answer=[{'parts':['Two vectors are equal when their directions and magnitudes agree.']}])
+    expanded = set_response_format(1).model_validate(payload).result.items[0].expand(source.document.id,1)
+    assert all(block.kind == 'text' for block in expanded.question + expanded.answer)
+    assert expanded.source.page == 4
+    assert expanded.source.document_id == source.document.id
+    validate_item(expanded, 'flashcards',source.document.id,source.pages)
+    expanded.source.page = 9
+    with pytest.raises(ContentValidationError):
+        validate_item(expanded,'flashcards',source.document.id,source.pages)
+
+
+@pytest.mark.parametrize('tex', [r'\bar{w} \Leftrightarrow 0',r'\overline{\bar{w}\&\bar{y}}',
+    r'P(n,m)=n(n-1)\cdots(n-m+1)=\frac{n!}{(n-m)!}',r's\&x\Rightarrow r\vee y'])
+def test_source_operators_bar_scope_and_equality_order_are_not_normalized(tex):
+    from formula_lab.providers import normalize_model_tex
+    assert normalize_model_tex(tex) == tex
+
+
+def test_prose_generation_constraint_does_not_discard_legacy_formatting(source):
+    import re
+    from formula_lab.providers import CompactItem
+    branches = CompactItem.model_json_schema()['properties']['answer']['items']['anyOf']
+    pattern = next(branch['pattern'] for branch in branches if branch.get('type') == 'string')
+    assert re.fullmatch(pattern, 'An ordinary explanation.')
+    assert not re.fullmatch(pattern, r'Bare \binom{n}{m} and x^n = y')
+    payload = compact_payload()
+    payload['result']['items'][0]['answer'] = [r'Bare \binom{n}{m} and x^n = y']
+    # Formatting is a decoding guide, never a second local rejection/retry gate.
+    assert set_response_format(1).model_validate(payload).result.items
+
+
+def test_generation_schema_requires_complete_flashcard_question_and_structured_answers():
+    schema = set_response_format(5, 'flashcards').model_json_schema()
+    item = schema['$defs']['FlashcardOutput']['properties']
+    assert item['question']['maxItems'] == 1
+    assert item['question']['items']['type'] == 'string'
+    assert all(branch.get('type') != 'string' for branch in item['answer']['items']['anyOf'])
+    assert 'Paragraph' in schema['$defs']
+
+
+def test_exact_formula_repetitions_are_removed_without_merging_sources_or_variants(source):
+    payload = compact_payload()
+    entry = payload['result']['items'][0]
+    same = entry['formula'].copy()
+    entry['answer'] = [same, same.copy(), {**same, 'page':5},
+                       {**same, 'variant': {'original':'x', 'change':'Restore the membership relation.'}}]
+    expanded = set_response_format(1).model_validate(payload).result.items[0].expand(source.document.id, 1)
+    assert len(expanded.answer) == 3
+    assert [block.source.page for block in expanded.answer] == [4,5,4]
+    assert expanded.answer[-1].original_latex == 'x'
+
+
+def test_shared_math_examples_are_valid_json_and_tex():
+    from formula_lab.math_validation import MathValidator
+    examples = [json.loads(line) for line in (PROMPTS/'math-patterns.md').read_text().splitlines()
+                if line.startswith('{')]
+    expressions = []
+    for example in examples:
+        if 'parts' in example:
+            expressions.extend((part['math'], False) for part in example['parts'] if isinstance(part, dict))
+        elif 'latex' in example:
+            expressions.append((example['latex'], True))
+        elif 'math' in example:
+            expressions.append((example['math'], False))
+    assert len(expressions) >= 12
+    async def check():
+        async with MathValidator() as validator:
+            assert await validator.errors(expressions) == []
+    asyncio.run(check())

@@ -6,6 +6,33 @@ Create varied study material grounded in the selected PDF, with progressive lear
 
 ## ADDED Requirements
 
+### Requirement: Explicit inline math and source-preserving structures
+Generation SHALL support structured inline math segments and use an external reusable LaTeX pattern guide. The adapter SHALL supply delimiters locally and preserve canonical save/export compatibility. Instructions SHALL require the original symbols, operand order, rows and complete expressions without equivalent-notation substitutions, invented equalities or answer-side omissions. No additional provider call SHALL be made.
+
+#### Scenario: Explain a binomial coefficient
+- **WHEN** an explanation contains a binomial coefficient or another mathematical fragment
+- **THEN** the provider can supply it as an explicit math segment inside a paragraph
+- **AND** the adapter supplies its rendering delimiters without changing the expression
+
+#### Scenario: Copy a truth table or a multi-row law
+- **WHEN** source material contains a truth table or several formula rows
+- **THEN** instructions require the source symbols, values, labels and row order
+- **AND** reusable layout examples do not authorize substituting other notation
+
+#### Scenario: Source definition contains no printed equation
+- **WHEN** an item teaches a prose definition or geometric rule without a source formula
+- **THEN** the provider can return a page-only source reference with an answer in words
+- **AND** the selected-page and ownership checks apply to that reference
+- **AND** the back and PDF answer section retain its source citation without an invented equation
+
+### Requirement: Conservative legacy formatting recovery
+The shared workspace/export renderer SHALL typeset complete supported bare environments and unambiguous TeX fragments in older prose. It SHALL keep surrounding English as text and preserve unsupported fragments as raw text. It SHALL NOT infer missing mathematical content. Exact standalone formula duplicates with the same source and variant metadata MAY be suppressed.
+
+#### Scenario: Older explanation contains bare LaTeX
+- **WHEN** prose includes a complete aligned environment or a bare binomial command
+- **THEN** that fragment is typeset locally without changing its mathematical symbols
+- **AND** surrounding English and distinct source references remain available
+
 ### Requirement: Flashcard answers appear only after reveal
 Flashcard fronts SHALL show only a self-contained recall question without answer hints. Titles, answer formulas, explanations and citations SHALL appear only on the back. External prompts SHALL enforce this separation, without another provider request. Hidden faces SHALL be inaccessible to assistive technology and keyboard focus.
 

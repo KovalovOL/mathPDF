@@ -19,6 +19,8 @@ A set contains its ID/title, primary document identity, selected original pages,
 
 A text block is `{"kind":"text","text":"Identify this expression."}`. All prose is rendered as text. For an intentional quiz variation, original_latex and change are supplied together; the answer can display the unmodified expression and explain the change. The model's response schema is derived from Pydantic through the OpenAI SDK.
 
+The provider contract also accepts mixed paragraphs as `{"parts":["The coefficient ",{"math":"\\binom{n}{m}"}," counts selections."]}`. They expand into canonical text blocks with locally supplied math delimiters. New answer output uses structured paragraphs/formulas and flashcard questions use one complete prose string; local readers remain tolerant of legacy prose. A prose-only definition can use a compact page-only reference instead of inventing a formula. It expands into optional item-level `source` with the same citation shape, selected-page checks and owner binding as a mathematical block, and appears only in the answer view/export section.
+
 New generation accepts 1–50 requested items and succeeds only with exactly that many validated questions in a single provider request. The completed-result schema has exact array bounds or an explicit insufficient-source result. No model retry or repair call is made; there is no successful partial output. Exact question repeats, missing source formulas and out-of-selection citations are rejected. Flashcard questions ask for recall without answer hints; the central formula belongs to the answer. A front-side formula is not required. Line ranges must be ordered and either have both endpoints or neither. Existing saved sets remain readable. Schema/scope checks do not prove citation accuracy or mathematical correctness.
 
 ## Rendering boundary
@@ -29,7 +31,7 @@ The shared `flashcardSides` helper keeps titles, formula blocks, explanations an
 
 ## Prompt boundary
 
-All natural-language LLM instructions are loaded from `formula_lab/prompts/`: system instructions, mode-specific templates, the formula-writing guide, context-role instructions, per-attachment labels and comments. Runtime values supply selected-page mapping, file metadata, requested count and user comment. Prompt content hashes accompany each result. Provider adapters add no hidden instruction text.
+All natural-language LLM instructions are loaded from `formula_lab/prompts/`: system instructions, mode-specific templates, the formula-writing guide, reusable math patterns, context-role instructions, per-attachment labels and comments. Runtime values supply selected-page mapping, file metadata, requested count and user comment. Prompt content hashes accompany each result. Provider adapters add no hidden instruction text. Reusable structures apply across topics without changing source operators, accents, fonts or row/equality order; prompts explicitly distinguish worksheet candidates from true assertions. Source fidelity and mathematical correctness remain unproven by schema compliance or successful typesetting.
 
 ## Historical diagnostic routes
 
