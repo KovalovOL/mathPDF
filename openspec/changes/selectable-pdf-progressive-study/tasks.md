@@ -69,4 +69,4 @@
 
 - [x] 12.1 Record the mandatory backward-compatibility policy, add a defaulted study-set version marker and frozen legacy fixtures, and verify non-destructive read/save compatibility.
 - [x] 12.2 Share text/math fragment parsing with flashcard projection so inline and recognizable legacy formulas remain answer-only across providers, old sets and PDF export without model calls or stored-content mutation.
-- [ ] 12.3 Verify compatibility and front/back regressions through tests, the local browser and PDF export; update English documentation and deploy through the existing workflow.
+- [x] 12.3 Verify compatibility and front/back regressions through tests, the local browser and PDF export; update English documentation and deploy through the existing workflow.
