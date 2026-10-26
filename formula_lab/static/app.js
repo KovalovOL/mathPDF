@@ -341,7 +341,7 @@ function renderPractice() {
   $('save-set').textContent = record?.saved ? 'Saved' : 'Save';
   $('export-set').disabled = !result?.items.length;
   const itemWord = result?.mode === 'flashcards' ? 'card' : 'problem';
-  $('set-status').textContent = result ? `${record.saved ? 'Saved' : 'Unsaved'} · ${result.items.length} ${itemWord}${result.items.length === 1 ? '' : 's'}` : 'Study material';
+  $('set-status').textContent = result ? `${record.saved ? 'Saved' : 'Unsaved'} · ${result.items.length} ${itemWord}${result.items.length === 1 ? '' : 's'} · Level ${result.difficulty ?? 3}` : 'Study material';
   $('set-status').title = result ? 'Source transcription has not been verified against the PDF.' : '';
   $('study-notes').hidden = !result?.notes.length;
   const notes = el('details'); notes.append(el('summary', '', 'Generation notes'));
@@ -461,13 +461,13 @@ function selectionRequest() {
   if (totalPages > 100) throw new Error('Select up to 100 PDF pages across the source and context files.');
   const count = Number($('count').value), maximum = config?.max_items || Number($('count').max);
   if (!Number.isInteger(count) || count < 1 || count > maximum) throw new Error(`Choose between 1 and ${maximum} items.`);
-  return {document_id: source.id, pages, context, comment: $('context-comment').value.trim(), mode: $('mode').value, count};
+  return {document_id: source.id, pages, context, comment: $('context-comment').value.trim(), mode: $('mode').value, count, difficulty: Number(document.querySelector('input[name=difficulty]:checked').value)};
 }
 function updateGenerationSummary() {
   try {
     const selection = selectionRequest(); const doc = documents.get(selection.document_id);
     const count = selection.pages?.length || doc.page_count;
-    $('generation-summary').textContent = `${selection.count} ${selection.mode === 'flashcards' ? 'flashcards' : 'problems'} · ${count} source ${count === 1 ? 'page' : 'pages'} · ${selection.context.length} context ${selection.context.length === 1 ? 'file' : 'files'}`;
+    $('generation-summary').textContent = `${selection.count} ${selection.mode === 'flashcards' ? 'flashcards' : 'problems'} · Level ${selection.difficulty} · ${count} source ${count === 1 ? 'page' : 'pages'} · ${selection.context.length} context ${selection.context.length === 1 ? 'file' : 'files'}`;
     $('generation-summary').className = 'selection-summary';
   } catch (error) {$('generation-summary').textContent = error.message; $('generation-summary').className = 'selection-summary error';}
 }
@@ -663,6 +663,11 @@ $('open-generation').addEventListener('click', () => action(openGeneration));
 $('source-document').addEventListener('change', sourceChanged);
 $('source-scope').addEventListener('change', () => {updateRangeDisabled(); updateGenerationSummary();});
 for (const input of [$('source-from'), $('source-to'), $('mode'), $('count')]) input.addEventListener('input', updateGenerationSummary);
+const difficultyDescriptions = ['Recall core facts and meanings.', 'Explain conditions and apply one idea.', 'Apply concepts with a few reasoning steps.', 'Connect ideas and justify careful distinctions.', 'Explore deeper reasoning, proofs and edge cases.'];
+for (const input of document.querySelectorAll('input[name=difficulty]')) input.addEventListener('change', () => {
+  $('difficulty-description').textContent = `${difficultyDescriptions[Number(input.value)-1]} Items become harder within this level.`;
+  updateGenerationSummary();
+});
 $('generate-form').addEventListener('submit', event => action(() => generate(event)));
 $('cancel-generation').addEventListener('click', () => generationController?.abort());
 $('save-set').addEventListener('click', () => openSaveDialog(activeSetId));

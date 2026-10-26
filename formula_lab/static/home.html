@@ -14,7 +14,10 @@
     <div class="header-actions"><button id="upload-files" disabled>Upload files</button><div id="account"></div></div>
   </header>
   <main class="library-main">
-    <h2 class="library-title">Your library</h2>
+    <div class="library-topbar"><h2 class="library-title">Your library</h2><div class="library-controls"><button id="new-folder" class="small secondary" disabled>+ New folder</button><button id="archive-view" class="small secondary" disabled aria-pressed="false">Archive <span id="archive-count"></span></button></div></div>
+    <nav id="library-breadcrumbs" class="library-breadcrumbs" aria-label="Folder path"></nav>
+    <p id="archive-note" class="field-note" hidden>Archived items stay available as sources. Restore them to return them to their saved folder.</p>
+    <div id="library-folders" class="folder-grid" aria-label="Folders"></div>
     <p id="library-error" class="error" role="alert" hidden></p>
     <p id="upload-status" class="upload-progress" role="status" hidden></p>
     <details id="files-section" class="library-section" open>
@@ -33,6 +36,9 @@
       <div class="dialog-footer"><button id="cancel-delete" type="button" class="secondary" autofocus>Cancel</button><button id="confirm-delete" type="submit" class="danger">Delete permanently</button></div>
     </form>
   </dialog>
+  <dialog id="folder-dialog" aria-labelledby="folder-heading"><form id="folder-form"><div class="dialog-header"><h2 id="folder-heading">New folder</h2></div><div class="dialog-body"><label for="folder-name">Folder name</label><input id="folder-name" type="text" maxlength="100" required autocomplete="off"><p id="folder-error" class="error" role="alert" hidden></p></div><div class="dialog-footer"><button type="button" class="secondary" data-close="folder-dialog">Cancel</button><button id="confirm-folder" type="submit">Create folder</button></div></form></dialog>
+  <dialog id="move-dialog" aria-labelledby="move-heading"><form id="move-form"><div class="dialog-header"><h2 id="move-heading">Move item</h2></div><div class="dialog-body"><p id="move-item-name"></p><label for="move-destination">Destination folder</label><select id="move-destination"></select><p id="move-error" class="error" role="alert" hidden></p></div><div class="dialog-footer"><button type="button" class="secondary" data-close="move-dialog">Cancel</button><button id="confirm-move" type="submit">Move</button></div></form></dialog>
+  <dialog id="remove-folder-dialog" aria-labelledby="remove-folder-heading"><form id="remove-folder-form"><div class="dialog-header"><h2 id="remove-folder-heading">Remove folder?</h2></div><div class="dialog-body"><p id="remove-folder-message"></p><p class="field-note">Files, study sets and subfolders will move to the parent folder. No files or study sets will be deleted.</p><p id="remove-folder-error" class="error" role="alert" hidden></p></div><div class="dialog-footer"><button type="button" class="secondary" data-close="remove-folder-dialog" autofocus>Cancel</button><button id="confirm-remove-folder" class="danger" type="submit">Remove folder</button></div></form></dialog>
   <input id="library-file-input" type="file" accept=".pdf,.txt,.md,.png,.jpg,.jpeg,.webp" multiple hidden>
 </body>
 </html>

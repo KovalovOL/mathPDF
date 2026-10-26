@@ -25,6 +25,7 @@ from .study import GENERATION_SECONDS, MAX_ITEMS, GenerateRequest, GenerationErr
 from .web_assets import ApplicationAssets, build_id, html_page
 from .workspace import MAX_UPLOAD_BYTES, DeletionChanged, Workspace
 from .annotations import AnnotationConflict, AnnotationWrite
+from .library import FolderCreate, FolderUpdate, ItemUpdate, Library
 
 
 PUBLIC_ROUTES = {"/login", "/auth/config", "/auth/google/login", "/auth/google/callback"}
@@ -36,6 +37,7 @@ def create_app(data_dir: Path = Path(".formula-lab"), provider: StudyProvider | 
     logger = logging.getLogger(__name__)
     load_dotenv(Path.cwd() / ".env", override=False)
     workspace = Workspace(data_dir)
+    library = Library(workspace)
     auth = Authentication(workspace, AuthConfig.from_environment())
     generation_lock = asyncio.Lock()
     jobs = GenerationJobs(workspace, generation_lock)
@@ -51,7 +53,7 @@ def create_app(data_dir: Path = Path(".formula-lab"), provider: StudyProvider | 
             await jobs.close()
 
     app = FastAPI(title="mathPDF", docs_url="/api/docs", redoc_url=None, lifespan=lifespan)
-    app.state.workspace, app.state.auth = workspace, auth
+    app.state.workspace, app.state.auth, app.state.library = workspace, auth, library
     static = Path(__file__).parent / "static"
     model = os.getenv("OPENAI_MODEL", "gpt-4.1-mini")
     key = os.getenv("OPENAI_API_KEY") or os.getenv("OPENAI_KEY", "")
@@ -254,6 +256,35 @@ def create_app(data_dir: Path = Path(".formula-lab"), provider: StudyProvider | 
         return FileResponse(workspace.path(identifier, owner), media_type=record.media_type,
                             filename=record.filename,
                             content_disposition_type="attachment" if download else "inline")
+
+    @app.get('/api/library')
+    def library_contents(request: Request):
+        return library.snapshot(request.state.user.id)
+
+    @app.post('/api/library/folders', status_code=201)
+    def create_folder(request: Request, folder: FolderCreate):
+        return library.create_folder(request.state.user.id, folder)
+
+    @app.patch('/api/library/folders/{identifier}')
+    def update_folder(request: Request, identifier: str, folder: FolderUpdate):
+        return library.update_folder(request.state.user.id, identifier, folder)
+
+    @app.get('/api/library/folders/{identifier}/deletion')
+    def folder_deletion(request: Request, identifier: str):
+        return library.deletion_info(request.state.user.id, identifier)
+
+    @app.delete('/api/library/folders/{identifier}')
+    def delete_folder(request: Request, identifier: str):
+        revision = request.headers.get('if-match', '').strip('"')
+        if not revision:
+            raise HTTPException(428, 'Review the folder removal and confirm it first.')
+        return library.delete_folder(request.state.user.id, identifier, revision)
+
+    @app.patch('/api/library/items/{kind}/{identifier}')
+    def organize_item(request: Request, kind: str, identifier: str, update: ItemUpdate):
+        if kind not in {'documents', 'study-sets'}:
+            raise HTTPException(404, 'Item not found')
+        return library.update_item(request.state.user.id, kind, identifier, update)
 
     @app.get("/api/study-sets")
     def study_sets(request: Request):

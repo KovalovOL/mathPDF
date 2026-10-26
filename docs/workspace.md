@@ -130,3 +130,9 @@ uv run playwright install chromium
 On macOS an installed Google Chrome is detected automatically. Alternatively set `MATHPDF_CHROMIUM_EXECUTABLE` to a Chrome/Chromium executable path. Printing runs in an isolated browser context with intercepted local assets and blocked external requests. Exports are limited to one concurrent request per process and a 90-second deadline.
 
 Correct typesetting does not establish mathematical correctness or exact reproduction of every source PDF's typography. Source references and canonical TeX remain available for comparison.
+
+## Difficulty and explanation depth
+
+The generation dialog offers five keyboard-accessible radio choices: **1 Foundation**, **2 Developing**, **3 Standard**, **4 Advanced** and **5 Challenge**. The selected level is a challenge band relative to the selected source, with an easier-to-harder progression inside that band. Source notation and scope remain authoritative. `difficulty.md` contains the complete shared guidance for all providers. The request and saved set accept integer `difficulty` from 1 to 5; missing values in historical requests, sets and drafts default to 3. Existing content is not regenerated. The workspace status and library show the selected level.
+
+Flashcard backs request a direct answer, useful reasoning/meaning and essential conditions, targeting 45–90 words in at most three short paragraphs plus necessary formulas, with fewer words for simple facts. Problem solutions request the method, all necessary justified steps and the final result, with no flashcard word limit. These are prompt guidelines, not hard truncation or rejection rules. Long answers remain scrollable. Generation still uses exactly one provider request and no formatting retries; the output token allowance accommodates fuller explanations without requiring the model to use it all.

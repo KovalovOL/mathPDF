@@ -334,3 +334,18 @@ def test_shared_math_examples_are_valid_json_and_tex():
         async with MathValidator() as validator:
             assert await validator.errors(expressions) == []
     asyncio.run(check())
+
+@pytest.mark.parametrize('level', range(1,6))
+def test_difficulty_reaches_single_provider_prompt_and_legacy_default(source,level):
+    request=GenerateRequest(mode='flashcards',count=2,difficulty=level)
+    system,task,hashes=load_prompts(request,[source])
+    assert f'Requested overall difficulty: {level} out of 5.' in task
+    assert 'Within the selected band' in task and '45–90' in system
+    assert 'difficulty.md' in hashes
+    provider=Provider()
+    content,metadata=asyncio.run(collect_study([source],request,provider,lambda _:None))
+    assert len(content.items)==2 and provider.calls==metadata['provider_requests']==1
+    assert GenerateRequest(mode='problems').difficulty==3
+    from pydantic import ValidationError
+    for invalid in [0,6,2.5,True,'4']:
+        with pytest.raises(ValidationError):GenerateRequest(mode='problems',difficulty=invalid)

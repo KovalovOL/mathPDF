@@ -76,6 +76,13 @@
       <div class="dialog-header"><h2 id="generation-heading">Generate study material</h2><button type="button" class="icon-button close-dialog" data-dialog="generation-dialog" aria-label="Close generation settings">×</button></div>
       <div class="dialog-body">
         <div class="form-grid"><label>Mode<select id="mode"><option value="flashcards">Flashcards</option><option value="problems">Problems</option></select></label><label>Items<input id="count" type="number" value="4" min="1" max="50" required></label></div>
+        <fieldset class="difficulty-field"><legend>Difficulty</legend><div class="difficulty-options" role="radiogroup" aria-label="Difficulty" aria-describedby="difficulty-description">
+          <label><input type="radio" name="difficulty" value="1"><span><strong>1</strong><small>Foundation</small></span></label>
+          <label><input type="radio" name="difficulty" value="2"><span><strong>2</strong><small>Developing</small></span></label>
+          <label><input type="radio" name="difficulty" value="3" checked><span><strong>3</strong><small>Standard</small></span></label>
+          <label><input type="radio" name="difficulty" value="4"><span><strong>4</strong><small>Advanced</small></span></label>
+          <label><input type="radio" name="difficulty" value="5"><span><strong>5</strong><small>Challenge</small></span></label>
+        </div><p id="difficulty-description" class="field-note" aria-live="polite">Apply concepts with a few reasoning steps. Items become harder within this level.</p></fieldset>
         <h3>Source PDF</h3><label for="source-document">Document</label><select id="source-document" required></select>
         <div id="source-range" class="range-controls"><label>Pages<select id="source-scope"><option value="range">Page range</option><option value="all">Entire PDF</option></select></label><label>From<input id="source-from" type="number" min="1" value="1" required></label><label>To<input id="source-to" type="number" min="1" value="1" required></label></div>
         <div class="context-heading"><h3>Additional context</h3><button id="add-context" type="button" class="small secondary">+ Add files</button></div>

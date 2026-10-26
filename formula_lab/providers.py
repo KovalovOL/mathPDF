@@ -219,7 +219,7 @@ class OpenAIProvider:
                     input=[{"role": "user", "content": content}],
                     text={"format": {"type": "json_schema", "name": function["name"],
                                      "strict": True, "schema": function["parameters"]}},
-                    max_output_tokens=min(30000, 1000 + 400 * count),
+                    max_output_tokens=min(30000, 1000 + (650 if mode == "flashcards" else 1000) * count),
                     store=False,
                 )
         except APIError as error:

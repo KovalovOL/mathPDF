@@ -97,6 +97,7 @@ class GenerateRequest(StrictModel):
     comment: str = Field(default="", max_length=4000)
     mode: Literal["flashcards", "problems"]
     count: int = Field(default=4, ge=1, le=MAX_ITEMS)
+    difficulty: int = Field(default=3, ge=1, le=5, strict=True)
 
 
 class ContextSnapshot(StrictModel):
@@ -114,6 +115,7 @@ class StudySet(GeneratedContent):
     context_documents: list[ContextSnapshot] = Field(default_factory=list, max_length=6)
     comment: str = Field(default="", max_length=4000)
     mode: Literal["flashcards", "problems"]
+    difficulty: int = Field(default=3, ge=1, le=5, strict=True)
     metadata: dict
 
 
@@ -154,11 +156,12 @@ PROMPTS = Path(__file__).parent / "prompts"
 
 def load_prompts(request: GenerateRequest, documents: list[InputDocument]) -> tuple[str, str, dict[str, str]]:
     names = ["study-system.md", f"{request.mode}.md", "formula-guide.md", "math-patterns.md",
-             "context.md", "attachment-label.md", "comment.md"]
+             "context.md", "attachment-label.md", "comment.md", "difficulty.md"]
     resources = {name: (PROMPTS / name).read_text(encoding="utf-8") for name in names}
     source = documents[0]
     mapping = ", ".join(f"{index + 1} -> {page}" for index, page in enumerate(source.pages))
     task = Template(resources[f"{request.mode}.md"]).substitute(count=request.count, page_mapping=mapping)
+    task += "\n\n" + Template(resources["difficulty.md"]).substitute(difficulty=request.difficulty)
     metadata = []
     for entry in documents:
         info = {"document_id": entry.document.id, "filename": entry.filename,
@@ -319,7 +322,7 @@ async def generate_study(workspace: Workspace, owner_id: str, request: GenerateR
     return StudySet(
         title=f"{label} · {source.document.filename} · {selection}",
         document=source.document, pages=source.pages, mode=request.mode,
-        comment=request.comment.strip(),
+        comment=request.comment.strip(), difficulty=request.difficulty,
         context_documents=[ContextSnapshot(document=entry.document, pages=entry.pages) for entry in documents[1:]],
         **content.model_dump(),
         metadata={**metadata,
