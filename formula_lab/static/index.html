@@ -27,7 +27,16 @@
           <select id="zoom" aria-label="PDF zoom"><option value="fit">Fit width</option><option value="1">100%</option><option value="1.25">125%</option><option value="1.5">150%</option></select>
         </div>
         <span id="file-type" class="muted" hidden></span>
+        <button id="annotate-pdf" class="icon-button annotation-toggle" aria-label="Annotate PDF" title="Show or hide PDF notes tools" aria-controls="annotation-toolbar" aria-expanded="false" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20l4-1L20 7l-3-3L5 16l-1 4z M14 7l3 3"/></svg></button>
         <a id="download-file" class="toolbar-link" download>Download</a>
+      </div>
+      <div id="annotation-toolbar" class="annotation-toolbar" role="toolbar" aria-label="PDF annotation tools" hidden>
+        <div id="annotation-tools" class="annotation-tools"></div>
+        <div id="annotation-options" class="annotation-options">
+          <select id="annotation-color" aria-label="Annotation color"><option value="#253047">Black</option><option value="#2563eb" selected>Blue</option><option value="#dc2626">Red</option><option value="#16a34a">Green</option><option value="#facc15">Yellow</option></select>
+          <select id="annotation-width" aria-label="Pen width"><option value="1">1 pt</option><option value="2" selected>2 pt</option><option value="4">4 pt</option><option value="6">6 pt</option></select>
+          <span id="annotation-status" class="muted" role="status" aria-live="polite"></span>
+        </div>
       </div>
       <div id="document-views" class="document-views"><div class="document-empty"><p>Upload a PDF to start studying.</p><button id="upload-pdf">Upload PDF</button></div></div>
     </section>
@@ -47,6 +56,8 @@
     </section>
   </main>
   <input id="file-input" type="file" accept=".pdf,.txt,.md,.png,.jpg,.jpeg,.webp" multiple hidden>
+
+  <dialog id="annotation-choice" aria-labelledby="annotation-choice-title"><h2 id="annotation-choice-title" class="dialog-header"></h2><div class="dialog-body"><p id="annotation-choice-message"></p></div><form method="dialog" class="dialog-footer annotation-choice-actions"><button value="cancel" class="secondary" autofocus>Cancel</button><button id="annotation-choice-discard" value="discard" class="secondary">Use original PDF</button><button id="annotation-choice-save" value="save">Save and use edited copy</button></form></dialog>
 
   <dialog id="files-dialog" aria-labelledby="files-heading"><div class="dialog-header"><h2 id="files-heading">Open saved files</h2><button type="button" class="icon-button close-dialog" data-dialog="files-dialog" aria-label="Close saved files">×</button></div><div id="files-list" class="dialog-body saved-list"></div></dialog>
   <dialog id="close-file-dialog" aria-labelledby="close-file-heading"><div class="dialog-header"><h2 id="close-file-heading">File not saved</h2></div><div class="dialog-body"><p id="close-file-message"></p></div><form method="dialog" class="dialog-footer"><button value="keep" class="secondary" autofocus>Keep open</button><button value="discard">Close file</button></form></dialog>

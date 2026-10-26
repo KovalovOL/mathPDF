@@ -31,7 +31,10 @@ function showDeletion(impact) {
   home('delete-heading').textContent = deleteIntent.kind === 'documents' ? 'Delete file?' : 'Delete study set?';
   home('delete-message').textContent = `Permanently delete “${impact.title}”? This cannot be undone.`;
   const count = impact.study_sets.length;
-  home('delete-warning').textContent = count ? `This will also permanently delete ${count} saved study ${count === 1 ? 'set' : 'sets'} that ${count === 1 ? 'uses' : 'use'} this file as the main source.` : '';
+  const copies=impact.edited_copies?.length || 0, consequences=[];
+  if (copies) consequences.push(`${copies} edited ${copies===1?'copy':'copies'}`);
+  if (count) consequences.push(`${count} saved study ${count===1?'set':'sets'} using ${copies?'this file or its edited copy':'this file'} as the main source`);
+  home('delete-warning').textContent = consequences.length ? `This will also permanently delete ${consequences.join(' and ')}.` : '';
   home('delete-context').textContent = impact.context_sets.length ? `${impact.context_sets.length} saved ${impact.context_sets.length === 1 ? 'set used' : 'sets used'} this file only as additional context. Those sets will remain; the context attachment will be removed.` : '';
 }
 async function confirmDeletion(kind, id) {
@@ -51,7 +54,10 @@ home('delete-form').addEventListener('submit', async event => {
     const result = await MathPDFSession.api(`/api/${intent.kind}/${encodeURIComponent(intent.id)}`,
       {method: 'DELETE', headers: {'If-Match': intent.impact.revision}});
     if (result.deleted_document_id) {
-      try {await (await import('/static/visual-cache.js')).clearVisualCache(MathPDFSession.user.id, result.deleted_document_id);} catch {}
+      try {
+        const {clearVisualCache}=await import('/static/visual-cache.js');
+        for (const id of result.deleted_document_ids || [result.deleted_document_id]) await clearVisualCache(MathPDFSession.user.id,id);
+      } catch {}
     }
     home('delete-dialog').close(); deleteIntent = null; await loadLibrary();
   } catch (error) {
@@ -70,10 +76,16 @@ async function loadLibrary() {
   home('library-files').classList.toggle('file-library', files.length > 0);
   home('library-files').replaceChildren(...files.map(file => {
     const entry = node('article', 'file-card');
+    if (file.original_document_id) entry.classList.add('annotated-file');
     const link = node('a', 'file-card-link'); link.href = `/workspace?${new URLSearchParams({document: file.id})}`;
     const preview = node('div', 'file-preview', previews ? 'Loading preview…' : 'Preview unavailable');
     const details = node('div', 'file-card-details');
     details.append(node('span', 'library-item-title', file.filename), node('span', 'library-item-meta', fileMetadata(file)));
+    if (file.original_document_id) {
+      details.prepend(node('span','edited-copy-label','Edited copy'));
+      const original=files.find(item=>item.id===file.original_document_id);
+      if (original) details.append(node('span','library-item-meta',`From ${original.filename}`));
+    }
     link.append(preview, details); entry.append(link);
     const footer = node('div', 'file-card-footer');
     const download = node('a', 'library-download', 'Download');

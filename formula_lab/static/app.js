@@ -3,7 +3,7 @@ const $ = id => document.getElementById(id);
 const documents = new Map(), views = new Map(), reading = new Map(), sets = new Map(), contextChoices = new Map();
 const pendingUploads = new Map();
 let openDocumentIds = [];
-let activeDocumentId, activeSetId, config, generationActive = false, setEpoch = 0, saveIntent;
+let activeDocumentId, activeSetId, config, generationActive = false, generationPreparing = false, setEpoch = 0, saveIntent, notes;
 let generationController;
 let statusTimer, practiceObserver, viewportNotice, viewportSettled = false, layout, initializing = true;
 let preferencePrefix;
@@ -76,7 +76,7 @@ function renderDocumentTabs() {
   $('document-tabs').replaceChildren(...openDocumentIds.map(id => {
     const doc = documents.get(id) || pendingUploads.get(id);
     const wrapper = closableTab(doc.filename, id === activeDocumentId, () => action(() => openDocument(id)),
-      () => action(() => closeDocument(id)), pendingUploads.has(id));
+      () => action(() => closeDocument(id)), pendingUploads.has(id) || notes?.dirty(id));
     wrapper.querySelector('[role="tab"]').setAttribute('aria-controls', `document-view-${id}`); return wrapper;
   }));
   $('document-tabs').querySelector('[aria-selected="true"]')?.closest('.closable-tab').scrollIntoView({block: 'nearest', inline: 'nearest'});
@@ -85,7 +85,7 @@ function renderDocumentTabs() {
 function updateDocumentToolbar() {
   const doc = documents.get(activeDocumentId);
   $('document-toolbar').hidden = !doc;
-  if (!doc) return;
+  if (!doc) {notes?.refresh();return;}
   const isPdf = doc.media_type === 'application/pdf', state = readState(doc.id);
   $('pdf-controls').hidden = !isPdf; $('file-type').hidden = isPdf;
   $('file-type').textContent = doc.media_type.startsWith('image/') ? 'Image' : doc.media_type === 'text/markdown' ? 'Markdown' : 'Text';
@@ -95,6 +95,7 @@ function updateDocumentToolbar() {
     $('page-count').textContent = `/ ${doc.page_count}`; $('zoom').value = state.zoom;
     $('previous-page').disabled = state.page <= 1; $('next-page').disabled = state.page >= doc.page_count;
   }
+  notes?.refresh();
 }
 async function openDocument(id, targetPage, sourceRef = null) {
   const doc = documents.get(id) || pendingUploads.get(id); if (!doc) throw new Error('This source file is not available.');
@@ -174,8 +175,10 @@ async function closeDocument(id) {
     pendingUploads.get(id)?.controller?.abort(); pendingUploads.delete(id);
     id = pending.savedId || id;
   }
+  if (documents.has(id)) {id = await notes.close(id);if (!id) return;}
   const index = openDocumentIds.indexOf(id); if (index < 0) return;
   openDocumentIds.splice(index, 1); views.get(id)?.remove(); views.delete(id);
+  notes?.forget(id);
   if (activeDocumentId === id) {
     const next = openDocumentIds[Math.min(index, openDocumentIds.length - 1)];
     if (next) await openDocument(next); else showEmptyDocuments();
@@ -502,10 +505,14 @@ function openGeneration() {
   $('generation-dialog').showModal();
 }
 async function generate(event) {
-  event.preventDefault(); if (generationActive) return;
+  event.preventDefault(); if (generationActive || generationPreparing) return;
   let request;
   try {request = selectionRequest();}
   catch (error) {$('generation-error').textContent = error.message; $('generation-error').hidden = false; return;}
+  generationPreparing=true;$('generate').disabled=true;
+  try {request=await notes.prepare(request);}
+  finally {generationPreparing=false;$('generate').disabled=false;}
+  if (!request) return;
   generationActive = true; $('generation-dialog').close();
   $('open-generation').disabled = true; $('open-generation').textContent = 'Generating…';
   message('');
@@ -654,7 +661,7 @@ $('save-form').addEventListener('submit', saveSet);
 $('export-set').addEventListener('click', () => action(exportSet));
 $('open-saved').addEventListener('click', () => action(showSaved));
 addEventListener('beforeunload', event => {
-  if (generationActive || pendingUploads.size || [...sets.values()].some(record => !record.saved)) {event.preventDefault(); event.returnValue = '';}
+  if (generationActive || pendingUploads.size || notes?.anyDirty() || [...sets.values()].some(record => !record.saved)) {event.preventDefault(); event.returnValue = '';}
 });
 document.querySelectorAll('.close-dialog').forEach(control => control.addEventListener('click', () => {
   if (control.dataset.dialog === 'save-dialog' && saveIntent) saveIntent.cancelled = true;
@@ -665,6 +672,23 @@ action(async () => {
   preferencePrefix = `mathpdf-${user.id}-`;
   const {createWorkspaceLayout} = await import('/static/workspace-layout.js');
   layout = createWorkspaceLayout({preference, onViewport: notifyPdfViewport});
+  const {createAnnotationToolbar}=await import('/static/annotation-toolbar.js');
+  notes=createAnnotationToolbar({activeDocument:()=>documents.get(activeDocumentId),
+    documentFor:id=>documents.get(id),
+    frameFor:id=>views.get(id)?.querySelector('iframe'),notifyViewport:notifyPdfViewport,
+    report:text=>message(text,true,10000),onChange:()=>renderDocumentTabs(),
+    onOpenCopy:async doc=>{documents.set(doc.id,doc);await openDocument(doc.id);},
+    onSaved:(previous,doc)=>{
+      documents.set(doc.id,doc);
+      if (previous!==doc.id) {
+        const view=views.get(previous);views.delete(previous);
+        if (view) {view.id=`document-view-${doc.id}`;view.querySelector('iframe').title=doc.filename;views.set(doc.id,view);}
+        if (!openDocumentIds.includes(doc.id)) openDocumentIds.splice(openDocumentIds.indexOf(previous)+1,0,doc.id);
+        reading.set(doc.id,{...readState(previous)});
+        if (activeDocumentId===previous) {activeDocumentId=doc.id;preference('active-file',doc.id);}
+      }
+      renderDocumentTabs();updateDocumentToolbar();message('PDF notes saved.');
+    }});
   const [loadedDocuments, configuration, saved] = await Promise.all([api('/api/documents'), api('/api/generation/config'), api('/api/study-sets')]);
   config = configuration; $('count').max = config.max_items; loadedDocuments.forEach(doc => documents.set(doc.id, doc));
   updateGenerationAvailability();

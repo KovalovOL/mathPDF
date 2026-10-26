@@ -1,6 +1,6 @@
 # mathPDF
 
-A personal mathematics study platform with Google sign-in, an account library, complete PDF browsing, context attachments, flip cards, saved study sets, and formatted PDF downloads. The interface and documentation are English.
+A personal mathematics study platform with Google sign-in, an account library, PDF browsing and notes, context attachments, flip cards, saved study sets, and formatted PDF downloads. The interface and documentation are English.
 
 ## Run
 
@@ -27,7 +27,8 @@ Set `OPENAI_API_KEY` or the existing `OPENAI_KEY` in the server environment or p
 6. Click **Save** to name and persist a set in SQLite. Close a set tab with **×**. Unsaved sets offer **Save and close**, **Close without saving**, or **Cancel**; saving must succeed before the tab closes. Saved sets remain available through **Saved sets**, and closed tabs stay closed after reload.
 7. Click **Download PDF** to export the current set, whether or not it is saved. The PDF includes questions and a separate answer section with formatted mathematical text.
 
-8. Use **Delete** on home to permanently remove a file or saved set after confirmation. **Deleting a main source also deletes its saved study sets.** Sets using that file only as additional context remain, with that attachment removed. Deleting a set keeps its source files.
+8. Use the pencil icon beside Download to highlight selected text or draw on a PDF. The collapsible toolbar includes colors, pen widths, a whole-stroke/highlight eraser, Undo/Redo and Save. Ctrl/Cmd+Z undoes and Ctrl/Cmd+S saves. One edited copy is created per original; later saves update it. Before generation with unsaved notes, choose the original, save and use the copy, or Cancel. See [PDF annotations](docs/annotations.md).
+9. Use **Delete** on home to permanently remove a file or saved set after confirmation. **Deleting an original also deletes its edited copy and saved sets with either as their main source.** Sets using those files only as additional context remain, with those attachments removed. Deleting a copy retains the original; deleting a set keeps its source files.
 
 ## Supported files and limits
 
@@ -77,6 +78,7 @@ Document tabs + continuous PDF viewer
 - `formula_lab/static/pdf-viewer.js`: continuous lazy document preview.
 - `formula_lab/static/workspace-layout.js`: pane resizing, collapse and mobile focus gestures.
 - `formula_lab/static/visual-cache.js`: bounded account-scoped derived previews and page images.
+- `formula_lab/annotations.py` and `static/pdf-annotation*.js`: versioned vector marks, coordinate/history handling and portable PDF overlays; `static/annotation-toolbar.js` handles controls and save/generation choices.
 - `formula_lab/pdf_export.py` and `static/print.*`: isolated print document and PDF worker.
 - `formula_lab/app.py`: authenticated FastAPI routes, origin checks, and private response handling.
 

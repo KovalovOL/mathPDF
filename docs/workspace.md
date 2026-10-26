@@ -13,6 +13,7 @@ Startup and the Docker image require no PDF. Shared legacy source-inspection HTT
 - `GET /api/documents/{id}`: authorize and return one document's metadata before showing a cached page.
 - `POST /api/documents`: upload one multipart `file`.
 - `GET /api/documents/{id}/file`: preview a managed file; `?download=true` returns an attachment.
+- `GET /api/documents/{id}/annotations` and `PUT /api/documents/{id}/annotations`: read/save the versioned editable PDF layer with owner and revision checks; see [PDF annotations](annotations.md) for usage, copy lifecycle and the payload contract.
 - `GET /api/study-sets`: list the current account's explicitly saved sets.
 - `GET /api/study-sets/{id}`: load the canonical saved set.
 - `POST /api/study-sets`: save or update a validated set with its source/context snapshots, editable math, quiz originals, and generation metadata.

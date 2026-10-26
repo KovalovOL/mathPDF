@@ -2,14 +2,15 @@
 import {getDocument, GlobalWorkerOptions, TextLayer} from '/static/vendor/pdfjs/pdf.mjs';
 import {scrollToSource, cancelNavigation} from '/static/pdf-source.js';
 import {createVisualCache, canvasBlob, cachedImage} from '/static/visual-cache.js';
+import {createPdfAnnotations} from '/static/pdf-annotations.js';
 GlobalWorkerOptions.workerSrc = '/static/vendor/pdfjs/pdf.worker.mjs';
 const status = document.getElementById('status');
 const container = document.getElementById('pages');
 const query = new URLSearchParams(location.search);
-const documentId = query.get('document');
+let documentId = query.get('document');
 const records = [], nearby = new Set(), queue = [];
 const zoomLevels = ['fit', '1', '1.25', '1.5'];
-let pdf, sourceDocument, visualCache, loading, disposed = false, busy = false, currentPage = 1, zoom = zoomLevels.includes(query.get('zoom')) ? query.get('zoom') : 'fit';
+let pdf, sourceDocument, renderDocument, annotations, visualCache, loading, disposed = false, busy = false, currentPage = 1, zoom = zoomLevels.includes(query.get('zoom')) ? query.get('zoom') : 'fit';
 let resizeTimer, pruneTimer, recoveryTimer, settleFrame, resizeAnchor, settleRequested = false, framePending = false, resizing = false, layoutWidth = 0;
 let navigationVersion = 0, navigationRecord, pendingNavigation;
 
@@ -56,14 +57,14 @@ function cachePage(record) {
   const canvas = record.sheet.querySelector('canvas'); if (!canvas) return;
   record.cachedWidth = record.renderedWidth;
   canvasBlob(canvas).then(blob => {
-    if (blob) return visualCache.put(sourceDocument, 'page', record.number,
+    if (blob) return visualCache.put(renderDocument, 'page', record.number,
       {blob, ratio: record.ratio, baseWidth: record.baseWidth});
   }).catch(() => {});
 }
 function touchCachedPage() {
   const record = records[currentPage - 1];
   if (!visualCache || !record) return;
-  visualCache.get(sourceDocument, 'page', record.number).then(entry => {
+  visualCache.get(renderDocument, 'page', record.number).then(entry => {
     // Another document/tab may have evicted this still-mounted canvas.
     if (!entry && record.number === currentPage) {record.cachedWidth = 0; cachePage(record);}
   }).catch(() => {});
@@ -122,6 +123,7 @@ async function pump() {
       const page = await pdf.getPage(record.number);
       if (!record.near || record.version !== version) {enqueue(record); continue;}
       const normal = page.getViewport({scale: 1});
+      annotations?.attach(record,page);
       if (Math.abs(record.ratio - normal.height / normal.width) > .0001) {
         const anchor = readingAnchor(); record.ratio = normal.height / normal.width;
         record.sheet.style.height = `${layoutWidth * record.ratio}px`; restoreAnchor(anchor); refreshNearby();
@@ -170,7 +172,8 @@ function pruneLater() {
       if (record.near || record === navigationRecord || Math.abs(record.number - currentPage) <= 2 || selected) continue;
       record.version++; record.task?.cancel(); record.pendingText?.cancel();
       record.pendingText = null; record.textPromise = null; record.textLayer = null; record.textContainer = null;
-      record.renderedWidth = 0; record.sheet.replaceChildren();
+      record.renderedWidth = 0;
+      for (const child of [...record.sheet.children]) if (!child.classList.contains('annotation-layer')) child.remove();
       if (record.cachedUrl) {URL.revokeObjectURL(record.cachedUrl); record.cachedUrl = null;}
     }
   }, 500);
@@ -256,14 +259,29 @@ try {
   if (!documentId) throw new Error('No document selected.');
   const user = await MathPDFSession.ready;
   sourceDocument = await MathPDFSession.api(`/api/documents/${encodeURIComponent(documentId)}`);
+  renderDocument = sourceDocument;
+  try {
+    const state=await MathPDFSession.api(`/api/documents/${encodeURIComponent(documentId)}/annotations`);
+    if (state.base_document && state.annotations) {
+      renderDocument=state.base_document;
+      annotations=createPdfAnnotations({state,getDocumentId:()=>documentId,
+        saved:(previous,result)=>{
+          documentId=result.document.id;sourceDocument=result.document;
+          parent.postMessage({type:'annotation-saved',documentId:previous,document:result.document},location.origin);
+          announce();
+        },report:message=>parent.postMessage({type:'annotation-error',documentId,message},location.origin)});
+    }
+  } catch (error) {
+    parent.postMessage({type:'annotation-error',documentId,message:'Notes could not be loaded. Reload this PDF to edit them.'},location.origin);
+  }
   visualCache = createVisualCache(user.id);
-  loading = getDocument({url: `/api/documents/${encodeURIComponent(documentId)}/file`,
+  loading = getDocument({url: `/api/documents/${encodeURIComponent(renderDocument.id)}/file`,
     httpHeaders: {'X-MathPDF-User': user.id},
     cMapUrl: '/static/vendor/pdfjs/cmaps/', cMapPacked: true,
     standardFontDataUrl: '/static/vendor/pdfjs/standard_fonts/', wasmUrl: '/static/vendor/pdfjs/wasm/',
     isEvalSupported: false});
   loading.promise.catch(() => {});
-  const cached = new Map((await visualCache.pages(sourceDocument)).map(entry => [entry.page, entry]));
+  const cached = new Map((await visualCache.pages(renderDocument)).map(entry => [entry.page, entry]));
   container.dataset.cachedPages = String(cached.size);
   const normal = {width: cached.get(1)?.baseWidth || 612, height: 792};
   const fragment = document.createDocumentFragment();
@@ -280,7 +298,7 @@ try {
     if (entry?.bytes || entry?.blob) {
       const version = record.version;
       cachedImage(entry, `Original PDF page ${number}`).then(decoded => {
-        if (!decoded) {visualCache.remove(sourceDocument, 'page', number, entry); return;}
+        if (!decoded) {visualCache.remove(renderDocument, 'page', number, entry); return;}
         if (disposed || record.version !== version || sheet.querySelector('canvas')) {URL.revokeObjectURL(decoded.url); return;}
         record.cachedUrl = decoded.url; decoded.image.className = 'cached-page'; sheet.prepend(decoded.image);
       });
@@ -334,6 +352,7 @@ try {
 }
 addEventListener('pagehide', () => {
   disposed = true;
+  annotations?.cancel();
   loading?.destroy().catch(() => {});
   for (const record of records) if (record.cachedUrl) URL.revokeObjectURL(record.cachedUrl);
 });

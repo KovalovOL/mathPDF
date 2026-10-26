@@ -24,6 +24,7 @@ from .diagnostics import (ClientDiagnostic, ClientReportLimit, configure_logging
 from .study import GENERATION_SECONDS, MAX_ITEMS, GenerateRequest, GenerationError, StudyProvider, StudySet, generate_study, validate_study
 from .web_assets import ApplicationAssets, build_id, html_page
 from .workspace import MAX_UPLOAD_BYTES, DeletionChanged, Workspace
+from .annotations import AnnotationConflict, AnnotationWrite
 
 
 PUBLIC_ROUTES = {"/login", "/auth/config", "/auth/google/login", "/auth/google/callback"}
@@ -134,6 +135,7 @@ def create_app(data_dir: Path = Path(".formula-lab"), provider: StudyProvider | 
         return JSONResponse({"detail": str(error)}, status_code=409)
 
     @app.exception_handler(DeletionChanged)
+    @app.exception_handler(AnnotationConflict)
     async def deletion_changed(request, error):
         return JSONResponse({'detail': str(error)}, status_code=409)
 
@@ -216,6 +218,14 @@ def create_app(data_dir: Path = Path(".formula-lab"), provider: StudyProvider | 
     @app.get('/api/documents/{identifier}')
     def document_metadata(request: Request, identifier: str):
         return workspace.document(identifier, request.state.user.id)
+
+    @app.get('/api/documents/{identifier}/annotations')
+    def annotations(request: Request, identifier: str):
+        return workspace.annotation_state(identifier, request.state.user.id)
+
+    @app.put('/api/documents/{identifier}/annotations')
+    def save_annotations(request: Request, identifier: str, data: AnnotationWrite):
+        return workspace.save_annotations(identifier, request.state.user.id, data)
 
     @app.get('/api/documents/{identifier}/deletion')
     def document_deletion(request: Request, identifier: str):
