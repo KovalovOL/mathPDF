@@ -13,4 +13,4 @@
 ## 3. Integration and delivery
 
 - [x] 3.1 Run regression/compatibility checks and local browser/API verification across the new flows; record evidence and validate OpenSpec.
-- [ ] 3.2 Commit, push and verify the deployed build and public assets through the existing pipeline.
+- [x] 3.2 Commit, push and verify the deployed build and public assets through the existing pipeline.

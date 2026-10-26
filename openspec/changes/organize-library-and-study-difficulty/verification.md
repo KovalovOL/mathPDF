@@ -28,4 +28,4 @@ Explanation depth, source fidelity and difficulty progression are explicit promp
 
 ## Deployment
 
-Pending final integration checks and the existing main-branch deployment workflow.
+Feature commit `963b220` deployed successfully through [Actions run 40364220010](https://github.com/KovalovOL/mathPDF/actions/runs/40364220010). The live server reports build `1cc387985707`, matching local `build_id()`. Public home.js, app.js and style.css all return 200 with exact hashes matching committed assets. Unauthenticated /api/me and /api/library return 401. No private production library or authenticated user data was accessed.
