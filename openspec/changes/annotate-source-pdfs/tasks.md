@@ -21,4 +21,4 @@
 
 - [x] 4.1 Guard home navigation and sign-out with Save and leave / Leave without saving / Cancel for all unsaved workspace content; preserve browser unload warnings and keep work open after a save failure.
 - [x] 4.2 Center flashcard front questions horizontally and replace named annotation colors with an accessible compact swatch palette; preserve reading selection and phone layout.
-- [ ] 4.3 Verify the follow-up flows and compatibility, update English documentation and deploy through the existing workflow.
+- [x] 4.3 Verify the follow-up flows and compatibility, update English documentation and deploy through the existing workflow.
