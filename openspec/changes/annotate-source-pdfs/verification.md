@@ -30,3 +30,13 @@ The new interaction was checked in Chromium and an emulated phone viewport; this
 ## Delivery
 
 Feature commit `9b475d0324f17b75ec1c3f47862f52cf4ce2be4e` deployed through the existing workflow: [run 40250177099](https://github.com/KovalovOL/mathPDF/actions/runs/40250177099), successful. After container replacement, the public `/api/me` returned the expected unauthenticated 401 with build `4f5dcef6cb2a`, matching the local implementation. The annotation toolbar, annotation controller, geometry/history module, PDF viewer and stylesheet returned 200 with hashes matching the committed local assets. No production account or document was opened for this check.
+
+## Follow-up: leave confirmation, palette and centered questions
+
+- Full regression: **112 passed** in 22.38 seconds, with the same pre-existing deprecation warning. The new isolated tests cover Cancel, save failure/retry, waiting for saves, explicit discard, unload protection, account leave approval, trusted-Origin sign-out and server-error recovery. Swatch selection preserves an existing selection and reports its pressed state.
+- Actual local UI: home navigation listed both a dirty PDF and an unsaved two-card fixture set. Cancel retained both; Save and leave saved both before opening the library, which displayed the new set and updated copy. Sign-out also displayed the guard; Cancel retained the session, and Save and leave saved the remaining notes and reached the login screen.
+- The previous native form submission received an origin-check rejection during sign-out review. The account menu now sends sign-out through the existing same-origin request helper with a 15-second deadline, then clears the visual cache and navigates to login. Server origin checks remain unchanged. A failed request reports an inline error and restores unload protection.
+- Visually checked horizontally centered front questions and the five swatches on desktop, including keyboard activation. At 320 x 568 the palette remained visible with no page-level horizontal overflow; the viewport override was reset afterward. Ignored UI proof files: `artifacts/ui/workspace-polish.png` and `artifacts/ui/save-before-leaving.png`.
+- No persisted format or mathematical rendering contract changed. Browser close/reload uses the native warning, whose text and actions are controlled by the browser; saving from that event is not promised. All work and generation used disposable local fixtures with no real LLM call.
+
+Follow-up deployment verification is recorded after the workflow completes.

@@ -7,13 +7,17 @@ An original PDF remains immutable. The first explicit annotation save creates on
 Open a PDF and select the pencil icon beside Download. The toolbar can be hidden with the same icon; existing marks remain visible and text can still be selected. On phones, opening the tools expands the reading pane to provide more drawing space.
 
 - **Select text**: read, select and copy the PDF's text.
-- **Highlight selected text**: select text first and click Highlight, or activate Highlight before selecting text. Adjacent runs merge into a continuous background on each selected line. Choose one of five colors.
+- **Highlight selected text**: select text first and click Highlight, or activate Highlight before selecting text. Adjacent runs merge into a continuous background on each selected line. Choose one of five color swatches; the selected color has an outline and check mark. Each swatch has an accessible name and supports keyboard activation.
 - **Draw**: choose a color and 1, 2, 4 or 6 pt width, then draw with a pointer, touch or pen. Switch to Select to scroll normally with touch.
 - **Eraser**: tap or drag over notes to remove whole strokes or highlights. A drag is one undo action; this does not erase the original page content.
 - **Undo / Redo**: use the toolbar, Ctrl/Cmd+Z and Ctrl/Cmd+Shift+Z. Ctrl+Y also redoes. The current viewer retains up to 100 operations; reopening retains the saved marks, not the prior undo history.
 - **Save**: use the disk icon or Ctrl/Cmd+S. The first save creates the edited copy; later saves update it. Editing is paused during a save. A failed or conflicting save keeps the local changes open and reports the error.
 
 The library labels the copy **Edited copy** and names its original. Opening an original's annotation tools when a copy already exists opens that copy. Download returns the saved PDF, so save pending work before downloading. Unsaved changes are held in the open viewer; they are not an automatic persistent draft. Closing asks to save/discard/cancel, and browser navigation warns about unsaved work.
+
+Selecting the home link or **Sign out** opens **Save before leaving?** when any open PDF, study set or upload is unsaved. **Save and leave** saves every dirty PDF, saves study sets under their current titles and waits for uploads before proceeding. Cancel retains the workspace; a failed save stays in the dialog with the remaining work listed. **Leave without saving** explicitly proceeds without saving remaining work. An active generation must finish or be canceled before Save and leave can complete. The library also guards uploads when opening a file or signing out and offers another upload attempt for failed pending files.
+
+Closing a browser tab, reloading or leaving through browser controls uses the browser's native warning. Browser security rules do not allow the page to replace its text/buttons or complete asynchronous saves from that event; cancel that departure and save in the workspace first.
 
 Before generating with any unsaved source or context PDF, a filename-specific dialog offers **Use original PDF**, **Save and use edited copy**, or **Cancel**. The original choice keeps local notes open; the save choice waits for successful persistence. Neither a canceled nor failed save starts generation. Other selected files keep their independent ranges.
 

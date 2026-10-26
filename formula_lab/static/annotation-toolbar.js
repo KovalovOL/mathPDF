@@ -38,14 +38,20 @@ export function createAnnotationToolbar({activeDocument, documentFor, frameFor, 
       if (['select','highlight','pen','eraser'].includes(name)) button.setAttribute('aria-pressed',String(state?.tool===name));
     }
     if (state) {
-      $('annotation-color').value=state.color;$('annotation-width').value=String(state.width);
-      $('annotation-color').disabled=state.saving;$('annotation-width').disabled=state.saving || state.tool!=='pen';
+      for(const swatch of $('annotation-color').querySelectorAll('button')) {
+        swatch.setAttribute('aria-pressed',String(swatch.dataset.color===state.color));swatch.disabled=state.saving;
+      }
+      $('annotation-width').value=String(state.width);
+      $('annotation-width').disabled=state.saving || state.tool!=='pen';
       $('annotation-status').textContent=state.saving ? 'Saving…' : state.dirty ? 'Unsaved notes' : doc.original_document_id ? 'Saved' : 'Original';
     }
     if (wasHidden!==root.hidden) notifyViewport(true);
   }
   toggle.addEventListener('click',()=>command(activeDocument()?.id,{action:'toggle'}));
-  $('annotation-color').addEventListener('change',()=>command(activeDocument()?.id,{action:'color',color:$('annotation-color').value}));
+  for(const swatch of $('annotation-color').querySelectorAll('button')) {
+    swatch.addEventListener('mousedown',event=>event.preventDefault());
+    swatch.addEventListener('click',()=>command(activeDocument()?.id,{action:'color',color:swatch.dataset.color}));
+  }
   $('annotation-width').addEventListener('change',()=>command(activeDocument()?.id,{action:'width',width:Number($('annotation-width').value)}));
   async function saveNotes(id) {
     const state=states.get(id);if (!state?.dirty) return {document:{id}};
@@ -98,7 +104,9 @@ export function createAnnotationToolbar({activeDocument, documentFor, frameFor, 
     if (key==='z' || key==='y') {event.preventDefault();command(id,{action:key==='y'||event.shiftKey?'redo':'undo'});}
   });
   return {
-    refresh, dirty:id=>!!states.get(id)?.dirty, anyDirty:()=>[...states.values()].some(state=>state.dirty),
+    refresh, dirty:id=>!!states.get(id)?.dirty, anyDirty:()=>[...states.values()].some(state=>state.dirty || state.saving),
+    dirtyDocuments:()=>[...states].filter(([,state])=>state.dirty || state.saving).map(([id])=>id),
+    async saveAll() {for(const id of this.dirtyDocuments())await saveNotes(id);},
     forget:id=>states.delete(id),
     async close(id) {
       if (!states.get(id)?.dirty) return id;

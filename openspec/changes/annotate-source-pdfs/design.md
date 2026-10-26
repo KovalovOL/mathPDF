@@ -30,3 +30,7 @@ Preserve original page content and reuse its PDF coordinate system for editable 
 ## Migration Plan
 
 Create the annotation table additively on startup; do not rewrite existing document/set rows. Missing annotation metadata means an ordinary file with no notes. Version the new layer from its first release and preserve all supported versions. Deploy through the existing workflow after local/API/browser checks. Do not roll back to an older app against new edited files without retaining their annotation table and files.
+
+## Follow-up interaction decisions
+
+Use a reusable leave-confirmation controller for in-app home navigation and the account sign-out hook. List unsaved content, save every dirty annotation tab and study set and await pending uploads before committing navigation. Partial save success is retained; a failure keeps the dialog and remaining work available. Keep the native beforeunload warning for closing/reloading because browser chrome cannot run an asynchronous custom save dialog. Replace the color select with five named, keyboard-accessible swatch buttons with an explicit selected marker; keep text selection intact when clicking a swatch. Center only flashcard-front text.

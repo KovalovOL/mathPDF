@@ -1,6 +1,6 @@
 /* Shared identity and authenticated requests for the library and workspace. */
 window.MathPDFSession = (() => {
-  let user, redirecting = false;
+  let user, redirecting = false, leaveGuard, cancelLeave;
   let diagnosticCount = 0;
   const clientBuild = document.querySelector('meta[name="mathpdf-build"]')?.content || null;
   const newReference = () => crypto.randomUUID().replaceAll('-', '');
@@ -114,12 +114,22 @@ window.MathPDFSession = (() => {
       const email = document.createElement('span'); email.className = 'account-email'; email.textContent = user.email;
       const form = document.createElement('form'); form.method = 'post'; form.action = '/auth/logout';
       const logout = document.createElement('button'); logout.type = 'submit'; logout.className = 'secondary'; logout.textContent = 'Sign out';
+      const logoutError=document.createElement('p');logoutError.className='error';logoutError.hidden=true;logoutError.setAttribute('role','alert');
       form.addEventListener('submit', async event => {
-        event.preventDefault(); logout.disabled = true;
-        try {await (await import('/static/visual-cache.js')).clearVisualCache(user.id);} catch {}
-        form.submit();
+        event.preventDefault(); logout.disabled = true;logoutError.hidden=true;
+        let logoutTimer;
+        try {
+          if (leaveGuard && !await leaveGuard()) return;
+          const controller=new AbortController();logoutTimer=setTimeout(()=>controller.abort(),15000);
+          const response=await request('/auth/logout',{method:'POST',signal:controller.signal});
+          if(!response.ok)throw new Error('Could not sign out. Please try again.');
+          try {await (await import('/static/visual-cache.js')).clearVisualCache(user.id);} catch {}
+          location.assign('/login');
+        } catch(error) {
+          cancelLeave?.();logoutError.textContent=error.name==='AbortError'?'Sign-out timed out. Please try again.':error.message;logoutError.hidden=false;menu.open=true;
+        } finally {clearTimeout(logoutTimer);logout.disabled=false;}
       });
-      form.append(logout); panel.append(name, email, form); menu.append(summary, panel); container.replaceChildren(menu);
+      form.append(logout,logoutError); panel.append(name, email, form); menu.append(summary, panel); container.replaceChildren(menu);
       document.addEventListener('click', event => {if (!menu.contains(event.target)) menu.open = false;});
       document.addEventListener('keydown', event => {if (event.key === 'Escape') {menu.open = false; summary.focus();}});
     }
@@ -131,5 +141,5 @@ window.MathPDFSession = (() => {
   document.addEventListener('visibilitychange', () => {
     if (!document.hidden && user) api('/api/me').catch(() => {});
   });
-  return {api, request, ready, get user() {return user;}};
+  return {api, request, ready, setLeaveGuard:(guard,cancel)=>{leaveGuard=guard;cancelLeave=cancel;}, get user() {return user;}};
 })();

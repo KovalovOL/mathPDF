@@ -1,6 +1,7 @@
 /* Account-owned files and saved sets. Names are always inserted as text. */
 const home = id => document.getElementById(id);
 let uploading = false;
+let uploadTask,uploadFailure,pendingFiles=[];
 let previews;
 let deleteIntent;
 const previewModule = import('/static/file-previews.js').catch(() => null);
@@ -109,30 +110,45 @@ async function loadLibrary() {
 }
 function showError(error) {home('library-error').textContent = error.message; home('library-error').hidden = false;}
 home('upload-files').addEventListener('click', chooseFiles);
-home('library-file-input').addEventListener('change', async () => {
+home('library-file-input').addEventListener('change', () => {
   const files = [...home('library-file-input').files]; home('library-file-input').value = '';
   if (!files.length || uploading) return;
+  pendingFiles.push(...files);uploadTask=uploadFiles();
+});
+async function uploadFiles() {
   uploading = true; home('upload-files').disabled = true; home('library-error').hidden = true;
+  uploadFailure=null;
   home('upload-status').hidden = false;
   let completed = 0; const failures = [];
   try {
-    for (const file of files) {
+    for (const file of [...pendingFiles]) {
       home('upload-status').textContent = `Uploading ${file.name}…`;
       try {
         if (file.size > 25 * 1024 * 1024) throw new Error('The file exceeds 25 MB.');
         const body = new FormData(); body.append('file', file);
         await MathPDFSession.api('/api/documents', {method: 'POST', body}); completed++;
+        pendingFiles=pendingFiles.filter(pending=>pending!==file);
       } catch (error) {failures.push(`${file.name}: ${error.message}`);}
     }
     await loadLibrary();
     home('upload-status').textContent = `${completed} ${completed === 1 ? 'file' : 'files'} uploaded.`;
     if (failures.length) throw new Error(failures.join('\n'));
-  } catch (error) {showError(error);}
+  } catch (error) {uploadFailure=error;showError(error);}
   finally {uploading = false; home('upload-files').disabled = false;}
-});
-addEventListener('beforeunload', event => {if (uploading) {event.preventDefault(); event.returnValue = '';}});
+}
 addEventListener('pagehide', () => previews?.destroy());
 MathPDFSession.ready.then(async user => {
+  const {createLeaveGuard}=await import('/static/leave-guard.js');
+  const leave=createLeaveGuard({pending:()=>pendingFiles.map(file=>`${file.name} · Not uploaded`),save:async()=>{
+    if(!uploading && pendingFiles.length)uploadTask=uploadFiles();
+    await uploadTask;if(pendingFiles.length)throw uploadFailure || new Error('Some files could not be uploaded.');
+  }});
+  MathPDFSession.setLeaveGuard(()=>leave.confirm(),()=>leave.reset());
+  document.addEventListener('click',event=>{
+    const link=event.target.closest('a[href]');if(!link || event.button!==0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey)return;
+    const url=new URL(link.href);if(url.origin!==location.origin || !['/','/workspace'].includes(url.pathname))return;
+    event.preventDefault();leave.confirm().then(ok=>{if(ok)location.assign(url.href);}).catch(showError);
+  });
   for (const id of ['files-section', 'sets-section']) {
     const section = home(id), key = `mathpdf-${user.id}-${id}-open`;
     try {section.open = localStorage.getItem(key) !== 'false';} catch {}

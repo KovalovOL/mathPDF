@@ -389,8 +389,13 @@ async function uploadFiles(files) {
   if (ids.length) await openDocument(ids[ids.length - 1]);
   for (const id of ids) await saveUpload(id);
 }
-async function saveUpload(id) {
-  const pending = pendingUploads.get(id); if (!pending || pending.controller) return;
+function saveUpload(id) {
+  const pending=pendingUploads.get(id);if(!pending)return Promise.resolve();
+  if(pending.promise)return pending.promise;
+  pending.promise=performUpload(id,pending).finally(()=>{pending.promise=null;});
+  return pending.promise;
+}
+async function performUpload(id,pending) {
   pending.error = null; pending.controller = new AbortController(); renderUploadState(id);
   const body = new FormData(); body.append('file', pending.file);
   try {
@@ -580,12 +585,17 @@ async function generate(event) {
     if (!sets.get(activeSetId)?.data) renderPractice();
   }
 }
+async function persistSet(record,title=record.title) {
+  if(!record.data)throw new Error('This study set has not finished loading.');
+  const result=await api('/api/study-sets',{method:'POST',body:JSON.stringify({...record.data,title:title.trim()})});
+  record.data=result;record.title=result.title;record.saved=true;
+  renderSetTabs();if(record.id===activeSetId)renderPractice();
+}
 async function saveSet(event) {
   event.preventDefault(); const intent = saveIntent, record = sets.get(intent?.id); if (!record?.data) return;
   $('confirm-save').disabled = true;
   try {
-    const result = await api('/api/study-sets', {method: 'POST', body: JSON.stringify({...record.data, title: $('set-name').value.trim()})});
-    record.data = result; record.title = result.title; record.saved = true;
+    await persistSet(record,$('set-name').value);
     const close = intent.closeAfterSave && !intent.cancelled;
     if (saveIntent === intent && $('save-dialog').open) $('save-dialog').close();
     if (close) await removeSetTab(record.id);
@@ -660,9 +670,21 @@ $('save-dialog').addEventListener('cancel', () => {if (saveIntent) saveIntent.ca
 $('save-form').addEventListener('submit', saveSet);
 $('export-set').addEventListener('click', () => action(exportSet));
 $('open-saved').addEventListener('click', () => action(showSaved));
-addEventListener('beforeunload', event => {
-  if (generationActive || pendingUploads.size || notes?.anyDirty() || [...sets.values()].some(record => !record.saved)) {event.preventDefault(); event.returnValue = '';}
-});
+function pendingWork() {
+  return [...(notes?.dirtyDocuments() || []).map(id=>`${documents.get(id)?.filename || 'PDF'} · Unsaved notes`),
+    ...[...pendingUploads.values()].map(file=>`${file.filename} · Not uploaded`),
+    ...[...sets.values()].filter(record=>!record.saved).map(record=>`${record.title} · Unsaved study set`),
+    ...(generationActive || generationPreparing?['Study generation in progress']:[])];
+}
+async function savePendingWork() {
+  if(generationActive || generationPreparing)throw new Error('Wait for generation to finish or cancel it, then save and leave.');
+  for(const id of [...pendingUploads.keys()]) {
+    await saveUpload(id);
+    if(pendingUploads.has(id))throw new Error(pendingUploads.get(id).error || 'The file has not finished uploading.');
+  }
+  await notes.saveAll();
+  for(const record of sets.values())if(!record.saved)await persistSet(record);
+}
 document.querySelectorAll('.close-dialog').forEach(control => control.addEventListener('click', () => {
   if (control.dataset.dialog === 'save-dialog' && saveIntent) saveIntent.cancelled = true;
   $(control.dataset.dialog).close();
@@ -689,6 +711,13 @@ action(async () => {
       }
       renderDocumentTabs();updateDocumentToolbar();message('PDF notes saved.');
     }});
+  const {createLeaveGuard}=await import('/static/leave-guard.js');
+  const leave=createLeaveGuard({pending:pendingWork,save:savePendingWork});
+  MathPDFSession.setLeaveGuard(()=>leave.confirm(),()=>leave.reset());
+  document.querySelector('a.brand').addEventListener('click',event=>{
+    if(event.button!==0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey)return;
+    event.preventDefault();action(async()=>{if(await leave.confirm())location.assign('/');});
+  });
   const [loadedDocuments, configuration, saved] = await Promise.all([api('/api/documents'), api('/api/generation/config'), api('/api/study-sets')]);
   config = configuration; $('count').max = config.max_items; loadedDocuments.forEach(doc => documents.set(doc.id, doc));
   updateGenerationAvailability();

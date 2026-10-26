@@ -16,3 +16,9 @@
 
 - [x] 3.1 Run authorized regression and isolated API/browser checks, visually inspect exported marks and document observed limits.
 - [x] 3.2 Update English usage/API documentation, validate OpenSpec and deploy through the existing workflow; verify the deployed build/assets.
+
+## 4. Follow-up workspace polish
+
+- [x] 4.1 Guard home navigation and sign-out with Save and leave / Leave without saving / Cancel for all unsaved workspace content; preserve browser unload warnings and keep work open after a save failure.
+- [x] 4.2 Center flashcard front questions horizontally and replace named annotation colors with an accessible compact swatch palette; preserve reading selection and phone layout.
+- [ ] 4.3 Verify the follow-up flows and compatibility, update English documentation and deploy through the existing workflow.

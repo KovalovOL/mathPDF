@@ -33,7 +33,13 @@
       <div id="annotation-toolbar" class="annotation-toolbar" role="toolbar" aria-label="PDF annotation tools" hidden>
         <div id="annotation-tools" class="annotation-tools"></div>
         <div id="annotation-options" class="annotation-options">
-          <select id="annotation-color" aria-label="Annotation color"><option value="#253047">Black</option><option value="#2563eb" selected>Blue</option><option value="#dc2626">Red</option><option value="#16a34a">Green</option><option value="#facc15">Yellow</option></select>
+          <div id="annotation-color" class="annotation-palette" role="group" aria-label="Annotation color">
+            <button type="button" class="color-swatch" data-color="#253047" style="--swatch:#253047" aria-label="Black" aria-pressed="false" title="Black"></button>
+            <button type="button" class="color-swatch" data-color="#2563eb" style="--swatch:#2563eb" aria-label="Blue" aria-pressed="true" title="Blue"></button>
+            <button type="button" class="color-swatch" data-color="#dc2626" style="--swatch:#dc2626" aria-label="Red" aria-pressed="false" title="Red"></button>
+            <button type="button" class="color-swatch" data-color="#16a34a" style="--swatch:#16a34a" aria-label="Green" aria-pressed="false" title="Green"></button>
+            <button type="button" class="color-swatch" data-color="#facc15" style="--swatch:#facc15" aria-label="Yellow" aria-pressed="false" title="Yellow"></button>
+          </div>
           <select id="annotation-width" aria-label="Pen width"><option value="1">1 pt</option><option value="2" selected>2 pt</option><option value="4">4 pt</option><option value="6">6 pt</option></select>
           <span id="annotation-status" class="muted" role="status" aria-live="polite"></span>
         </div>

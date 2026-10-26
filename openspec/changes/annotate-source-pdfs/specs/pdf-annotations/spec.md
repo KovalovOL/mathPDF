@@ -86,3 +86,21 @@ Annotation reads, writes and files SHALL require the authenticated owner. New re
 #### Scenario: Request another owner's notes
 - **WHEN** a different account requests an annotation record
 - **THEN** it receives the same not-found response as an unknown document
+
+### Requirement: Save before leaving the workspace
+Home navigation and sign-out SHALL offer Save and leave, Leave without saving and Cancel whenever any open PDF notes, study sets or file uploads are unsaved. Save and leave SHALL wait for all saves to succeed. A canceled or failed save SHALL retain the workspace. Closing or reloading the browser SHALL retain the native unload warning; browsers control that warning's text and available actions.
+
+#### Scenario: Leave with multiple unsaved files
+- **WHEN** the learner requests home navigation or sign-out with unsaved work in multiple tabs
+- **THEN** the confirmation lists that work and saving completes before leaving
+
+#### Scenario: Failed leave save
+- **WHEN** one save fails
+- **THEN** navigation and sign-out do not occur and the remaining local work stays open
+
+### Requirement: Compact color controls and centered recall questions
+Annotation colors SHALL be selected from visible color swatches with accessible names and selected state. Flashcard question text SHALL be horizontally centered on the front; answer layout SHALL remain readable.
+
+#### Scenario: Select a swatch
+- **WHEN** a learner selects a color with pointer or keyboard
+- **THEN** that color applies to the active marking tool and its selected state is visible without relying only on color

@@ -9,9 +9,9 @@ from formula_lab.pdf_export import chromium_executable
 
 def test_generation_choices_preserve_notes_and_wait_for_a_successful_save():
     static=Path(__file__).parents[1]/'formula_lab/static'
-    html='''<!doctype html><button id="annotate-pdf"></button>
+    html='''<!doctype html><p id="selection">Selected PDF text</p><button id="annotate-pdf"></button>
         <div id="annotation-toolbar" hidden><div id="annotation-tools"></div>
-        <div id="annotation-options"><select id="annotation-color"><option>#2563eb</option></select>
+        <div id="annotation-options"><div id="annotation-color"><button data-color="#2563eb" aria-label="Blue"></button><button data-color="#dc2626" aria-label="Red"></button></div>
         <select id="annotation-width"><option>2</option></select><span id="annotation-status"></span></div></div>
         <dialog id="annotation-choice"><form method="dialog"><h2 id="annotation-choice-title"></h2>
         <p id="annotation-choice-message"></p><button value="cancel">Cancel</button>
@@ -23,14 +23,17 @@ def test_generation_choices_preserve_notes_and_wait_for_a_successful_save():
         const frame=document.querySelector('#frame');window.commands=[];
         const toolbar=createAnnotationToolbar({activeDocument:()=>doc,documentFor:()=>doc,frameFor:id=>id===doc.id?frame:null,
           onSaved:()=>{},onOpenCopy:()=>{},onChange:()=>{},notifyViewport:()=>{},report:()=>{}});
-        window.state=()=>dispatchEvent(new MessageEvent('message',{origin:location.origin,source:frame.contentWindow,
-          data:{type:'annotation-state',documentId:doc.id,loaded:true,dirty:true,active:true,tool:'pen',color:'#2563eb',width:2,baseDocumentId:'context-original'}}));
+        window.state=(color='#2563eb')=>dispatchEvent(new MessageEvent('message',{origin:location.origin,source:frame.contentWindow,
+          data:{type:'annotation-state',documentId:doc.id,loaded:true,dirty:true,active:true,tool:'pen',color,width:2,baseDocumentId:'context-original'}}));
         window.finishSave=(error)=>{
           const command=window.commands.at(-1);dispatchEvent(new MessageEvent('message',{origin:location.origin,source:frame.contentWindow,
             data:{type:'annotation-result',requestId:command.requestId,error,result:error?null:{document:doc}}}));
         };
         function ready(){
-          frame.contentWindow.addEventListener('message',event=>{if(event.data.action==='save')window.commands.push(event.data);});
+          frame.contentWindow.addEventListener('message',event=>{
+            if(event.data.action==='save')window.commands.push(event.data);
+            if(event.data.action==='color')window.state(event.data.color);
+          });
           window.state();window.ready=true;
         }
         if(frame.contentDocument.readyState==='complete')ready();else frame.addEventListener('load',ready,{once:true});
@@ -52,6 +55,10 @@ def test_generation_choices_preserve_notes_and_wait_for_a_successful_save():
                 await page.route('**/*',local)
                 await page.goto('http://localhost/')
                 await page.wait_for_function('window.ready')
+                await page.evaluate("()=>{const range=document.createRange();range.selectNodeContents(document.querySelector('#selection'));getSelection().addRange(range);}")
+                await page.get_by_role('button',name='Red',exact=True).click()
+                await page.wait_for_function("document.querySelector('[aria-label=Red]').getAttribute('aria-pressed')==='true'")
+                assert await page.evaluate('getSelection().toString()')=='Selected PDF text'
                 await page.evaluate('window.prepare()')
                 assert 'Context - annotated.pdf' in await page.locator('#annotation-choice-message').inner_text()
                 await page.get_by_role('button',name='Cancel',exact=True).click()

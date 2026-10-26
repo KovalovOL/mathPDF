@@ -12,6 +12,7 @@ Learners need to highlight relevant text and draw working notes directly on sour
 - Mark edited copies in the library, download them as annotated PDFs and allow their use as generation sources/context.
 - Before generation with unsaved notes, offer the unchanged original, Save and use edited copy, or Cancel.
 - Warn before closing unsaved notes. Protect concurrent saves and keep source-relative coordinates stable through zoom, resize and page rotation.
+- Offer saving all unsaved work before home navigation or sign-out, keep native browser unload warnings, center recall questions and expose colors as accessible swatches.
 - Deleting an original also deletes its edited copy and sets based on either primary file; context-only sets retain their content and detach the deleted references.
 
 ## Capabilities
