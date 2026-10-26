@@ -619,7 +619,7 @@ async function exportSet() {
     const link = el('a'); link.href = url; link.download = `${record.title.replaceAll('/', '-')}.pdf`;
     document.body.append(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(url), 30000);
     message('PDF ready.');
-  } finally {$('export-set').disabled = !sets.get(activeSetId)?.data?.items.length; $('export-set').textContent = 'Download PDF';}
+  } finally {$('export-set').disabled = !sets.get(activeSetId)?.data?.items.length; $('export-set').textContent = 'Download';}
 }
 async function showSaved() {
   $('saved-list').replaceChildren(el('p', 'field-note', 'Loading saved sets…')); $('saved-dialog').showModal();

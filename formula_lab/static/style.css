@@ -96,9 +96,10 @@ button.danger { background: #ad293d; border-color: #ad293d; }
 #page-form label, #page-count { font-size: .8rem; color: #647087; white-space: nowrap; }
 #page { width: 48px; padding: .22rem .3rem; font-size: .85rem; }
 #zoom { padding: .25rem; font-size: .8rem; width: 88px; }
-.toolbar-link { margin-left: auto; font-size: .8rem; }
-.annotation-toggle { margin-left:auto; flex-shrink:0; }
-.annotation-toggle:not([hidden]) + .toolbar-link { margin-left:0; }
+.pane-actions { display:flex;align-items:center;gap:.5rem;margin-left:auto;flex-shrink:0; }
+.pane-download { display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;padding:.3rem .65rem;font-size:.85rem;line-height:1.5;border:1px solid #cbd3e0;border-radius:5px;background:white;color:#34445f;text-decoration:none;white-space:nowrap; }
+.pane-download:hover:not(:disabled) { background:#f7f9fc; }
+.annotation-toggle { flex-shrink:0; }
 .annotation-toggle svg, .annotation-button svg { width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round; }
 .annotation-toggle[aria-expanded=true] { color:var(--accent);background:#edf2ff; }
 .annotation-toolbar { padding:6px 8px;background:#f7f9fc;border-bottom:1px solid var(--border);flex-shrink:0;display:flex;flex-wrap:wrap;gap:5px 10px; }
@@ -125,7 +126,8 @@ button.danger { background: #ad293d; border-color: #ad293d; }
   #zoom { width: 74px; padding: .2rem; font-size: .75rem; }
   .pane-toolbar { padding: 0 8px; }
 }
-@container (max-width: 280px) { #zoom { display: none; } }
+@container (max-width: 360px) { #zoom { display: none; } }
+@container (max-width: 280px) { #page-count { display:none; } }
 .document-view { width: 100%; height: 100%; overflow: auto; }
 .document-view iframe { width: 100%; height: 100%; border: 0; display: block; }
 .document-empty, .upload-state { display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100%; gap: 12px; padding: 24px; text-align: center; color: #667389; overflow-wrap: anywhere; }
@@ -136,7 +138,6 @@ button.danger { background: #ad293d; border-color: #ad293d; }
 .splitter:hover::after, .splitter:focus-visible::after, body.resizing .splitter::after { background: var(--accent); }
 body.resizing { cursor: col-resize; user-select: none; }
 body.resizing iframe { pointer-events: none; }
-.result-actions { display: flex; gap: .5rem; margin-left: auto; }
 #set-status { font-size: .8rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .generation-progress { display: flex; align-items: center; gap: 12px; padding: 16px; background: #f4f7ff; border-bottom: 1px solid #d4dff4; flex-shrink: 0; }
 .generation-spinner { width: 28px; height: 28px; border: 3px solid #d3def5; border-top-color: var(--accent); border-radius: 50%; animation: generation-spin .9s linear infinite; flex-shrink: 0; }
@@ -240,6 +241,8 @@ dialog::backdrop { background: #17233d6b; }
   .workspace.source-collapsed .practice-content, .workspace.source-collapsed .card-body { overscroll-behavior-y: contain; }
   .splitter { display: none; }
   .tab-action, .tab-close { min-height: 44px; }
+  .pane-toolbar { height:52px; }
+  .pane-actions > button, .pane-download { min-height:44px; }
   .annotation-button { flex-basis:44px;width:44px;height:44px; }
   .annotation-toggle { min-width:36px;min-height:44px;padding:4px; }
   .annotation-options select { min-height:40px; }
