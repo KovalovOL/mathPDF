@@ -15,4 +15,4 @@
 ## 3. Integration and delivery
 
 - [x] 3.1 Run authorized regression and isolated API/browser checks, visually inspect exported marks and document observed limits.
-- [ ] 3.2 Update English usage/API documentation, validate OpenSpec and deploy through the existing workflow; verify the deployed build/assets.
+- [x] 3.2 Update English usage/API documentation, validate OpenSpec and deploy through the existing workflow; verify the deployed build/assets.

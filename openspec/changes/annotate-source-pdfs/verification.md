@@ -29,4 +29,4 @@ The new interaction was checked in Chromium and an emulated phone viewport; this
 
 ## Delivery
 
-Deployment verification is recorded after the existing GitHub Actions workflow completes.
+Feature commit `9b475d0324f17b75ec1c3f47862f52cf4ce2be4e` deployed through the existing workflow: [run 40250177099](https://github.com/KovalovOL/mathPDF/actions/runs/40250177099), successful. After container replacement, the public `/api/me` returned the expected unauthenticated 401 with build `4f5dcef6cb2a`, matching the local implementation. The annotation toolbar, annotation controller, geometry/history module, PDF viewer and stylesheet returned 200 with hashes matching the committed local assets. No production account or document was opened for this check.
