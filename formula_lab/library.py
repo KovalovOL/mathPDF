@@ -1,6 +1,7 @@
 """Owner-scoped organization metadata, independent of canonical document/set content."""
 import hashlib
 import json
+import logging
 import sqlite3
 from typing import Literal
 from uuid import uuid4
@@ -129,10 +130,7 @@ class Library:
             db.execute('BEGIN')
             files=[Document.model_validate(dict(r)) for r in db.execute(DOCUMENT_SELECT+' WHERE d.owner_id=? ORDER BY d.created_at DESC,d.id',(owner,))]
             by_id={file.id:file for file in files}
-            sets=[dict(r) for r in db.execute('''SELECT id,title,mode,item_count,created_at,updated_at,
-                json_extract(payload,'$.document.id') AS document_id,
-                json_extract(payload,'$.document.filename') AS document_filename,
-                COALESCE(CAST(json_extract(payload,'$.difficulty') AS INTEGER),3) AS difficulty
+            sets=[dict(r) for r in db.execute('''SELECT id,title,mode,item_count,created_at,updated_at,payload
                 FROM study_sets WHERE owner_id=? ORDER BY updated_at DESC,id''',(owner,))]
             metadata={(r['kind'],r['item_id']):dict(r) for r in db.execute('SELECT * FROM library_items WHERE owner_id=?',(owner,))}
             folders=[dict(r) for r in db.execute('SELECT id,name,parent_id FROM library_folders WHERE owner_id=? ORDER BY name_key,id',(owner,))]
@@ -141,6 +139,19 @@ class Library:
             return {**item,'folder_id':state.get('folder_id'),'archived':bool(state.get('archived',False))}
         result=[]
         for item in sets:
+            # Persisted JSON is opaque TEXT. PostgreSQL JSONB rejects valid JSON
+            # containing escaped NULs, including inside unrelated answer text.
+            # Read metadata in Python without rewriting or losing any content.
+            try:payload=json.loads(item.pop('payload'))
+            except (ValueError,TypeError):
+                payload={};item['metadata_error']='unreadable_study_metadata'
+                logging.getLogger(__name__).warning('Study metadata is unreadable',extra={'event':'library.metadata_invalid','error_code':'invalid_study_payload','study_set_id':item['id']})
+            source=payload.get('document',{}) if isinstance(payload,dict) else {}
+            if not isinstance(source,dict):source={}
+            item['document_id'],item['document_filename']=source.get('id'),source.get('filename')
+            try:difficulty=int(payload.get('difficulty',3)) if isinstance(payload,dict) else 3
+            except (TypeError,ValueError):difficulty=3
+            item['difficulty']=difficulty
             doc=by_id.get(item['document_id'])
             result.append(place('study-sets',{**item,'document_filename':doc.filename if doc else item['document_filename']}))
         return {'folders':folders,'files':[place('documents',d.model_dump()) for d in files],'sets':result}

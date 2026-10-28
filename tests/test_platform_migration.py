@@ -133,3 +133,17 @@ def test_old_monthly_limit_columns_import_as_daily_without_rewriting(infrastruct
         row=db.execute("SELECT monthly_tokens,daily_tokens FROM generation_limits WHERE scope='default'").fetchone()
         assert row['monthly_tokens']==43210 and row['daily_tokens'] is None
     assert read_snapshot(infrastructure/'workspace.sqlite3')==before
+
+
+def test_postgres_library_reads_valid_json_that_jsonb_cannot_represent(infrastructure):
+    import json
+    from test_library_organization import saved
+    migrate(infrastructure);app=create_app(infrastructure);_,user=login(app);ws=app.state.workspace
+    doc=ws.add_document('fixture.txt',b'private fixture',user.id);content=saved(doc.model_dump())
+    content['items'][0]['answer'][0]['text']='Preserve this\x00source content.';ws.save_set(content,user.id)
+    with pytest.raises(psycopg.errors.UntranslatableCharacter):
+        with ws.connection() as db:db.execute('SELECT ?::jsonb',(json.dumps(content),)).fetchone()
+    snapshot=app.state.library.snapshot(user.id)
+    assert len(snapshot['files'])==len(snapshot['sets'])==1
+    assert snapshot['sets'][0]['document_id']==doc.id
+    assert ws.study_set(content['id'],user.id)==content

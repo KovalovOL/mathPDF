@@ -119,3 +119,14 @@ def test_archive_does_not_cascade_but_explicit_delete_still_does(tmp_path):
         impact=c.get('/api/library/folders/'+a['id']+'/deletion').json()
         assert c.delete('/api/library/folders/'+a['id'],headers={'If-Match':impact['revision']}).status_code==200
         assert next(f for f in c.get('/api/library').json()['folders'] if f['id']==child['id'])['parent_id'] is None
+
+
+def test_library_projection_preserves_control_characters_in_saved_content(tmp_path):
+    app=create_app(tmp_path)
+    with TestClient(app) as c:
+        owner=sign_in(c,app);doc=file(c);raw=saved(doc)
+        raw['items'][0]['answer'][0]['text']='Keep the original\x00text and formula $x^2$.'
+        app.state.workspace.save_set(raw,owner)
+        result=c.get('/api/library');assert result.status_code==200
+        assert result.json()['files'][0]['id']==doc['id'] and result.json()['sets'][0]['document_id']==doc['id']
+        assert app.state.workspace.study_set(raw['id'],owner)==raw
