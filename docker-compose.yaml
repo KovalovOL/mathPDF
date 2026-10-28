@@ -1,5 +1,5 @@
 x-platform: &platform
-  image: mathpdf-platform:local
+  image: mathpdf-platform:production
   restart: always
   labels: ["traefik.enable=false"]
   logging:
@@ -37,7 +37,7 @@ x-platform: &platform
 services:
   bootstrap:
     labels: ["traefik.enable=false"]
-    image: mathpdf-platform:local
+    image: mathpdf-platform:production
     restart: "no"
     command: ["python", "-m", "formula_lab.infrastructure"]
     volumes:
@@ -63,7 +63,7 @@ services:
       retries: 20
   garage:
     labels: ["traefik.enable=false"]
-    image: mathpdf-platform:local
+    image: mathpdf-platform:production
     restart: always
     command: ["python", "-m", "formula_lab.infrastructure", "garage"]
     environment:
