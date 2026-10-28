@@ -4,6 +4,7 @@ import argparse
 import asyncio
 import logging
 import os
+import httpx
 from contextlib import asynccontextmanager
 from pathlib import Path
 from time import perf_counter
@@ -20,15 +21,18 @@ from .pdf_export import ExportError, export_pdf
 from .providers import OpenAIProvider
 from .generation_jobs import GenerationBusy, GenerationJobs
 from .diagnostics import (ClientDiagnostic, ClientReportLimit, configure_logging, correlation_id,
-                          job_context, log_exception, request_context, route_label, REQUEST_ID)
+                          job_context, log_exception,exception_summary, request_context, route_label, REQUEST_ID)
 from .study import GENERATION_SECONDS, MAX_ITEMS, GenerateRequest, GenerationError, StudyProvider, StudySet, generate_study, validate_study
 from .web_assets import ApplicationAssets, build_id, html_page
 from .workspace import MAX_UPLOAD_BYTES, DeletionChanged, Workspace
 from .annotations import AnnotationConflict, AnnotationWrite
+from .reports import Reports
+from .request_reports import RequestReports
+from .usage import Usage
 from .library import FolderCreate, FolderUpdate, ItemUpdate, Library
 
 
-PUBLIC_ROUTES = {"/login", "/auth/config", "/auth/google/login", "/auth/google/callback"}
+PUBLIC_ROUTES = {"/health", "/login", "/auth/config", "/auth/google/login", "/auth/google/callback"}
 PUBLIC_ASSETS = {".css", ".js", ".mjs", ".svg", ".png", ".ico", ".woff", ".woff2", ".ttf", ".map"}
 
 
@@ -39,6 +43,8 @@ def create_app(data_dir: Path = Path(".formula-lab"), provider: StudyProvider | 
     workspace = Workspace(data_dir)
     library = Library(workspace)
     auth = Authentication(workspace, AuthConfig.from_environment())
+    workspace.usage=Usage(workspace)
+    workspace.reports=Reports(workspace)
     generation_lock = asyncio.Lock()
     jobs = GenerationJobs(workspace, generation_lock)
     client_reports = ClientReportLimit()
@@ -82,6 +88,10 @@ def create_app(data_dir: Path = Path(".formula-lab"), provider: StudyProvider | 
                 request.headers.get("origin") != auth.config.base_url
                 or request.headers.get("sec-fetch-site") == "cross-site"):
             response = JSONResponse({"detail": "Request origin is not allowed."}, status_code=403)
+        elif path in {'/admin','/static/admin.html'} or path.startswith('/api/admin/'):
+            if user is None or auth.roles.role(user.id) not in {'admin','owner'}:
+                response=JSONResponse({'detail':'Administrator access is required.'},status_code=403)
+            else:response=await call_next(request)
         else:
             response = await call_next(request)
         response.headers["X-Content-Type-Options"] = "nosniff"
@@ -110,6 +120,7 @@ def create_app(data_dir: Path = Path(".formula-lab"), provider: StudyProvider | 
             try:
                 response = await call_next(request)
             except Exception as error:
+                request.state.exception=exception_summary(error)
                 log_exception(logger, f"HTTP exception method={request.method} route={route}", error)
                 response = JSONResponse({"detail": "An unexpected server error occurred. Use the reference to locate its logs.",
                                          "request_id": reference}, status_code=500)
@@ -189,6 +200,34 @@ def create_app(data_dir: Path = Path(".formula-lab"), provider: StudyProvider | 
         auth.clear_cookie(response, auth.config.session_cookie)
         auth.clear_cookie(response, auth.config.flow_cookie)
         return response
+
+    async def platform_proxy(request:Request):
+        admin=request.url.path.startswith(('/admin','/api/admin'))
+        endpoint=os.getenv('MATHPDF_ADMIN_URL' if admin else 'MATHPDF_REPORTS_URL')
+        if not endpoint:
+            raise HTTPException(503,'This platform service has not been configured.')
+        body=bytearray()
+        async for chunk in request.stream():
+            body.extend(chunk)
+            if len(body)>2*1024*1024:raise HTTPException(413,'The request context is too large.')
+        headers={key:value for key,value in request.headers.items() if key.lower() in {'cookie','origin','content-type','x-mathpdf-user','x-mathpdf-request-id','sec-fetch-site'}}
+        url=endpoint.rstrip('/')+request.url.path+('?' +request.url.query if request.url.query else '')
+        try:
+            async with httpx.AsyncClient(timeout=60,follow_redirects=False) as client:
+                result=await client.request(request.method,url,headers=headers,content=bytes(body))
+        except httpx.HTTPError:
+            raise HTTPException(503,'The platform service is temporarily unavailable. Please try again.') from None
+        return Response(result.content,status_code=result.status_code,headers={key:value for key,value in result.headers.items() if key.lower() in {'content-type','content-disposition','location','x-mathpdf-request-id'}})
+
+    app.add_api_route('/admin',platform_proxy,methods=['GET'])
+    app.add_api_route('/api/admin/{path:path}',platform_proxy,methods=['GET','POST','PATCH','DELETE'])
+    app.add_api_route('/api/reports',platform_proxy,methods=['POST'])
+    app.add_api_route('/api/reports/{path:path}',platform_proxy,methods=['GET'])
+
+    @app.get('/health')
+    def health():
+        with workspace.connection() as db:db.execute('SELECT 1')
+        return {'status':'ok','build':build_id()}
 
     @app.get("/api/me")
     def me(request: Request):
@@ -380,6 +419,7 @@ def create_app(data_dir: Path = Path(".formula-lab"), provider: StudyProvider | 
         logger.warning("Browser API failure report=%s", report.model_dump_json())
         return Response(status_code=204)
 
+    app.add_middleware(RequestReports,reports=workspace.reports)
     app.mount("/static", ApplicationAssets(directory=static), name="static")
     return app
 

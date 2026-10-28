@@ -19,6 +19,7 @@ from pydantic import BaseModel
 from starlette.concurrency import run_in_threadpool
 
 from .workspace import Workspace
+from .roles import Role, Roles
 
 
 SESSION_SECONDS = 30 * 24 * 60 * 60
@@ -37,7 +38,7 @@ def safe_next(value: str | None) -> str:
         parts = urlsplit(value)
     except ValueError:
         return "/"
-    if parts.scheme or parts.netloc or parts.path not in {"/", "/workspace"}:
+    if parts.scheme or parts.netloc or parts.path not in {"/", "/workspace", "/admin"}:
         return "/"
     return parts.path + (f"?{parts.query}" if parts.query else "")
 
@@ -46,6 +47,7 @@ class User(BaseModel):
     id: str
     email: str
     name: str
+    role: Role = "free"
 
 
 class LoginError(Exception):
@@ -96,6 +98,7 @@ class AuthConfig:
 class Authentication:
     def __init__(self, workspace: Workspace, config: AuthConfig):
         self.workspace, self.config = workspace, config
+        self.roles=Roles(workspace)
         with workspace.connection() as connection:
             connection.executescript("""
                 CREATE TABLE IF NOT EXISTS sessions (
@@ -115,8 +118,8 @@ class Authentication:
         if not token or len(token) > 256:
             return None
         with self.workspace.connection() as connection:
-            row = connection.execute("""SELECT u.id,u.email,u.name FROM users u
-                JOIN sessions s ON s.user_id=u.id WHERE s.token_hash=? AND s.expires_at>?""",
+            row = connection.execute("""SELECT u.id,u.email,u.name,COALESCE(r.role,'free') AS role FROM users u
+                LEFT JOIN user_roles r ON r.user_id=u.id JOIN sessions s ON s.user_id=u.id WHERE s.token_hash=? AND s.expires_at>?""",
                                      (token_hash(token), int(time.time()))).fetchone()
         return User.model_validate(dict(row)) if row else None
 
@@ -187,6 +190,7 @@ class Authentication:
                 connection.execute("DELETE FROM sessions WHERE token_hash=?", (token_hash(old_token),))
             connection.execute("INSERT INTO sessions VALUES (?,?,?,?)",
                                (token_hash(token), user["id"], now + SESSION_SECONDS, now))
+        self.roles.verified_login(user['id'],claims['email'])
         return token
 
     async def finish(self, cookie: str | None, state: str | None, code: str | None,

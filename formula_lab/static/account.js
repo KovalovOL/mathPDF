@@ -2,6 +2,9 @@
 window.MathPDFSession = (() => {
   let user, redirecting = false, leaveGuard, cancelLeave;
   let diagnosticCount = 0;
+  const reporter=import('/static/reports.js').then(module=>module.initialize({getUser:()=>user})).catch(()=>null);
+  let contextProvider=()=>({});
+  reporter.then(r=>r?.setContextProvider(()=>contextProvider()));
   const clientBuild = document.querySelector('meta[name="mathpdf-build"]')?.content || null;
   const newReference = () => crypto.randomUUID().replaceAll('-', '');
   function routeLabel(path) {
@@ -47,6 +50,8 @@ window.MathPDFSession = (() => {
     if (!headers['X-MathPDF-Request-ID']) headers['X-MathPDF-Request-ID'] = newReference();
     if (user) headers['X-MathPDF-User'] = user.id;
     const response = await fetch(path, {...options, headers, credentials: 'same-origin', cache: 'no-store'});
+    let diagnosticResponse;try{if(path.startsWith('/api/')&&(response.status>=400||(response.headers.get('content-type')||'').includes('json')))diagnosticResponse=response.clone();}catch{}
+    if(diagnosticResponse)reporter.then(r=>r?.observe(path,options,diagnosticResponse)).catch(()=>{});
     if (response.status === 401) signIn();
     if (response.headers.get('X-MathPDF-Account-Changed') === '1') {
       location.assign('/'); throw new Error('The active account has changed. Reopening your library.');
@@ -129,7 +134,11 @@ window.MathPDFSession = (() => {
           cancelLeave?.();logoutError.textContent=error.name==='AbortError'?'Sign-out timed out. Please try again.':error.message;logoutError.hidden=false;menu.open=true;
         } finally {clearTimeout(logoutTimer);logout.disabled=false;}
       });
-      form.append(logout,logoutError); panel.append(name, email, form); menu.append(summary, panel); container.replaceChildren(menu);
+      form.append(logout,logoutError); panel.append(name, email);
+      const role=document.createElement('span');role.className='account-role';role.textContent=(user.role||'free').replace(/^./,c=>c.toUpperCase());panel.append(role);
+      if(['admin','owner'].includes(user.role)){const admin=document.createElement('a');admin.href='/admin';admin.textContent='Administration';panel.append(admin);}
+      reporter.then(r=>{if(r){const feedback=r.button();feedback.addEventListener('click',()=>menu.open=false);panel.insertBefore(feedback,form);}});
+      panel.append(form); menu.append(summary, panel); container.replaceChildren(menu);
       document.addEventListener('click', event => {if (!menu.contains(event.target)) menu.open = false;});
       document.addEventListener('keydown', event => {if (event.key === 'Escape') {menu.open = false; summary.focus();}});
     }
@@ -141,5 +150,5 @@ window.MathPDFSession = (() => {
   document.addEventListener('visibilitychange', () => {
     if (!document.hidden && user) api('/api/me').catch(() => {});
   });
-  return {api, request, ready, setLeaveGuard:(guard,cancel)=>{leaveGuard=guard;cancelLeave=cancel;}, get user() {return user;}};
+  return {api, request, ready, setContextProvider:provider=>contextProvider=provider, setLeaveGuard:(guard,cancel)=>{leaveGuard=guard;cancelLeave=cancel;}, get user() {return user;}};
 })();

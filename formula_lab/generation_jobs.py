@@ -8,7 +8,8 @@ from uuid import uuid4
 
 from .study import GenerateRequest, GenerationError, StudyProvider, StudySet, generate_study
 from .workspace import Workspace
-from .diagnostics import job_context, log_exception, request_context
+from .reports import ReportInput
+from .diagnostics import job_context, log_exception,exception_summary, request_context
 
 
 class GenerationBusy(Exception):
@@ -79,6 +80,7 @@ class GenerationJobs:
         logger = logging.getLogger(__name__)
         token = job_context.set(job.id)
         logger.info("Study job started requested=%s", job.requested_count)
+        failure_context=None
         try:
             job.result = await generate_study(self.workspace, job.owner_id, selection, provider, job.progress)
             job.status = "completed"
@@ -87,15 +89,24 @@ class GenerationJobs:
             job.status = "cancelled"
             logger.info("Study job cancelled accepted=%s requested=%s", job.accepted_count, job.requested_count)
         except (GenerationError, ValueError) as error:
+            failure_context=exception_summary(error)
             job.status, job.error = "failed", str(error)
             logger.warning("Study job failed requested=%s accepted=%s error_type=%s",
                            job.requested_count, job.accepted_count, type(error).__name__)
         except KeyError:
             job.status, job.error = "failed", "A selected file is no longer available. Reopen your library and try again."
         except Exception as error:
+            failure_context=exception_summary(error)
             job.status, job.error = "failed", "Generation failed unexpectedly. Please try again."
             log_exception(logger, "Study job failed unexpectedly", error)
         finally:
+            if job.status=='failed' and getattr(self.workspace,'reports',None):
+                try:
+                    user=self.workspace.user_identity(job.owner_id)
+                    await asyncio.to_thread(self.workspace.reports.record,user,ReportInput(origin='automatic',request_id=job.request_id,
+                        context={'server':{'job_id':job.id,'error':job.error,'exception':failure_context,'selection':selection.model_dump(mode='json')}}))
+                except Exception as error:
+                    logger.warning('Failed generation report unavailable type=%s',type(error).__name__)
             job.finished_at = monotonic()
             self.lock.release()
             self.prune()

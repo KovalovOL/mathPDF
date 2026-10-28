@@ -1,5 +1,7 @@
 """OpenAI adapter: one compact response expanded into canonical study blocks."""
 
+from asyncio import to_thread
+from .usage import usage_context
 import base64
 import logging
 import re
@@ -209,6 +211,12 @@ class OpenAIProvider:
         function = pydantic_function_tool(response_format)["function"]
         logger = logging.getLogger(__name__)
         started = perf_counter()
+        tracking=usage_context.get();attempt=None
+        if tracking and tracking['store']:
+            attempt=await to_thread(tracking['store'].start,tracking['user_id'],'openai',self.model,
+                {'selection':tracking['request'],'system_prompt':system,'task_prompt':task,
+                 'documents':[{'id':d.document.id,'filename':d.document.filename,'sha256':d.document.sha256,'pages':d.pages,'role':d.role} for d in documents]})
+            tracking['attempt_id']=attempt
         logger.info("Provider request started phase=generating requested=%s", count)
         try:
             # Exactly one HTTP attempt, including timeouts and provider errors.
@@ -223,6 +231,8 @@ class OpenAIProvider:
                     store=False,
                 )
         except APIError as error:
+            if attempt:
+                await to_thread(tracking['store'].finish,attempt,'provider_error',None,round((perf_counter()-started)*1000),getattr(error,'request_id',None))
             status = getattr(error, "status_code", None)
             logger.warning("Provider request failed status=%s error_type=%s duration_ms=%s",
                            status, type(error).__name__, round((perf_counter() - started) * 1000))
@@ -232,6 +242,9 @@ class OpenAIProvider:
                 400: "The generation service could not process these files. Try fewer pages or different files.",
             }
             raise GenerationError(messages.get(status, "The generation service is unavailable or timed out. Try again later.")) from None
+        if attempt:
+            await to_thread(tracking['store'].finish,attempt,'received',getattr(response,'usage',None),round((perf_counter()-started)*1000),getattr(response,'_request_id',None))
+            await to_thread(tracking['store'].response,attempt,getattr(response,'model',None) or self.model,response.status,response.output_text)
         logger.info("Provider request finished phase=generating status=%s output_tokens=%s duration_ms=%s",
                     response.status, getattr(response.usage, "output_tokens", None), round((perf_counter() - started) * 1000))
         if any(part.type == "refusal" for output in response.output if output.type == "message"

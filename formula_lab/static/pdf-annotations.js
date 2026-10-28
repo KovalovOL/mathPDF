@@ -154,6 +154,7 @@ export function createPdfAnnotations({state, getDocumentId, saved, report}) {
     return savePromise;
   }
   async function command(data) {
+    if (data.action==='diagnostic') return {document_id:getDocumentId(),base_document_id:state.base_document.id,revision:state.revision,annotations:{schema_version:1,items:history.items},dirty:history.dirty,saving};
     if (data.action==='save') return save();
     if (saving) return;
     if (data.action==='toggle') {

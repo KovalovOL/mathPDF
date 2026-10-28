@@ -17,6 +17,7 @@ from uuid import uuid4
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from pypdf import PdfReader, PdfWriter
 from .workspace import Document, Workspace
+from .usage import usage_context
 
 
 MAX_ITEMS = 50
@@ -307,15 +308,28 @@ async def collect_study(documents: list[InputDocument], request: GenerateRequest
 
 async def generate_study(workspace: Workspace, owner_id: str, request: GenerateRequest,
                          provider: StudyProvider, progress: Progress | None = None) -> StudySet:
+    tracking={"store":getattr(workspace,"usage",None),"user_id":owner_id,"request":request.model_dump(mode="json"),"attempt_id":None}
+    context_token=usage_context.set(tracking)
     progress = progress or (lambda _: None)
     try:
         async with timeout(GENERATION_SECONDS):
             progress({"phase": "preparing", "accepted_count": 0})
             documents = await to_thread(prepare_documents, workspace, request, owner_id)
             content, metadata = await collect_study(documents, request, provider, progress)
-    except TimeoutError:
-        raise GenerationError(f"Generation timed out before all {request.count} items were ready. "
-                              "Try again with fewer items or fewer source pages.") from None
+    except BaseException as error:
+        if tracking['store'] and tracking['attempt_id']:
+            try:
+                await to_thread(tracking['store'].outcome,tracking['attempt_id'],'cancelled' if type(error).__name__=='CancelledError' else 'failed')
+            except Exception:
+                logger.warning('Could not update the failed provider attempt status id=%s',tracking['attempt_id'])
+        if isinstance(error,TimeoutError):
+            raise GenerationError(f"Generation timed out before all {request.count} items were ready. "
+                                  "Try again with fewer items or fewer source pages.") from None
+        raise
+    finally:
+        usage_context.reset(context_token)
+    if tracking['store'] and tracking['attempt_id']:
+        await to_thread(tracking['store'].outcome,tracking['attempt_id'],'completed')
     source = documents[0]
     label = "Flashcards" if request.mode == "flashcards" else "Problems"
     selection = str(source.pages[0]) if len(source.pages) == 1 else f"{source.pages[0]}–{source.pages[-1]}"

@@ -47,7 +47,7 @@ Every file and saved set belongs to its authenticated owner. All reads, download
 
 Derived previews are cached in account-scoped IndexedDB: up to 150 home previews and the ten most recently viewed PDF page images, each group capped at 30 MB. Cached pages appear while the authorized PDF and selectable text load; this is not offline file access. Deletion and sign-out clear the relevant cache. If browser storage is unavailable, previews render normally. See [cache behavior](docs/workspace.md#browser-visual-cache).
 
-On the first ownership upgrade, the application deletes pre-authentication managed uploads and saved sets, as explicitly requested by the project owner. Later restarts preserve owned data. Repository PDFs outside the managed upload directory are untouched. Storage remains local; Garage integration is future work.
+On the first ownership upgrade, the application deletes pre-authentication managed uploads and saved sets, as explicitly requested by the project owner. Later restarts preserve owned data. Repository PDFs outside the managed upload directory are untouched. Local development retains SQLite; production uses PostgreSQL and private Garage storage with a verified, non-destructive migration. See [platform services](docs/platform.md).
 
 ## PDF export setup
 
@@ -88,7 +88,7 @@ Document tabs + continuous PDF viewer
 
 ## VPS deployment
 
-The single GitHub Actions job in `.github/workflows/deploy.yml` deploys pushes to `main` and also supports manual runs. It syncs the repository to `/opt/mathPDF`, writes `.env` directly on the VPS from `APP_ENV`, and runs `docker compose up -d --build`. All deployment commands are inline in the workflow.
+The single GitHub Actions job in `.github/workflows/deploy.yml` deploys pushes to `main` and also supports manual runs. It syncs the repository to `/opt/mathPDF`, writes `.env` directly on the VPS from `APP_ENV`, builds the image, stops writers for verified migration, and starts the five services with health checks. All deployment commands are inline in the workflow.
 
 Add these **repository secrets** under **Settings → Secrets and variables → Actions → Secrets**:
 
@@ -110,7 +110,7 @@ GOOGLE_CLIENT_SECRET=your-client-secret
 
 The VPS needs Docker with the Compose plugin, `rsync`, and the existing Traefik attached to `traefik-public`, with entrypoint `websecure` and certificate resolver `myresolver`. The domain `mathpdf.site` is fixed in `docker-compose.yaml`; point its DNS records at the VPS. Compose joins the [existing external network](https://docs.docker.com/reference/compose-file/networks/#external) and configures [Traefik's Docker labels](https://doc.traefik.io/traefik/routing/providers/docker/) to route HTTPS to container port 8765.
 
-SQLite, uploaded files, and saved sets persist in `/opt/mathPDF/.formula-lab`. Deployment excludes that directory and `.env` from file synchronization; `.env` is replaced separately from the secret with permissions `600`. The image includes Chromium for PDF export and installs dependencies from `uv.lock`. Google sign-in is mandatory; the production callback is fixed by the default origin to `https://mathpdf.site/auth/google/callback`. Omit the local `APP_BASE_URL` override on the VPS. Missing Google credentials leave private content protected and sign-in unavailable.
+Production PostgreSQL/Garage data and persistent credentials live in `/opt/mathPDF/.infrastructure`; verified migration backups, retained original files and caches live in `.formula-lab`. Deployment excludes both directories and `.env` from file synchronization; `.env` is replaced separately from the secret with permissions `600`. The image includes Chromium for PDF export and installs dependencies from `uv.lock`. Google sign-in is mandatory; the production callback is fixed by the default origin to `https://mathpdf.site/auth/google/callback`. Omit the local `APP_BASE_URL` override on the VPS. Missing Google credentials leave private content protected and sign-in unavailable.
 
 ## Local frontend assets
 

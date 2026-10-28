@@ -12,10 +12,13 @@ from datetime import datetime, timezone
 from pathlib import Path
 from uuid import uuid4
 
+from botocore.exceptions import BotoCoreError, ClientError
 from PIL import Image, UnidentifiedImageError
 from pydantic import BaseModel
 from pypdf import PdfReader
 
+from .blob_storage import BlobStorage
+from .database import Database
 from .annotations import AnnotationConflict, AnnotationData, AnnotationWrite, annotated_pdf
 
 
@@ -51,10 +54,13 @@ class Workspace:
         if self.files.is_symlink():
             raise ValueError("Managed document storage must not be a symbolic link.")
         self.files.mkdir(parents=True, exist_ok=True)
+        self.storage=BlobStorage(self.directory)
         self.database = self.directory / "workspace.sqlite3"
+        self.db=Database(self.database)
         with self.connection() as connection:
             connection.execute("PRAGMA journal_mode=WAL")
             connection.execute("BEGIN IMMEDIATE")
+            self.db.initialize(connection)
             document_columns = {row["name"] for row in connection.execute("PRAGMA table_info(documents)")}
             set_columns = {row["name"] for row in connection.execute("PRAGMA table_info(study_sets)")}
             if ((document_columns and "owner_id" not in document_columns)
@@ -91,16 +97,15 @@ class Workspace:
                 revision INTEGER NOT NULL, payload TEXT NOT NULL,
                 UNIQUE(owner_id,original_document_id))''')
 
-    @contextmanager
     def connection(self):
-        connection = sqlite3.connect(self.database, timeout=10)
-        connection.row_factory = sqlite3.Row
-        connection.execute("PRAGMA foreign_keys=ON")
-        try:
-            with connection:
-                yield connection
-        finally:
-            connection.close()
+        return self.db.connection()
+
+    def user_identity(self,identifier):
+        from .auth import User
+        with self.connection() as db:
+            row=db.execute("SELECT u.id,u.email,u.name,COALESCE(r.role,'free') AS role FROM users u LEFT JOIN user_roles r ON r.user_id=u.id WHERE u.id=?",(identifier,)).fetchone()
+        if not row:raise KeyError('User not found')
+        return User.model_validate(dict(row))
 
     def add_document(self, filename: str, data: bytes, owner_id: str) -> Document:
         if not re.fullmatch(r"[a-f0-9]{32}", owner_id):
@@ -152,12 +157,7 @@ class Workspace:
                 return Document.model_validate(dict(row))
             identifier = uuid4().hex
             stored_name = f"{owner_id}/{digest}{suffix}"
-            path = self.files / stored_name
-            path.parent.mkdir(parents=True, exist_ok=True)
-            if not path.exists():
-                temporary = path.parent / f"{identifier}.upload"
-                temporary.write_bytes(data)
-                temporary.replace(path)
+            self.storage.put("documents/"+stored_name,data,media_type)
             now = datetime.now(timezone.utc).isoformat()
             connection.execute("""INSERT INTO documents
                                (id,owner_id,filename,sha256,media_type,page_count,size,stored_name,created_at)
@@ -182,14 +182,11 @@ class Workspace:
 
     def path(self, identifier: str, owner_id: str) -> Path:
         with self.connection() as connection:
-            row = connection.execute("SELECT stored_name FROM documents WHERE id=? AND owner_id=?",
+            row = connection.execute("SELECT stored_name,sha256 FROM documents WHERE id=? AND owner_id=?",
                                      (identifier, owner_id)).fetchone()
         if row is None:
             raise KeyError("Document not found")
-        path = (self.files / row["stored_name"]).resolve()
-        if not path.is_relative_to(self.files) or not path.is_file():
-            raise ValueError("The stored file is missing. Add it again.")
-        return path
+        return self.storage.path('documents/'+row['stored_name'],row['sha256'])
 
     def annotation_state(self, identifier: str, owner_id: str) -> dict:
         document = self.document(identifier, owner_id)
@@ -229,12 +226,7 @@ class Workspace:
                 raise AnnotationConflict('This edited copy changed in another tab. Your unsaved notes have been kept.')
             if not current and state['document']['original_document_id']:
                 raise KeyError('Document not found')
-            path = self.files/stored_name; path.parent.mkdir(parents=True, exist_ok=True)
-            temporary = path.parent/f'{target}.upload'
-            try:
-                temporary.write_bytes(binary); temporary.replace(path)
-            finally:
-                temporary.unlink(missing_ok=True)
+            self.storage.put('documents/'+stored_name,binary,'application/pdf')
             if current:
                 previous = connection.execute('SELECT stored_name FROM documents WHERE id=? AND owner_id=?',
                                               (target,owner_id)).fetchone()['stored_name']
@@ -365,10 +357,16 @@ class Workspace:
         try:
             with self.connection() as connection:
                 connection.execute('BEGIN IMMEDIATE')
+                report_columns={r['name'] for r in connection.execute('PRAGMA table_info(reports)')}
+                pinned={}
+                if report_columns:
+                    for row in connection.execute("SELECT manifest FROM reports WHERE collection_status<>'ready'"):
+                        pinned.update({source['stored_name']:source['sha256'] for source in json.loads(row['manifest']).get('sources',[])})
                 for stored_name in stored_names:
                     if not connection.execute('SELECT 1 FROM documents WHERE stored_name=?', (stored_name,)).fetchone():
-                        path = (self.files / stored_name).resolve()
-                        if path.is_relative_to(self.files):
-                            path.unlink(missing_ok=True)
-        except OSError:
+                        if stored_name in pinned:self.storage.retain('documents/'+stored_name,'report-source-cache/'+stored_name,pinned[stored_name])
+                        else:
+                            self.storage.delete('documents/'+stored_name)
+                            self.storage.delete('report-source-cache/'+stored_name)
+        except (OSError,ValueError,BotoCoreError,ClientError):
             logging.getLogger(__name__).warning('Deleted document binary cleanup deferred')

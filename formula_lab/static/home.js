@@ -268,3 +268,7 @@ MathPDFSession.ready.then(async user => {
   }
   await loadLibrary(); home('upload-files').disabled = false;
 }).catch(showError);
+
+MathPDFSession.setContextProvider?.(()=>({library:{folder_id:currentFolder,archive_view:archiveView,
+  visible_files:library.files.filter(file=>archiveView?file.archived:!file.archived&&file.folder_id===currentFolder).map(file=>({id:file.id,filename:file.filename,sha256:file.sha256})),
+  visible_sets:library.sets.filter(set=>archiveView?set.archived:!set.archived&&set.folder_id===currentFolder),pending_uploads:pendingFiles.map(file=>({name:file.name,size:file.size,type:file.type}))}}));

@@ -34,7 +34,7 @@ jobs:
 
       - name: Deploy to /opt/mathPDF
         run: |
-          ssh "$VPS_USER@$VPS_HOST" 'mkdir -p /opt/mathPDF'
-          rsync -az --delete --exclude='.git' --exclude='.env*' --exclude='.formula-lab' ./ "$VPS_USER@$VPS_HOST:/opt/mathPDF/"
+          ssh "$VPS_USER@$VPS_HOST" 'mkdir -p /opt/mathPDF/.formula-lab/migration-backups && chmod 700 /opt/mathPDF/.formula-lab/migration-backups && if [ -f /opt/mathPDF/docker-compose.yaml ]; then cp -n /opt/mathPDF/docker-compose.yaml /opt/mathPDF/.formula-lab/migration-backups/pre-postgres-compose.yaml; fi'
+          rsync -az --delete --exclude='.git' --exclude='.env*' --exclude='.formula-lab' --exclude='.infrastructure' ./ "$VPS_USER@$VPS_HOST:/opt/mathPDF/"
           printf '%s\n' "$APP_ENV" | ssh "$VPS_USER@$VPS_HOST" 'umask 077 && cat > /opt/mathPDF/.env && chmod 600 /opt/mathPDF/.env'
-          ssh "$VPS_USER@$VPS_HOST" 'cd /opt/mathPDF && docker compose up -d --build'
+          ssh "$VPS_USER@$VPS_HOST" 'cd /opt/mathPDF && docker compose build app && docker compose stop app reports admin && docker compose up -d --wait --wait-timeout 180'

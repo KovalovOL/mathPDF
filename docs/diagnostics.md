@@ -43,3 +43,7 @@ Generation no longer initializes Chromium or rejects a complete set for mathemat
 The October 25 zero-progress failure was reproduced locally: the previous blank validation document used quirks mode, causing KaTeX to reject even `x+1`. Logs showed every candidate rejected as `invalid_math`. Missing PDF.js source maps are browser debugging files and do not cause this failure.
 
 The later reference `c7f8c8ee266b400a87fefa2c6004238c` produced five problems in about 13 seconds but was rejected as `math_in_text`. The non-blocking display policy removes that rejection rather than making another provider request.
+
+## Private tester reports
+
+The metadata-only `/api/client-errors` logger remains supported. The separate `/api/reports` system additionally collects sanitized business context and private owner-checked source snapshots for administrators. See [platform reports and retention limits](platform.md#automatic-and-manual-reports).

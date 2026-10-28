@@ -5,12 +5,12 @@ import re
 from functools import lru_cache
 from pathlib import Path
 
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 
 STATIC = Path(__file__).parent / "static"
-HTML_PAGES = {"home.html", "index.html", "login.html", "pdf-viewer.html"}
+HTML_PAGES = {"home.html", "index.html", "login.html", "pdf-viewer.html", "admin.html"}
 ASSET_LINK = re.compile(r'''((?:src|href)=["'])(/static/[^"'?]+\.(?:js|mjs|css))(["'])''')
 
 
@@ -45,6 +45,8 @@ def html_page(name: str) -> HTMLResponse:
 
 class ApplicationAssets(StaticFiles):
     async def get_response(self, path, scope):
+        if path=='admin.html' and getattr(scope.get('state',{}).get('user'),'role',None) not in {'admin','owner'}:
+            return JSONResponse({'detail':'Administrator access is required.'},status_code=403)
         if path in HTML_PAGES and scope["method"] in {"GET", "HEAD"}:
             return html_page(path)
         response = await super().get_response(path, scope)

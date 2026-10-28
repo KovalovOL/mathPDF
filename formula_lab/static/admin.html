@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Administration · MathPDF</title>
+  <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="/static/account.js" defer></script><script src="/static/admin.js" defer></script>
+</head>
+<body class="library-page">
+  <header class="app-header"><h1><a class="brand" href="/"><img src="/static/favicon.svg" width="38" height="38" alt="">MathPDF</a></h1><div class="header-actions"><a href="/">Library</a><div id="account"></div></div></header>
+  <main class="library-main admin-main">
+    <div class="library-topbar"><h2 class="library-title">Administration</h2><button id="admin-refresh" class="secondary">Refresh</button></div>
+    <nav class="admin-tabs" aria-label="Administration"><button data-tab="overview" aria-pressed="true">Overview</button><button data-tab="users" aria-pressed="false">Users</button><button data-tab="reports" aria-pressed="false">Reports</button><button data-tab="prices" aria-pressed="false">Model prices</button></nav>
+    <p id="admin-error" class="error" hidden role="alert"></p><p id="admin-status" class="field-note" role="status"></p>
+    <section id="admin-overview"><div id="admin-counts" class="admin-stats"></div>
+      <div class="admin-section-heading"><h3>AI usage</h3><div id="usage-period" class="admin-tabs" aria-label="Usage period"><button data-days="1" aria-pressed="false">Day</button><button data-days="7" aria-pressed="true">Week</button><button data-days="30" aria-pressed="false">Month</button></div></div>
+      <p id="usage-note" class="field-note"></p><div id="usage-totals" class="admin-stats"></div><div id="usage-chart" class="admin-chart" aria-label="Daily token use"></div>
+      <h3>By user</h3><div id="usage-users" class="admin-table-wrap"></div><h3>By model</h3><div id="usage-models" class="admin-table-wrap"></div>
+    </section>
+    <section id="admin-users" hidden><form id="user-search" class="admin-search"><label for="user-query">Find a user</label><input id="user-query" type="search" placeholder="Name or email" maxlength="200"><button type="submit">Search</button></form><div id="user-list" class="admin-table-wrap"></div><div class="admin-pagination"><button id="users-previous" class="secondary">Previous</button><span id="users-page"></span><button id="users-next" class="secondary">Next</button></div></section>
+    <section id="admin-reports" hidden><div class="admin-section-heading"><h3>Tester reports</h3><label>Status <select id="report-filter"><option value="">All</option><option value="new">New</option><option value="investigating">Investigating</option><option value="resolved">Resolved</option></select></label></div><p class="field-note">Includes automatic API failures and manual feedback. Source files and context are private to administrators.</p><div id="report-list" class="admin-table-wrap"></div><div class="admin-pagination"><button id="reports-previous" class="secondary">Previous</button><span id="reports-page"></span><button id="reports-next" class="secondary">Next</button></div></section>
+    <section id="admin-prices" hidden><h3>USD per million tokens</h3><p class="field-note">Each request keeps its original tariff. New tariffs apply to future requests. Cost is estimated from actual reported tokens; requests with missing usage or prices stay marked as unknown.</p><div id="price-list" class="admin-table-wrap"></div><form id="price-form" class="admin-price-form" hidden><h3>Add a future tariff</h3><label>Provider<input name="provider" value="openai" required pattern="[a-z][a-z0-9_-]{0,39}"></label><label>Model<input name="model" required maxlength="180"></label><label>Input / 1M<input name="input_per_million" type="number" step="any" min="0" max="1000000" required></label><label>Cached input / 1M<input name="cached_per_million" type="number" step="any" min="0" max="1000000" required></label><label>Output / 1M<input name="output_per_million" type="number" step="any" min="0" max="1000000" required></label><label>Price source<input name="source" type="url" required maxlength="500"></label><button type="submit">Add tariff</button></form></section>
+  </main>
+  <dialog id="admin-detail" aria-labelledby="admin-detail-heading"><div class="dialog-header"><h2 id="admin-detail-heading"></h2><button id="admin-detail-close" class="secondary" aria-label="Close details">×</button></div><div id="admin-detail-body" class="dialog-body"></div></dialog>
+</body></html>

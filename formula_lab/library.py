@@ -7,6 +7,7 @@ from uuid import uuid4
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from .database import INTEGRITY_ERRORS
 from .workspace import DOCUMENT_SELECT, DeletionChanged, Document, Workspace
 
 
@@ -33,6 +34,7 @@ class Library:
     def __init__(self, workspace: Workspace):
         self.workspace = workspace
         with workspace.connection() as db:
+            db.execute('BEGIN IMMEDIATE')
             db.execute('''CREATE TABLE IF NOT EXISTS library_folders (
                 id TEXT PRIMARY KEY,owner_id TEXT NOT NULL REFERENCES users(id),
                 name TEXT NOT NULL,name_key TEXT NOT NULL,parent_id TEXT REFERENCES library_folders(id))''')
@@ -43,8 +45,7 @@ class Library:
                 folder_id TEXT REFERENCES library_folders(id),archived INTEGER NOT NULL DEFAULT 0,
                 PRIMARY KEY(owner_id,kind,item_id))''')
             for table, kind in [('documents','documents'),('study_sets','study-sets')]:
-                db.execute(f'''CREATE TRIGGER IF NOT EXISTS {table}_organization_delete AFTER DELETE ON {table}
-                    BEGIN DELETE FROM library_items WHERE owner_id=OLD.owner_id AND kind='{kind}' AND item_id=OLD.id; END''')
+                workspace.db.cleanup_trigger(db,table,kind)
 
     @staticmethod
     def _name(name):
@@ -87,7 +88,7 @@ class Library:
                     raise ValueError('Your library can contain up to 300 folders.')
                 self._destination(db,owner,request.parent_id)
                 db.execute('INSERT INTO library_folders VALUES (?,?,?,?,?)',(identifier,owner,name,name.casefold(),request.parent_id))
-        except sqlite3.IntegrityError:
+        except INTEGRITY_ERRORS:
             raise ValueError('A folder with that name already exists here.') from None
         return {'id':identifier,'name':name,'parent_id':request.parent_id}
 
@@ -101,7 +102,7 @@ class Library:
                 self._destination(db,owner,parent,identifier)
                 db.execute('UPDATE library_folders SET name=?,name_key=?,parent_id=? WHERE id=? AND owner_id=?',
                            (name,name.casefold(),parent,identifier,owner))
-        except sqlite3.IntegrityError:
+        except INTEGRITY_ERRORS:
             raise ValueError('A folder with that name already exists at the destination.') from None
         return {'id':identifier,'name':name,'parent_id':parent}
 
@@ -131,7 +132,7 @@ class Library:
             sets=[dict(r) for r in db.execute('''SELECT id,title,mode,item_count,created_at,updated_at,
                 json_extract(payload,'$.document.id') AS document_id,
                 json_extract(payload,'$.document.filename') AS document_filename,
-                COALESCE(json_extract(payload,'$.difficulty'),3) AS difficulty
+                COALESCE(CAST(json_extract(payload,'$.difficulty') AS INTEGER),3) AS difficulty
                 FROM study_sets WHERE owner_id=? ORDER BY updated_at DESC,id''',(owner,))]
             metadata={(r['kind'],r['item_id']):dict(r) for r in db.execute('SELECT * FROM library_items WHERE owner_id=?',(owner,))}
             folders=[dict(r) for r in db.execute('SELECT id,name,parent_id FROM library_folders WHERE owner_id=? ORDER BY name_key,id',(owner,))]
@@ -168,6 +169,6 @@ class Library:
                 db.execute('UPDATE library_items SET folder_id=? WHERE owner_id=? AND folder_id=?',(impact['parent_id'],owner,identifier))
                 db.execute('UPDATE library_folders SET parent_id=? WHERE owner_id=? AND parent_id=?',(impact['parent_id'],owner,identifier))
                 db.execute('DELETE FROM library_folders WHERE id=? AND owner_id=?',(identifier,owner))
-        except sqlite3.IntegrityError:
+        except INTEGRITY_ERRORS:
             raise ValueError('A child folder has the same name as a folder at the destination. Rename or move it first.') from None
         return {'deleted_folder_id':identifier,'parent_id':impact['parent_id']}

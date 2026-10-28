@@ -104,6 +104,13 @@ export function createAnnotationToolbar({activeDocument, documentFor, frameFor, 
     if (key==='z' || key==='y') {event.preventDefault();command(id,{action:key==='y'||event.shiftKey?'redo':'undo'});}
   });
   return {
+    async diagnosticContext() {
+      return Promise.all([...states].filter(([,state])=>state.dirty||state.saving).slice(0,12).map(([id,state])=>new Promise(resolve=>{
+        const frame=frameFor(id);if(!frame)return resolve({document_id:id,...state,_unavailable:true});
+        const requestId=crypto.randomUUID(),timer=setTimeout(()=>{requests.delete(requestId);resolve({document_id:id,...state,_unavailable:true});},1200);
+        requests.set(requestId,{source:frame.contentWindow,timer,resolve,reject:()=>resolve({document_id:id,_unavailable:true})});command(id,{action:'diagnostic',requestId});
+      })));
+    },
     refresh, dirty:id=>!!states.get(id)?.dirty, anyDirty:()=>[...states.values()].some(state=>state.dirty || state.saving),
     dirtyDocuments:()=>[...states].filter(([,state])=>state.dirty || state.saving).map(([id])=>id),
     async saveAll() {for(const id of this.dirtyDocuments())await saveNotes(id);},

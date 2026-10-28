@@ -1,16 +1,117 @@
+x-platform: &platform
+  image: mathpdf-platform:local
+  restart: always
+  labels: ["traefik.enable=false"]
+  logging:
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "3"
+  volumes:
+    - ./.formula-lab:/app/.formula-lab
+    - ./.infrastructure/secrets:/run/mathpdf-secrets:ro
+  environment: &platform-env
+    MATHPDF_DATA_DIR: /app/.formula-lab
+    DATABASE_URL: ""
+    MATHPDF_POSTGRES_HOST: db
+    POSTGRES_DB: mathpdf
+    POSTGRES_USER: mathpdf
+    POSTGRES_PASSWORD_FILE: /run/mathpdf-secrets/postgres-password
+    MATHPDF_S3_ENDPOINT: http://garage:3900
+    MATHPDF_S3_CREDENTIALS_FILE: /run/mathpdf-secrets/s3.json
+    APP_BASE_URL: ${APP_BASE_URL:-https://mathpdf.site}
+  depends_on:
+    db:
+      condition: service_healthy
+    garage:
+      condition: service_healthy
+    migrate:
+      condition: service_completed_successfully
+  healthcheck:
+    test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8765/health', timeout=5)"]
+    interval: 15s
+    timeout: 6s
+    retries: 5
+    start_period: 20s
+
 services:
-  app:
-    build: .
-    restart: always
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "3"
-    env_file:
-      - .env
+  bootstrap:
+    labels: ["traefik.enable=false"]
+    image: mathpdf-platform:local
+    restart: "no"
+    command: ["python", "-m", "formula_lab.infrastructure"]
     volumes:
-      - ./.formula-lab:/app/.formula-lab
+      - ./.infrastructure/secrets:/run/mathpdf-secrets
+  db:
+    labels: ["traefik.enable=false"]
+    image: postgres:17-alpine
+    restart: always
+    environment:
+      POSTGRES_DB: mathpdf
+      POSTGRES_USER: mathpdf
+      POSTGRES_PASSWORD_FILE: /run/mathpdf-secrets/postgres-password
+    volumes:
+      - ./.infrastructure/postgres:/var/lib/postgresql/data
+      - ./.infrastructure/secrets:/run/mathpdf-secrets:ro
+    depends_on:
+      bootstrap:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mathpdf -d mathpdf"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+  garage:
+    labels: ["traefik.enable=false"]
+    image: mathpdf-platform:local
+    restart: always
+    command: ["python", "-m", "formula_lab.infrastructure", "garage"]
+    environment:
+      MATHPDF_S3_CREDENTIALS_FILE: /run/mathpdf-secrets/s3.json
+    volumes:
+      - ./infrastructure/garage.toml:/etc/garage.toml:ro
+      - ./.infrastructure/garage:/var/lib/garage
+      - ./.infrastructure/secrets:/run/mathpdf-secrets:ro
+    depends_on:
+      bootstrap:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:3903/health', timeout=5)"]
+      interval: 5s
+      timeout: 6s
+      retries: 20
+  migrate:
+    <<: *platform
+    restart: "no"
+    command: ["python", "-m", "formula_lab.migration"]
+    healthcheck:
+      disable: true
+    depends_on:
+      db:
+        condition: service_healthy
+      garage:
+        condition: service_healthy
+  reports:
+    <<: *platform
+    command: ["uvicorn", "formula_lab.platform_services:reports_app", "--factory", "--host", "0.0.0.0", "--port", "8765"]
+  admin:
+    <<: *platform
+    command: ["uvicorn", "formula_lab.platform_services:admin_app", "--factory", "--host", "0.0.0.0", "--port", "8765"]
+  app:
+    <<: *platform
+    build: .
+    env_file: [.env]
+    environment:
+      <<: *platform-env
+      MATHPDF_REPORTS_URL: http://reports:8765
+      MATHPDF_ADMIN_URL: http://admin:8765
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      reports:
+        condition: service_healthy
+      admin:
+        condition: service_healthy
     labels:
       - "traefik.enable=true"
       - "traefik.docker.network=traefik-public"
@@ -19,8 +120,7 @@ services:
       - "traefik.http.routers.mathpdf.tls=true"
       - "traefik.http.routers.mathpdf.tls.certresolver=myresolver"
       - "traefik.http.services.mathpdf.loadbalancer.server.port=8765"
-    networks:
-      - traefik-public
+    networks: [default, traefik-public]
 
 networks:
   traefik-public:

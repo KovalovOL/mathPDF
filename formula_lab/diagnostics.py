@@ -55,7 +55,7 @@ def route_label(path: str) -> str:
                            "/auth/google/login", "/auth/google/callback"} else "/other"
 
 
-def log_exception(logger: logging.Logger, event: str, error: BaseException):
+def exception_summary(error: BaseException):
     # Exception messages can contain source content or credentials. Keep only
     # exception types and stack locations, including nested exception groups.
     def locations(exc, depth=0):
@@ -66,7 +66,11 @@ def log_exception(logger: logging.Logger, event: str, error: BaseException):
             for child in getattr(exc, "exceptions", ())[:4]:
                 details.extend(locations(child, depth + 1))
         return details
-    logger.error("%s exceptions=%s", event, locations(error))
+    return locations(error)
+
+
+def log_exception(logger: logging.Logger, event: str, error: BaseException):
+    logger.error("%s exceptions=%s", event, exception_summary(error))
 
 
 class ClientDiagnostic(BaseModel):

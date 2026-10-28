@@ -4,7 +4,7 @@ const documents = new Map(), views = new Map(), reading = new Map(), sets = new 
 const pendingUploads = new Map();
 let openDocumentIds = [];
 let activeDocumentId, activeSetId, config, generationActive = false, generationPreparing = false, setEpoch = 0, saveIntent, notes;
-let generationController;
+let generationController,lastGenerationSelection;
 let statusTimer, practiceObserver, viewportNotice, viewportSettled = false, layout, initializing = true;
 let preferencePrefix;
 
@@ -518,6 +518,7 @@ async function generate(event) {
   try {request=await notes.prepare(request);}
   finally {generationPreparing=false;$('generate').disabled=false;}
   if (!request) return;
+  lastGenerationSelection=request;
   generationActive = true; $('generation-dialog').close();
   $('open-generation').disabled = true; $('open-generation').textContent = 'Generating…';
   message('');
@@ -750,3 +751,8 @@ action(async () => {
   initializing = false;
   if (!config.configured) message('Generation is currently unavailable. You can still read files and open saved sets.', true, 10000);
 });
+
+MathPDFSession.setContextProvider?.(async()=>({workspace:{active_document:documents.get(activeDocumentId)||null,reading:activeDocumentId?readState(activeDocumentId):null,
+  study_set:sets.get(activeSetId)?.data||null,item_index:sets.get(activeSetId)?.itemIndex??null,
+  generation_selection:lastGenerationSelection||null,generation_running:generationActive,
+  unsaved_notes:await notes?.diagnosticContext?.()||[]}}));
