@@ -142,6 +142,7 @@ window.MathPDFSession = (() => {
       document.addEventListener('click', event => {if (!menu.contains(event.target)) menu.open = false;});
       document.addEventListener('keydown', event => {if (event.key === 'Escape') {menu.open = false; summary.focus();}});
     }
+    import('/static/allowance-ui.js').then(module=>module.createAllowanceUI({api}).refresh()).catch(()=>{});
     return user;
   });
   // Consumers display request failures in their own status region.

@@ -207,6 +207,10 @@ class OpenAIProvider:
             else:
                 content.append({"type": "input_file", "filename": entry.filename, "file_data": data_url})
         content.append({"type": "input_text", "text": task})
+        output_cap=min(30000,1000+(650 if mode=='flashcards' else 1000)*count)
+        estimated_tokens=(output_cap
+            +sum(len(d.pages)*4000 if d.pages is not None else (d.document.page_count*4000 if d.document.page_count else (len(d.data)+2)//3) for d in documents)
+            +(len(system.encode())+len(task.encode())+2)//3)
         response_format = set_response_format(count, mode)
         function = pydantic_function_tool(response_format)["function"]
         logger = logging.getLogger(__name__)
@@ -214,7 +218,7 @@ class OpenAIProvider:
         tracking=usage_context.get();attempt=None
         if tracking and tracking['store']:
             attempt=await to_thread(tracking['store'].start,tracking['user_id'],'openai',self.model,
-                {'selection':tracking['request'],'system_prompt':system,'task_prompt':task,
+                {'estimated_tokens':estimated_tokens,'selection':tracking['request'],'system_prompt':system,'task_prompt':task,
                  'documents':[{'id':d.document.id,'filename':d.document.filename,'sha256':d.document.sha256,'pages':d.pages,'role':d.role} for d in documents]})
             tracking['attempt_id']=attempt
         logger.info("Provider request started phase=generating requested=%s", count)
@@ -227,12 +231,12 @@ class OpenAIProvider:
                     input=[{"role": "user", "content": content}],
                     text={"format": {"type": "json_schema", "name": function["name"],
                                      "strict": True, "schema": function["parameters"]}},
-                    max_output_tokens=min(30000, 1000 + (650 if mode == "flashcards" else 1000) * count),
+                    max_output_tokens=output_cap,
                     store=False,
                 )
         except APIError as error:
             if attempt:
-                await to_thread(tracking['store'].finish,attempt,'provider_error',None,round((perf_counter()-started)*1000),getattr(error,'request_id',None))
+                await to_thread(tracking['store'].finish,attempt,'provider_error',None,round((perf_counter()-started)*1000),getattr(error,'request_id',None),unbilled=getattr(error,'status_code',None) in {400,401,403,404,409,413,422,429})
             status = getattr(error, "status_code", None)
             logger.warning("Provider request failed status=%s error_type=%s duration_ms=%s",
                            status, type(error).__name__, round((perf_counter() - started) * 1000))

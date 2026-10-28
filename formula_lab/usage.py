@@ -59,16 +59,20 @@ class Usage:
             for model in ['gpt-4.1-mini','gpt-4.1-mini-2025-04-14']:
                 db.execute('''INSERT INTO model_prices VALUES (?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO NOTHING''',
                     ('openai-standard-2026-10-28-'+model,'openai',model,'2026-10-28T00:00:00+00:00','0.40','0.10','1.60',PRICING_SOURCE,None))
+        from .quotas import GenerationQuota
+        self.quota=GenerationQuota(workspace)
     def start(self,user_id,provider,model,context):
         from .report_safety import bounded
-        identifier=uuid4().hex;stamp=utcnow();context=bounded(context)
+        identifier=uuid4().hex;stamp=utcnow();estimate=context.get('estimated_tokens',1);context=bounded(context)
         with self.workspace.connection() as db:
+            db.execute('BEGIN IMMEDIATE')
             price=db.execute('SELECT id FROM model_prices WHERE provider=? AND model=? AND effective_at<=? ORDER BY effective_at DESC,id DESC LIMIT 1',(provider,model,stamp)).fetchone()
             db.execute('''INSERT INTO ai_usage (id,user_id,request_id,job_id,provider,model,started_at,status,price_id,context)
                 VALUES (?,?,?,?,?,?,?,?,?,?)''',(identifier,user_id,request_context.get(),job_context.get(),provider,model,stamp,'running',price['id'] if price else None,json.dumps(context,ensure_ascii=False)))
+            self.quota.reserve(db,identifier,user_id,estimate)
         return identifier
     @durable_write
-    def finish(self,identifier,status,usage=None,duration_ms=None,provider_request_id=None,finished_at=None):
+    def finish(self,identifier,status,usage=None,duration_ms=None,provider_request_id=None,finished_at=None,unbilled=False):
         def count(name,default=None):
             value=usage.get(name,default) if isinstance(usage,dict) else getattr(usage,name,default) if usage is not None else default
             return value if isinstance(value,int) and not isinstance(value,bool) and value>=0 else None
@@ -82,14 +86,19 @@ class Usage:
         reasoning=reasoning if isinstance(reasoning,int) and not isinstance(reasoning,bool) and reasoning>=0 else None
         if inputs is not None and cached is not None and cached>inputs:cached=None
         with self.workspace.connection() as db:
-            row=db.execute('SELECT price_id FROM ai_usage WHERE id=?',(identifier,)).fetchone()
+            db.execute('BEGIN IMMEDIATE')
+            row=db.execute('SELECT price_id,input_tokens,output_tokens FROM ai_usage WHERE id=?',(identifier,)).fetchone()
             if not row:return
+            # A late timeout/cancellation observation cannot erase paid usage
+            # already received (including a durable observation replay).
+            if (inputs is None or outputs is None) and row['input_tokens'] is not None and row['output_tokens'] is not None:return
             price=db.execute('SELECT * FROM model_prices WHERE id=?',(row['price_id'],)).fetchone() if row['price_id'] else None
             cost=None
             if price and inputs is not None and outputs is not None and cached is not None:
                 cost=str((Decimal(inputs-cached)*Decimal(price['input_per_million'])+Decimal(cached)*Decimal(price['cached_per_million'])+Decimal(outputs)*Decimal(price['output_per_million']))/Decimal(1000000))
             db.execute('''UPDATE ai_usage SET finished_at=?,status=?,input_tokens=?,cached_tokens=?,output_tokens=?,reasoning_tokens=?,
                 duration_ms=?,provider_request_id=?,cost_usd=? WHERE id=?''',(finished_at or utcnow(),status,inputs,cached,outputs,reasoning,duration_ms,provider_request_id,cost,identifier))
+            self.quota.settle(db,identifier,inputs is not None and outputs is not None,unbilled)
     @durable_write
     def response(self,identifier,model,status,text):
         from .report_safety import sanitize

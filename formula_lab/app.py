@@ -24,11 +24,13 @@ from .diagnostics import (ClientDiagnostic, ClientReportLimit, configure_logging
                           job_context, log_exception,exception_summary, request_context, route_label, REQUEST_ID)
 from .study import GENERATION_SECONDS, MAX_ITEMS, GenerateRequest, GenerationError, StudyProvider, StudySet, generate_study, validate_study
 from .web_assets import ApplicationAssets, build_id, html_page
-from .workspace import MAX_UPLOAD_BYTES, DeletionChanged, Workspace
+from .workspace import MAX_UPLOAD_BYTES, DeletionChanged, Workspace, RenameRequest, RenameConflict
 from .annotations import AnnotationConflict, AnnotationWrite
 from .reports import Reports
 from .request_reports import RequestReports
 from .usage import Usage
+from .quotas import QuotaExceeded
+from .reviews import Reviews,ReviewStart,ReviewAnswer
 from .library import FolderCreate, FolderUpdate, ItemUpdate, Library
 
 
@@ -45,6 +47,7 @@ def create_app(data_dir: Path = Path(".formula-lab"), provider: StudyProvider | 
     auth = Authentication(workspace, AuthConfig.from_environment())
     workspace.usage=Usage(workspace)
     workspace.reports=Reports(workspace)
+    reviews=Reviews(workspace)
     generation_lock = asyncio.Lock()
     jobs = GenerationJobs(workspace, generation_lock)
     client_reports = ClientReportLimit()
@@ -60,6 +63,7 @@ def create_app(data_dir: Path = Path(".formula-lab"), provider: StudyProvider | 
 
     app = FastAPI(title="mathPDF", docs_url="/api/docs", redoc_url=None, lifespan=lifespan)
     app.state.workspace, app.state.auth, app.state.library = workspace, auth, library
+    app.state.reviews=reviews
     static = Path(__file__).parent / "static"
     model = os.getenv("OPENAI_MODEL", "gpt-4.1-mini")
     key = os.getenv("OPENAI_API_KEY") or os.getenv("OPENAI_KEY", "")
@@ -229,6 +233,35 @@ def create_app(data_dir: Path = Path(".formula-lab"), provider: StudyProvider | 
         with workspace.connection() as db:db.execute('SELECT 1')
         return {'status':'ok','build':build_id()}
 
+    @app.exception_handler(QuotaExceeded)
+    async def quota_error(request,error):return JSONResponse({'detail':str(error)},status_code=429)
+    @app.exception_handler(RenameConflict)
+    async def rename_conflict(request,error):return JSONResponse({'detail':str(error)},status_code=409)
+
+    @app.get('/api/generation/allowance')
+    def allowance(request:Request):return workspace.usage.quota.status(request.state.user.id)
+
+    @app.patch('/api/library/items/{kind}/{identifier}/name')
+    def rename_item(request:Request,kind:str,identifier:str,data:RenameRequest):
+        return workspace.rename_item(kind,identifier,request.state.user.id,data)
+
+    @app.post('/api/study-sets/{identifier}/reviews')
+    def review_start(request:Request,identifier:str,data:ReviewStart):
+        if not REQUEST_ID.fullmatch(identifier):raise ValueError('Invalid study set identifier.')
+        owner=request.state.user.id
+        if data.content is None:content=StudySet.model_validate(workspace.study_set(identifier,owner)).model_dump(mode='json')
+        else:
+            if len(__import__('json').dumps(data.content))>2*1024*1024:raise ValueError('The review content is too large.')
+            candidate=StudySet.model_validate(data.content)
+            if candidate.id!=identifier:raise ValueError('The review content does not match this set.')
+            workspace.check_set_owner(identifier,owner)
+            workspace.document(candidate.document.id,owner)
+            content=candidate.model_dump(mode='json')
+        return reviews.start(owner,identifier,content,data.new_round)
+
+    @app.post('/api/reviews/{identifier}/answers')
+    def review_answer(request:Request,identifier:str,data:ReviewAnswer):return reviews.answer(request.state.user.id,identifier,data)
+
     @app.get("/api/me")
     def me(request: Request):
         return request.state.user
@@ -393,6 +426,7 @@ def create_app(data_dir: Path = Path(".formula-lab"), provider: StudyProvider | 
     async def start_generation(request: Request, selection: GenerateRequest):
         if app.state.provider is None:
             raise HTTPException(503, "The generation service is unavailable. Try again later.")
+        await run_in_threadpool(workspace.usage.quota.check,request.state.user.id)
         return (await jobs.start(request.state.user.id, selection, app.state.provider)).snapshot()
 
     @app.get("/api/study/jobs/{job_id}")

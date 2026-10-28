@@ -1,0 +1,13 @@
+# Design
+
+## Decisions
+- Rename only the owned document metadata or the study set's title field. Keep IDs, immutable storage keys, source snapshots, unknown payload fields, annotations and library placement. Preserve the actual file extension and reject paths/control characters. Optional expected names prevent stale overwrites.
+- Free users receive 200,000 input-plus-output tokens per UTC calendar month by default; cached input is counted once. Premium/admin/owner are exempt. Global and nullable per-user overrides live in additive tables and changes are audited. Existing tracked actual usage in the current month counts.
+- A transaction rechecks current roles and remaining allowance at provider dispatch and reserves a local estimate of input plus the existing output cap. Settle to actual reported tokens before content validation. Explicit unbilled rejections release reservations; unknown billing and interrupted calls retain an estimated hold until actual usage is reconciled or the period ends. Input estimates can differ from provider PDF/vision accounting: an actual overrun is charged and blocks subsequent calls. No partial content or extra provider calls are introduced to enforce a reservation.
+- Display only remaining percentages and a progress bar to ordinary users, including the reset date and a pending-usage explanation. Administrators see raw limits, actual consumption and holds and can edit global or individual limits.
+- Review progress is separate from canonical study JSON. Each user/deck/content fingerprint has append-only review rounds and per-card answers. Titles of decks/files do not change the fingerprint; changed card content starts a new history without deleting old rounds. Reviews also support not-yet-saved generated decks after validating ownership of their source.
+- Correct/incorrect controls appear under a flipped card. A successful answer advances to the next unreviewed card. Answering every card shows correct/incorrect totals, percentage, prior-round change and a new-round action. Answers are idempotent by card per round; retries cannot double-count. A complete in-progress round resumes on reload and history survives devices. Local pending state remains available if saving fails.
+- All new UI/docs are English and follow the existing style. APIs use existing session/origin/ownership checks. The requested production admin grant uses the existing owner-authorized audited role method.
+
+## Compatibility
+All new tables are additive. Historical versionless sets/drafts remain version 1; rename updates raw JSON minimally. Existing review records remain associated with their original content version when cards change.

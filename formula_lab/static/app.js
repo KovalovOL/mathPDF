@@ -6,7 +6,7 @@ let openDocumentIds = [];
 let activeDocumentId, activeSetId, config, generationActive = false, generationPreparing = false, setEpoch = 0, saveIntent, notes;
 let generationController,lastGenerationSelection;
 let statusTimer, practiceObserver, viewportNotice, viewportSettled = false, layout, initializing = true;
-let preferencePrefix;
+let preferencePrefix,reviewUI;
 
 function el(tag, className, text) {
   const item = document.createElement(tag);
@@ -290,7 +290,7 @@ function fitFormulas(root) {
 function selectItem(index) {
   const record = sets.get(activeSetId); if (!record?.data) return;
   if (index < 0 || index >= record.data.items.length) return;
-  record.itemIndex = index; record.flipped = false; renderPractice();
+  record.itemIndex = index; record.flipped = false; record.reviewBrowse=true; renderPractice();
 }
 function flashcard(record, item) {
   item = MathPDF.flashcardSides(item);
@@ -307,7 +307,9 @@ function flashcard(record, item) {
   const answer = el('div', 'card-blocks'); renderAnswer(answer, item, record.data); backBody.append(answer);
   back.append(backLabel, backBody, el('p', 'card-hint', 'Click to return to the question'));
   inner.append(front, back); card.append(inner);
+  const assessment=reviewUI?.controls(record);
   function updateFace() {
+    assessment?.update(!!record.flipped);
     card.classList.toggle('flipped', !!record.flipped);
     front.inert = !!record.flipped; back.inert = !record.flipped;
     front.setAttribute('aria-hidden', String(!!record.flipped)); back.setAttribute('aria-hidden', String(!record.flipped));
@@ -330,13 +332,14 @@ function flashcard(record, item) {
   const next = button('›', 'secondary icon-button', () => selectItem(record.itemIndex + 1), 'Next card');
   previous.disabled = record.itemIndex === 0; next.disabled = record.itemIndex === record.data.items.length - 1;
   navigation.append(previous, el('span', 'deck-counter', `${record.itemIndex + 1} / ${record.data.items.length}`), button('Flip card', 'secondary small', flip), next);
-  deck.append(card, navigation); return deck;
+  deck.append(card, navigation);if(assessment)deck.append(assessment.root);return deck;
 }
 function renderPractice() {
   practiceObserver?.disconnect();
   const record = sets.get(activeSetId), result = record?.data;
   $('practice-content').replaceChildren(); $('item-tabs').replaceChildren();
   $('item-tabs').hidden = !result?.items.length;
+  $('rename-set').disabled=!result?.items.length;
   $('save-set').disabled = !result?.items.length || !!record?.saved;
   $('save-set').textContent = record?.saved ? 'Saved' : 'Save';
   $('export-set').disabled = !result?.items.length;
@@ -356,7 +359,7 @@ function renderPractice() {
   $('item-tabs').replaceChildren(...result.items.map((item, index) =>
     makeTab(`${itemLabel} ${index + 1}`, index === record.itemIndex, () => selectItem(index))));
   const item = result.items[record.itemIndex];
-  if (result.mode === 'flashcards') $('practice-content').append(flashcard(record, item));
+  if (result.mode === 'flashcards'){const summary=reviewUI?.summary(record);$('practice-content').append(summary&&!record.reviewBrowse?summary:flashcard(record,item));}
   else {
     const problem = el('article', 'problem'); problem.append(el('h2', '', item.title));
     const question = el('div'); MathPDF.renderBlocks(question, item.question, sourceOptions(result));
@@ -503,6 +506,7 @@ function renderContextChoices() {
   $('context-files').replaceChildren(...rows);
 }
 function openGeneration() {
+  dispatchEvent(new Event('mathpdf-allowance-changed'));
   updateSourceChoices();
   if (documents.get(activeDocumentId)?.page_count) $('source-document').value = activeDocumentId;
   if (!sourceDocument()) {message('Upload a PDF to generate study material.'); return;}
@@ -554,6 +558,7 @@ async function generate(event) {
   try {
     let job = await api('/api/study/jobs', {method: 'POST', body: JSON.stringify(request), signal: controller.signal, timeoutMs: 15000});
     jobId = job.id;
+    dispatchEvent(new Event('mathpdf-allowance-changed'));
     showProgress(job);
     while (job.status === 'running') {
       await pollDelay();
@@ -582,6 +587,7 @@ async function generate(event) {
       await api(`/api/study/jobs/${encodeURIComponent(jobId)}`, {method: 'DELETE', timeoutMs: 15000}).catch(() => {});
     }
     $('generation-progress').hidden = true; $('open-generation').setAttribute('aria-busy', 'false');
+    dispatchEvent(new Event('mathpdf-allowance-changed'));
     generationActive = false; updateGenerationAvailability(); $('open-generation').textContent = 'Generate';
     if (!sets.get(activeSetId)?.data) renderPractice();
   }
@@ -698,6 +704,8 @@ document.querySelectorAll('.close-dialog').forEach(control => control.addEventLi
 action(async () => {
   const user = await MathPDFSession.ready;
   preferencePrefix = `mathpdf-${user.id}-`;
+  const {createReviewUI}=await import('/static/review-ui.js');
+  reviewUI=createReviewUI({api,userId:user.id,onChange:record=>{if(record.id===activeSetId)renderPractice();},select:(record,index)=>{record.itemIndex=index;record.flipped=false;if(record.id===activeSetId)renderPractice();},onError:text=>message(text,true)});
   const {createWorkspaceLayout} = await import('/static/workspace-layout.js');
   layout = createWorkspaceLayout({preference, onViewport: notifyPdfViewport});
   const {createAnnotationToolbar}=await import('/static/annotation-toolbar.js');
@@ -756,3 +764,22 @@ MathPDFSession.setContextProvider?.(async()=>({workspace:{active_document:docume
   study_set:sets.get(activeSetId)?.data||null,item_index:sets.get(activeSetId)?.itemIndex??null,
   generation_selection:lastGenerationSelection||null,generation_running:generationActive,
   unsaved_notes:await notes?.diagnosticContext?.()||[]}}));
+
+let nameDialog;
+async function renameActive(kind){
+  const record=kind==='documents'?documents.get(activeDocumentId):sets.get(activeSetId);if(!record)return;
+  nameDialog??=(await import('/static/rename-ui.js')).createRenameDialog();
+  const previous=kind==='documents'?record.filename:record.title;
+  nameDialog.open({name:previous,kind,save:async name=>{
+    if(kind==='study-sets'&&!record.saved){
+      name=name.trim();if(!name)throw new Error('Enter a study set name.');record.title=record.data.title=name;
+    }else{
+      const updated=await api(`/api/library/items/${kind}/${record.id}/name`,{method:'PATCH',body:JSON.stringify({name,expected_name:previous})});
+      if(kind==='documents'){documents.set(updated.id,updated);const frame=views.get(updated.id)?.querySelector('iframe');if(frame)frame.title=updated.filename;}
+      else{record.title=updated.title;record.data=updated;}
+    }
+    renderDocumentTabs();updateDocumentToolbar();renderSetTabs();renderPractice();message('Name saved.');
+  }});
+}
+$('rename-file').addEventListener('click',()=>action(()=>renameActive('documents')));
+$('rename-set').addEventListener('click',()=>action(()=>renameActive('study-sets')));

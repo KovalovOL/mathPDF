@@ -93,7 +93,7 @@ function menu(title, actions) {
   details.append(summary,panel);return details;
 }
 function itemMenu(kind,item,title) {
-  return menu(title,[['Move',()=>showMove(kind,item.id,title,item.folder_id)],
+  return menu(title,[['Rename',()=>renameLibraryItem(kind,item,title)],['Move',()=>showMove(kind,item.id,title,item.folder_id)],
     [item.archived?'Restore':'Archive',()=>organize(kind,item.id,{archived:!item.archived})],
     ['Delete',()=>confirmDeletion(kind,item.id),true]]);
 }
@@ -272,3 +272,11 @@ MathPDFSession.ready.then(async user => {
 MathPDFSession.setContextProvider?.(()=>({library:{folder_id:currentFolder,archive_view:archiveView,
   visible_files:library.files.filter(file=>archiveView?file.archived:!file.archived&&file.folder_id===currentFolder).map(file=>({id:file.id,filename:file.filename,sha256:file.sha256})),
   visible_sets:library.sets.filter(set=>archiveView?set.archived:!set.archived&&set.folder_id===currentFolder),pending_uploads:pendingFiles.map(file=>({name:file.name,size:file.size,type:file.type}))}}));
+
+let nameDialog;
+async function renameLibraryItem(kind,item,title){
+  nameDialog??=(await import('/static/rename-ui.js')).createRenameDialog();
+  nameDialog.open({name:title,kind,save:async name=>{
+    await MathPDFSession.api(`/api/library/items/${kind}/${item.id}/name`,jsonWrite('PATCH',{name,expected_name:title}));await loadLibrary();
+  }});
+}

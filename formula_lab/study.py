@@ -308,6 +308,7 @@ async def collect_study(documents: list[InputDocument], request: GenerateRequest
 
 async def generate_study(workspace: Workspace, owner_id: str, request: GenerateRequest,
                          provider: StudyProvider, progress: Progress | None = None) -> StudySet:
+    if getattr(workspace,'usage',None):await to_thread(workspace.usage.quota.check,owner_id)
     tracking={"store":getattr(workspace,"usage",None),"user_id":owner_id,"request":request.model_dump(mode="json"),"attempt_id":None}
     context_token=usage_context.set(tracking)
     progress = progress or (lambda _: None)

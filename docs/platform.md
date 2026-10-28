@@ -1,5 +1,7 @@
 # Reports, roles and the service platform
 
+For administrator-editable free generation allowances, see [learning progress](learning-progress.md).
+
 ## Production services
 
 Docker Compose runs five persistent services: `app`, PostgreSQL `db` (17), `garage` (2.5), `reports`, and `admin`. Only the app joins `traefik-public`; it proxies authenticated `/api/reports`, `/admin`, and `/api/admin/*` requests to private services. Database, S3, admin and report ports are not published on the VPS. `bootstrap` and `migrate` are short-lived setup jobs. They exit automatically; after all five persistent services become healthy, the deployment removes their stopped containers. Failed setup containers remain available for diagnosis. Their Compose definitions stay available for the next deployment.

@@ -16,12 +16,13 @@ from .auth import Authentication, AuthConfig
 from .library import Library
 from .usage import Usage
 from .reports import Reports
+from .reviews import Reviews
 
 MIGRATION_ID='sqlite-to-postgres-v1'
 # Parents precede children; folders are additionally inserted topologically.
 TABLES=['users','documents','study_sets','document_edits','sessions','oauth_flows',
         'library_folders','library_items','user_roles','role_audit','admin_audit',
-        'model_prices','ai_usage','request_events','reports']
+        'model_prices','ai_usage','request_events','reports','generation_limits','generation_reservations','review_rounds','review_answers']
 IDENTIFIER=re.compile(r'^[a-z_][a-z0-9_]*$')
 
 
@@ -63,7 +64,7 @@ def migrate(directory):
     directory=Path(directory).resolve();workspace=Workspace(directory)
     if not workspace.db.is_postgres or not workspace.storage.remote:
         raise ValueError('Migration requires PostgreSQL and private object storage configuration.')
-    Authentication(workspace,AuthConfig.from_environment());Library(workspace);Usage(workspace);Reports(workspace)
+    Authentication(workspace,AuthConfig.from_environment());Library(workspace);Usage(workspace);Reports(workspace);Reviews(workspace)
     with workspace.connection() as db:
         db.execute('CREATE TABLE IF NOT EXISTS migration_runs (id TEXT PRIMARY KEY,completed_at TEXT NOT NULL,manifest TEXT NOT NULL)')
         completed=db.execute('SELECT manifest FROM migration_runs WHERE id=?',(MIGRATION_ID,)).fetchone()
@@ -99,14 +100,14 @@ def migrate(directory):
         if db.execute('SELECT 1 FROM migration_runs WHERE id=?',(MIGRATION_ID,)).fetchone():
             raise ValueError('Migration completed concurrently; rerun to read its manifest.')
         for table in TABLES:
-            if table=='model_prices':continue  # deterministic defaults are seeded before import
+            if table in {'model_prices','generation_limits'}:continue  # deterministic defaults are seeded before import
             if db.execute(f'SELECT COUNT(*) FROM {table}').fetchone()[0]:
                 raise ValueError('Migration stopped: the target is not empty and has no completion marker.')
         for table,entry in snapshot.items():
             columns=entry['columns'];destination={r['name'] for r in db.execute(f'PRAGMA table_info({table})')}
             if set(columns)-destination:raise ValueError('Migration stopped: a source column is not supported by the target.')
             names=','.join('"'+c+'"' for c in columns);bindings=','.join('?' for _ in columns)
-            if table=='model_prices' and entry['rows']:db.execute('DELETE FROM model_prices')
+            if table in {'model_prices','generation_limits'} and entry['rows']:db.execute(f'DELETE FROM {table}')
             for values in ordered_rows(table,entry):db.execute(f'INSERT INTO {table} ({names}) VALUES ({bindings})',values)
             # Read the same columns back, including raw payload strings, before the transaction commits.
             actual=db.execute(f'SELECT {names} FROM {table}').fetchall()

@@ -91,3 +91,29 @@ def test_hash_mismatch_aborts_and_retry_imports_exactly_once(infrastructure,monk
     binary.write_bytes(original);manifest=migrate(infrastructure)
     assert len(manifest['objects'])==2
     assert app.state.auth.session_user(token).id==owner.id
+
+
+def test_postgres_quota_and_review_concurrency(infrastructure):
+    from concurrent.futures import ThreadPoolExecutor
+    from formula_lab.quotas import QuotaExceeded
+    from formula_lab.reviews import ReviewAnswer
+    from formula_lab.workspace import RenameRequest
+    from test_library_organization import saved
+    migrate(infrastructure)
+    app=create_app(infrastructure);_,owner=login(app,OWNER_EMAIL);_,user=login(app);ws=app.state.workspace;u=ws.usage
+    u.quota.update(owner,1000)
+    def reserve(_):
+        try:return u.start(user.id,'openai','fixture',{'estimated_tokens':600})
+        except QuotaExceeded:return None
+    with ThreadPoolExecutor(2) as pool:attempts=list(pool.map(reserve,range(2)))
+    assert sum(a is not None for a in attempts)==1
+    attempt=next(a for a in attempts if a)
+    u.finish(attempt,'received',{'input_tokens':100,'output_tokens':50})
+    assert u.quota.status(user.id)['remaining_tokens']==850
+    doc=ws.add_document('private.txt',b'synthetic fixture',user.id);content=saved(doc.model_dump());ws.save_set(content,user.id)
+    round=app.state.reviews.start(user.id,content['id'],content)
+    with ThreadPoolExecutor(2) as pool:
+        snapshots=list(pool.map(lambda _:app.state.reviews.answer(user.id,round['id'],ReviewAnswer(index=0,correct=True)),range(2)))
+    assert all(s['answered_count']==1 and len(s['history'])==1 for s in snapshots)
+    ws.rename_item('study-sets',content['id'],user.id,RenameRequest(name='Renamed'))
+    assert app.state.reviews.start(user.id,content['id'],ws.study_set(content['id'],user.id))['id']==round['id']

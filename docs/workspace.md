@@ -1,5 +1,7 @@
 # Study workspace
 
+For renaming, generation allowances and persistent flashcard review rounds, see [learning progress](learning-progress.md).
+
 ## Documents and storage
 
 Google sign-in is mandatory. `/` is the personal library; selecting an owned file opens `/workspace?document=<id>`, and selecting a saved set opens `/workspace?set=<id>` with its source PDF. The library starts empty and offers Upload files. It accepts PDF, UTF-8 TXT/Markdown, PNG, JPEG, and WebP uploads. Generation is enabled after a PDF is available. Each file is limited to 25 MB; text files to 1 MB; images to 40 megapixels. PDF uploads must be readable and unencrypted. Original filenames are display metadata; managed binaries use content hashes and opaque document IDs.

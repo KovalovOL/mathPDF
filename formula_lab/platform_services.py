@@ -19,6 +19,7 @@ from .library import Library
 from .reports import Reports,ReportInput,ReportUpdate
 from .roles import RoleChange
 from .usage import Usage
+from .quotas import DefaultAllowance,UserAllowance
 from .web_assets import html_page,build_id
 from .workspace import Workspace
 from .report_safety import sanitize,MAX_CONTEXT_BYTES
@@ -127,9 +128,16 @@ def create_service(kind,directory=None):
             if not row:raise KeyError('User not found')
             files=[dict(r) for r in db.execute('SELECT id,filename,size,page_count FROM documents WHERE owner_id=? ORDER BY created_at DESC',(identifier,))]
             sets=[dict(r) for r in db.execute('SELECT id,title,mode,item_count,updated_at FROM study_sets WHERE owner_id=? ORDER BY updated_at DESC',(identifier,))]
-        return {'user':dict(row),'files':files,'sets':sets,'usage':{str(days):usage.dashboard(days,identifier) for days in [1,7,30]}}
+        return {'user':dict(row),'files':files,'sets':sets,'allowance':usage.quota.status(identifier),'usage':{str(days):usage.dashboard(days,identifier) for days in [1,7,30]}}
     @app.patch('/api/admin/users/{identifier}/role')
     def role(request:Request,identifier:str,change:RoleChange):return auth.roles.change(request.state.user,identifier,change.role)
+    @app.get('/api/admin/generation-limits')
+    def generation_limits():return usage.quota.settings()
+    @app.patch('/api/admin/generation-limits')
+    def default_limit(request:Request,data:DefaultAllowance):return usage.quota.update(request.state.user,data.monthly_tokens)
+    @app.patch('/api/admin/users/{identifier}/generation-limit')
+    def individual_limit(request:Request,identifier:str,data:UserAllowance):return usage.quota.update(request.state.user,data.monthly_tokens,identifier)
+
     @app.get('/api/admin/usage')
     def metrics(days:int=7,user_id:str|None=None):
         if days not in {1,7,30}:raise ValueError('Choose day, week or month.')
