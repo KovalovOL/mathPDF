@@ -52,9 +52,9 @@ def test_assessment_resume_retry_summary_and_percentage_meter():
                 await page.wait_for_function("window.fixture.rounds.length===1 && document.querySelector('.review-status').hidden")
                 assert not await page.get_by_role('button',name='✓ Correct',exact=True).is_visible()
                 assert '75% left' in await page.locator('.allowance-header').inner_text()
-                assert '25% used' in await page.locator('.allowance-header').inner_text()
-                assert 'Resets in 1h 00m' in await page.locator('.allowance-header').inner_text()
-                assert await page.locator('.allowance-header [role=progressbar]').get_attribute('aria-valuenow')=='25'
+                assert '25% used' in await page.locator('.allowance-header [role=progressbar]').get_attribute('aria-valuetext')
+                assert 'Resets in 1h 00m' in await page.locator('.allowance-header').get_attribute('title')
+                assert await page.locator('.allowance-header [role=progressbar]').get_attribute('aria-valuenow')=='75'
                 await page.get_by_role('button',name='Flip',exact=True).click()
                 await page.get_by_role('button',name='✓ Correct',exact=True).click()
                 await page.wait_for_function("window.fixture.record.itemIndex===1 && document.querySelector('.review-status').hidden")

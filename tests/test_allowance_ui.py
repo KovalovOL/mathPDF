@@ -28,10 +28,10 @@ def test_daily_meter_limit_dialog_and_reset_refresh():
                 await page.clock.install()
                 await page.route('**/*',local);await page.goto('http://allowance.local/')
                 await page.get_by_text('10% left',exact=True).wait_for()
-                meter=page.get_by_role('progressbar',name='Daily generation allowance used',exact=True)
-                assert await meter.get_attribute('aria-valuenow')=='90'
-                assert '90% used, 10% remaining'==await meter.get_attribute('aria-valuetext')
-                assert 'Resets in 2h 00m · 00:00 UTC' in await page.locator('.allowance-header').inner_text()
+                meter=page.get_by_role('progressbar',name='Daily generation allowance remaining',exact=True)
+                assert await meter.get_attribute('aria-valuenow')=='10'
+                assert '10% remaining, 90% used'==await meter.get_attribute('aria-valuetext')
+                assert 'Resets in 2h 00m · 00:00 UTC' in await page.locator('.allowance-header').get_attribute('title')
                 await page.get_by_role('button',name='Generate fixture').click()
                 await page.get_by_role('heading',name='This request needs more allowance').wait_for()
                 assert 'Estimated request: 20%' in await page.locator('.allowance-dialog').inner_text()
