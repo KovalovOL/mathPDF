@@ -52,7 +52,8 @@ export function initialize({getUser}) {
       request_id:response.headers.get('x-mathpdf-request-id'),request:body,response:data},180000);
     // Polling snapshots repeat large generated content; retain only terminal failures and mutations.
     if((options.method||'GET')!=='GET'||response.status>=400||data?.status==='failed'){requests.push(entry);if(requests.length>30)requests.shift();}
-    if(response.status>=400||data?.status==='failed')await automatic(requestId,entry);
+    const expectedQuota=(response.status===429&&data?.code==='generation_limit')||(data?.status==='failed'&&data?.limit?.code==='generation_limit');
+    if(!expectedQuota&&(response.status>=400||data?.status==='failed'))await automatic(requestId,entry);
   }
   document.addEventListener('click',event=>{if(event.target.closest('#feedback-dialog'))return;const e=event.target.closest('button,a,summary');if(e)action('click',{id:e.id,label:e.getAttribute('aria-label')||e.textContent.trim().slice(0,180)});},true);
   document.addEventListener('change',event=>{const e=event.target;if(e.closest('#feedback-dialog')||e.type==='password')return;

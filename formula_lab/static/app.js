@@ -6,7 +6,7 @@ let openDocumentIds = [];
 let activeDocumentId, activeSetId, config, generationActive = false, generationPreparing = false, setEpoch = 0, saveIntent, notes;
 let generationController,lastGenerationSelection;
 let statusTimer, practiceObserver, viewportNotice, viewportSettled = false, layout, initializing = true;
-let preferencePrefix,reviewUI;
+let preferencePrefix,reviewUI,limitDialog;
 
 function el(tag, className, text) {
   const item = document.createElement(tag);
@@ -567,6 +567,7 @@ async function generate(event) {
     }
     terminal = true;
     if (job.status === 'failed') {
+      if(job.limit?.code==='generation_limit')throw Object.assign(new Error(job.error),job.limit);
       const reference = /^[a-f0-9]{32}$/.test(job.request_id || '') ? ` Reference: ${job.request_id}` : '';
       throw new Error((job.error || 'Generation failed. Please try again.') + reference);
     }
@@ -578,6 +579,11 @@ async function generate(event) {
     message(`Created ${data.items.length} ${data.mode === 'flashcards' ? 'flashcards' : 'problems'}.`);
   } catch (error) {
     if (controller.signal.reason?.name === 'AbortError') {message('Generation cancelled.'); return;}
+    if(error.code==='generation_limit'){
+      const {createGenerationLimitDialog}=await import('/static/allowance-ui.js');
+      limitDialog??=createGenerationLimitDialog({onAdjust:()=>{$('generation-dialog').showModal();$('count').focus();}});
+      limitDialog.show(error);return;
+    }
     throw error;
   } finally {
     clearInterval(timer); clearTimeout(deadline); generationController = null;

@@ -16,7 +16,7 @@ def test_assessment_resume_retry_summary_and_percentage_meter():
     const rounds=[],record={id:'d'.repeat(32),data:{mode:'flashcards',items:[{},{}]},itemIndex:0,flipped:false};
     window.fixture={record,rounds,fail:false,renamed:null};let ui;
     async function api(url,options){
-      if(url==='/api/generation/allowance')return {limited:true,remaining_percent:75,resets_at:'2026-11-01T00:00:00Z',reserved_tokens:0};
+      if(url==='/api/generation/allowance')return {limited:true,daily_tokens:200000,remaining_percent:75,resets_at:new Date(Date.now()+3600000).toISOString(),reserved_tokens:0};
       const body=JSON.parse(options.body);let round=rounds.at(-1);
       if(url.endsWith('/reviews')){
         if(!round||body.new_round){round={id:String(rounds.length).padStart(32,'a'),answers:[],answered_count:0,correct_count:0,item_count:2,completed_at:null,history:[]};rounds.push(round);}
@@ -51,8 +51,10 @@ def test_assessment_resume_retry_summary_and_percentage_meter():
                 await page.route('**/*',local);await page.goto('http://learning.local/')
                 await page.get_by_text('0 / 2 reviewed · Flip the card, then rate your answer.').wait_for()
                 assert not await page.get_by_role('button',name='✓ Correct',exact=True).is_visible()
-                assert await page.locator('.allowance-header').inner_text()=='Generation · 75% remaining\nRenews 1 Nov (UTC)'
-                assert await page.locator('.allowance-header progress').get_attribute('value')=='75'
+                assert '75% left' in await page.locator('.allowance-header').inner_text()
+                assert '25% used' in await page.locator('.allowance-header').inner_text()
+                assert 'Resets in 1h 00m' in await page.locator('.allowance-header').inner_text()
+                assert await page.locator('.allowance-header [role=progressbar]').get_attribute('aria-valuenow')=='25'
                 await page.get_by_role('button',name='Flip',exact=True).click()
                 await page.get_by_role('button',name='✓ Correct',exact=True).click()
                 await page.get_by_text('1 / 2 reviewed · Flip the card, then rate your answer.').wait_for()

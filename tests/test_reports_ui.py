@@ -33,6 +33,8 @@ def test_automatic_and_manual_context_redact_secrets_and_do_not_recurse():
                     elif path=='/api/outage':await r.fulfill(status=500,json={'detail':'Offline fixture','request_id':'b'*32},headers={'x-mathpdf-request-id':'b'*32})
                     elif path=='/api/server-error':await r.fulfill(status=500,json={'detail':'Failure fixture','request_id':'f'*32},headers={'x-mathpdf-request-id':'f'*32})
                     elif path=='/api/failed-job':await r.fulfill(json={'status':'failed','error':'Fixture failure','request_id':'a'*32})
+                    elif path=='/api/allowance-limited':await r.fulfill(status=429,json={'code':'generation_limit','reason':'exhausted','detail':'Daily allowance used up.','allowance':{'remaining_percent':0}})
+                    elif path=='/api/quota-job':await r.fulfill(json={'status':'failed','error':'Daily allowance used up.','limit':{'code':'generation_limit','reason':'insufficient'}})
                     else:await r.fulfill(content_type='text/html',body=html)
                 await page.route('**/*',route);await page.goto('http://localhost/')
                 await page.locator('.account-menu summary').click();await page.get_by_role('button',name='Report a problem',exact=True).wait_for()
@@ -45,6 +47,11 @@ def test_automatic_and_manual_context_redact_secrets_and_do_not_recurse():
                 await page.get_by_label('What happened?',exact=True).fill('Use a shorter explanation.')
                 await page.get_by_role('button',name='Send report',exact=True).click()
                 await page.get_by_text('Report sent. Reference:',exact=False).wait_for()
+                assert len(received)==4
+                quota=await page.evaluate('MathPDFSession.api("/api/allowance-limited",{method:"POST"}).catch(e=>({code:e.code,status:e.status,reason:e.reason}))')
+                assert quota=={'code':'generation_limit','status':429,'reason':'exhausted'}
+                await page.evaluate('MathPDFSession.api("/api/quota-job").catch(()=>{})')
+                await page.wait_for_function('JSON.parse(sessionStorage.getItem("mathpdf-reports-"+"c".repeat(32))||"[]").length===0')
                 assert len(received)==4
                 assert {r['request_id'] for r in received[:3]}=={'e'*32,'f'*32,'a'*32}
                 assert received[-1]['category']=='answer_too_long' and received[-1]['comment']=='Use a shorter explanation.'

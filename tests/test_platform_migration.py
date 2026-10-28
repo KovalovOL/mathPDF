@@ -117,3 +117,19 @@ def test_postgres_quota_and_review_concurrency(infrastructure):
     assert all(s['answered_count']==1 and len(s['history'])==1 for s in snapshots)
     ws.rename_item('study-sets',content['id'],user.id,RenameRequest(name='Renamed'))
     assert app.state.reviews.start(user.id,content['id'],ws.study_set(content['id'],user.id))['id']==round['id']
+
+
+def test_old_monthly_limit_columns_import_as_daily_without_rewriting(infrastructure,monkeypatch):
+    import sqlite3
+    token,owner,doc,edited,legacy,before=historical(infrastructure,monkeypatch)
+    with sqlite3.connect(infrastructure/'workspace.sqlite3') as db:
+        db.execute('ALTER TABLE generation_limits DROP COLUMN daily_tokens')
+        db.execute("UPDATE generation_limits SET monthly_tokens=43210 WHERE scope='default'")
+    before=read_snapshot(infrastructure/'workspace.sqlite3')
+    migrate(infrastructure)
+    app=create_app(infrastructure)
+    assert app.state.workspace.usage.quota.settings()['daily_tokens']==43210
+    with app.state.workspace.connection() as db:
+        row=db.execute("SELECT monthly_tokens,daily_tokens FROM generation_limits WHERE scope='default'").fetchone()
+        assert row['monthly_tokens']==43210 and row['daily_tokens'] is None
+    assert read_snapshot(infrastructure/'workspace.sqlite3')==before

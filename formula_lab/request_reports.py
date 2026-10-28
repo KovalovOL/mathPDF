@@ -44,8 +44,10 @@ class RequestReports:
                     if len(data)>MAX_CONTEXT_BYTES:return {'_truncated':True,'reason':'HTTP JSON limit'}
                     try:return json.loads(data)
                     except (ValueError,UnicodeError):return {'_unreadable':True,'bytes':len(data)}
+                parsed_response=decode(response_body)
+                expected_quota=status==429 and isinstance(parsed_response,dict) and parsed_response.get('code')=='generation_limit'
                 event=bounded({'request_id':reference,'method':scope['method'],'path':path,
-                    'request':decode(request_body),'response':decode(response_body),'status':status,
+                    'request':decode(request_body),'response':parsed_response,'status':status,
                     'exception':scope.get('state',{}).get('exception'),
                     'duration_ms':round((perf_counter()-start)*1000),'server_build':build_id(),
                     'user_agent':headers.get('user-agent','')[:500],
@@ -57,7 +59,7 @@ class RequestReports:
                     except Exception as error:
                         logging.getLogger(__name__).warning('Request report persistence unavailable type=%s',type(error).__name__)
 
-                    if status>=400:
+                    if status>=400 and not expected_quota:
                         try:
                             await asyncio.to_thread(self.reports.record,user,ReportInput(origin='automatic',request_id=reference,context={'server':event}))
                         except Exception as error:

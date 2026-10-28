@@ -9,6 +9,7 @@ from uuid import uuid4
 from .study import GenerateRequest, GenerationError, StudyProvider, StudySet, generate_study
 from .workspace import Workspace
 from .reports import ReportInput
+from .quotas import QuotaExceeded
 from .diagnostics import job_context, log_exception,exception_summary, request_context
 
 
@@ -28,6 +29,7 @@ class GenerationJob:
     attempt: int = 0
     result: StudySet | None = None
     error: str | None = None
+    limit: dict | None = None
     finished_at: float | None = None
     task: asyncio.Task | None = None
 
@@ -39,7 +41,7 @@ class GenerationJob:
     def snapshot(self):
         return {"id": self.id, "request_id": self.request_id, "status": self.status, "phase": self.phase,
                 "accepted_count": self.accepted_count, "requested_count": self.requested_count,
-                "attempt": self.attempt, "error": self.error,
+                "attempt": self.attempt, "error": self.error,"limit":self.limit,
                 "result": self.result if self.status == "completed" else None}
 
 
@@ -88,6 +90,9 @@ class GenerationJobs:
         except asyncio.CancelledError:
             job.status = "cancelled"
             logger.info("Study job cancelled accepted=%s requested=%s", job.accepted_count, job.requested_count)
+        except QuotaExceeded as error:
+            job.status,job.error,job.limit='failed',str(error),error.payload()
+            logger.info('Study job limited reason=%s',error.reason)
         except (GenerationError, ValueError) as error:
             failure_context=exception_summary(error)
             job.status, job.error = "failed", str(error)
@@ -100,7 +105,7 @@ class GenerationJobs:
             job.status, job.error = "failed", "Generation failed unexpectedly. Please try again."
             log_exception(logger, "Study job failed unexpectedly", error)
         finally:
-            if job.status=='failed' and getattr(self.workspace,'reports',None):
+            if job.status=='failed' and job.limit is None and getattr(self.workspace,'reports',None):
                 try:
                     user=self.workspace.user_identity(job.owner_id)
                     await asyncio.to_thread(self.workspace.reports.record,user,ReportInput(origin='automatic',request_id=job.request_id,

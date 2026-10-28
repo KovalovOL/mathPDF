@@ -6,15 +6,21 @@ Use **Rename** in a library item's action menu or in its workspace toolbar. A fi
 
 Concurrent renames include the previously displayed name. A stale rename returns a conflict rather than overwriting the newer name. Reopen the library or workspace to refresh it.
 
-## Free generation allowance
+## Daily free generation allowance
 
-- The initial global default is **200,000 input plus output tokens per UTC calendar month**. Cached input is part of input and is counted once. Already recorded actual usage within the current month counts.
+- The initial global default is **200,000 input plus output tokens per 24-hour UTC day**. Cached input is part of input and is counted once. Already recorded actual usage within the current day counts.
 - The allowance applies to the `free` role. `premium`, `admin` and `owner` are exempt. Roles are rechecked when reserving usage, so a stale session cannot bypass a role change.
-- Ordinary user screens show **remaining percentage**, a progress bar and the next reset date. Administration shows actual tokens, pending reservations and configurable limits. In Overview, edit the global default; in a user's detail dialog, edit the monthly override. An empty override inherits the default. Zero disables further free generation. Changes are audited and do not rewrite usage history.
+- Ordinary user screens show a prominent **remaining percentage**, a bar explicitly labeled with the **used percentage** and the reset countdown (00:00 UTC). Administration shows actual tokens, pending reservations and configurable limits. In Overview, edit the global default; in a user's detail dialog, edit the daily override. An empty override inherits the default. Zero disables further free generation. Changes are audited and do not rewrite usage history.
 - Before the single provider request, a transaction reserves a local input estimate plus the existing maximum output allowance. Concurrent dispatches cannot spend the same remaining allowance. Requests that cannot fit are rejected before contacting the provider. No additional model call, truncation of the requested set or retry is added.
 - The input estimate uses selected PDF page counts and prompt size; it is **not exact provider PDF/vision token accounting**. Reported actual input/output replaces the reservation before content validation. Actual usage may exceed the estimate; all reported usage is counted, the percentage clamps to zero, and subsequent requests are blocked. This is not a provider-enforced hard billing ceiling.
-- Provider rejections known to be unbilled release the hold. Timeouts, interrupted requests and unknown billing retain an estimated hold until actual usage is reconciled or that UTC month ends. The UI identifies pending or unconfirmed holds. Administrators can adjust allowances; unknown usage is not fabricated as actual usage.
+- Provider rejections known to be unbilled release the hold. Timeouts, interrupted requests and unknown billing retain an estimated hold until actual usage is reconciled or that UTC day ends. The UI identifies pending or unconfirmed holds. Administrators can adjust allowances; unknown usage is not fabricated as actual usage.
 - Known paid usage survives temporary database outages in the existing durable spool. A late unknown observation cannot erase known counts. Content rejected locally still consumes the tokens the provider reported.
+
+Every free allowance resets at **00:00 UTC**, exactly 24 hours after the previous reset, regardless of daylight-saving changes in a user's timezone. The page refreshes its allowance at the boundary and updates the countdown while open.
+
+Historical `generation_limits.monthly_tokens` values remain intact. A nullable `daily_tokens` column holds new settings; when absent, the old configured amount is explicitly adopted as the daily amount. Legacy `monthly_tokens` API inputs remain accepted. Existing reservations are counted by the attempt dispatch timestamp, including historical month-keyed reservations from the current day. Usage and reservation rows are never reset or deleted.
+
+When a request cannot fit, a dedicated dialog distinguishes exhausted, insufficient and disabled allowance. It shows remaining usage and reset timing, and offers **Adjust request** without losing files, page ranges, item count or comments. Expected quota limits do not create automatic bug reports; real 4xx/5xx failures and manual reports continue to work.
 
 The policies live in `formula_lab/quotas.py`; actual usage observations stay in `formula_lab/usage.py`. Future provider adapters must reserve through `Usage.start` before dispatch and settle through `Usage.finish`. The OpenAI adapter continues to make exactly one provider request.
 
@@ -32,7 +38,7 @@ Review records live in separate `review_rounds` and `review_answers` tables, not
 
 All schema additions are non-destructive. Existing study-set and browser-draft format versions remain unchanged; historical compatibility fixtures are unchanged.
 
-Regression coverage includes owner isolation, legacy renames, stale-name conflicts, allowance inheritance, role changes, calendar rollover, actual usage and cached tokens, unknown holds, simultaneous reservations, review retry idempotency, content revisions, progress after renaming, browser retry/resume/summary and percentage-only meters. Real PostgreSQL/Garage integration uses disposable synthetic databases. Browser previews use synthetic users and documents and a deterministic local provider, with no external AI calls.
+Regression coverage includes owner isolation, legacy renames, stale-name conflicts, allowance inheritance, role changes, daily rollover, actual usage and cached tokens, unknown holds, simultaneous reservations, review retry idempotency, content revisions, progress after renaming, browser retry/resume/summary and percentage-only meters. Real PostgreSQL/Garage integration uses disposable synthetic databases. Browser previews use synthetic users and documents and a deterministic local provider, with no external AI calls.
 
 ### Verified release
 

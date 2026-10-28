@@ -134,9 +134,9 @@ def create_service(kind,directory=None):
     @app.get('/api/admin/generation-limits')
     def generation_limits():return usage.quota.settings()
     @app.patch('/api/admin/generation-limits')
-    def default_limit(request:Request,data:DefaultAllowance):return usage.quota.update(request.state.user,data.monthly_tokens)
+    def default_limit(request:Request,data:DefaultAllowance):return usage.quota.update(request.state.user,data.daily_tokens)
     @app.patch('/api/admin/users/{identifier}/generation-limit')
-    def individual_limit(request:Request,identifier:str,data:UserAllowance):return usage.quota.update(request.state.user,data.monthly_tokens,identifier)
+    def individual_limit(request:Request,identifier:str,data:UserAllowance):return usage.quota.update(request.state.user,data.daily_tokens,identifier)
 
     @app.get('/api/admin/usage')
     def metrics(days:int=7,user_id:str|None=None):

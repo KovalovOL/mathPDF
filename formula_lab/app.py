@@ -234,7 +234,7 @@ def create_app(data_dir: Path = Path(".formula-lab"), provider: StudyProvider | 
         return {'status':'ok','build':build_id()}
 
     @app.exception_handler(QuotaExceeded)
-    async def quota_error(request,error):return JSONResponse({'detail':str(error)},status_code=429)
+    async def quota_error(request,error):return JSONResponse(error.payload(),status_code=429)
     @app.exception_handler(RenameConflict)
     async def rename_conflict(request,error):return JSONResponse({'detail':str(error)},status_code=409)
 

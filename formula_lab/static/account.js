@@ -91,7 +91,12 @@ window.MathPDFSession = (() => {
         if (controller.signal.aborted) throw controller.signal.reason;
         throw failure(`The API response contains invalid or empty JSON (HTTP ${response.status}, ${mime}).`, 'invalid_json');
       }
-      if (!response.ok) throw failure(`${typeof data?.detail === 'string' ? data.detail : 'The request could not be completed'} (HTTP ${response.status}).`, 'http_error');
+      if (!response.ok) {
+        if(response.status===429&&data?.code==='generation_limit'){
+          const error=Object.assign(new Error(data.detail),data,{status:429});throw error;
+        }
+        throw failure(`${typeof data?.detail === 'string' ? data.detail : 'The request could not be completed'} (HTTP ${response.status}).`, 'http_error');
+      }
       return data;
     } catch (error) {
       if (controller.signal.aborted) {

@@ -63,13 +63,14 @@ class Usage:
         self.quota=GenerationQuota(workspace)
     def start(self,user_id,provider,model,context):
         from .report_safety import bounded
-        identifier=uuid4().hex;stamp=utcnow();estimate=context.get('estimated_tokens',1);context=bounded(context)
+        identifier=uuid4().hex;estimate=context.get('estimated_tokens',1);context=bounded(context)
         with self.workspace.connection() as db:
             db.execute('BEGIN IMMEDIATE')
+            stamp=utcnow()
             price=db.execute('SELECT id FROM model_prices WHERE provider=? AND model=? AND effective_at<=? ORDER BY effective_at DESC,id DESC LIMIT 1',(provider,model,stamp)).fetchone()
             db.execute('''INSERT INTO ai_usage (id,user_id,request_id,job_id,provider,model,started_at,status,price_id,context)
                 VALUES (?,?,?,?,?,?,?,?,?,?)''',(identifier,user_id,request_context.get(),job_context.get(),provider,model,stamp,'running',price['id'] if price else None,json.dumps(context,ensure_ascii=False)))
-            self.quota.reserve(db,identifier,user_id,estimate)
+            self.quota.reserve(db,identifier,user_id,estimate,now=datetime.fromisoformat(stamp))
         return identifier
     @durable_write
     def finish(self,identifier,status,usage=None,duration_ms=None,provider_request_id=None,finished_at=None,unbilled=False):

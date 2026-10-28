@@ -44,7 +44,7 @@ def test_rename_preserves_legacy_content_binary_and_placement(tmp_path):
     assert create_app(tmp_path).state.workspace.study_set(raw['id'],user.id)==expected
 
 
-def test_quota_accounting_reservations_releases_and_month_reset(tmp_path):
+def test_quota_accounting_reservations_releases_and_daily_reset(tmp_path):
     app=create_app(tmp_path);_,owner=login(app,OWNER_EMAIL);_,user=login(app);ws=app.state.workspace;u=ws.usage;q=u.quota
     q.update(owner,1000)
     attempt=u.start(user.id,'openai','gpt-4.1-mini',{'estimated_tokens':700})
@@ -68,9 +68,9 @@ def test_quota_accounting_reservations_releases_and_month_reset(tmp_path):
     assert q.status(user.id)['remaining_percent']==0 and q.status(user.id)['used_tokens']==1470
     with pytest.raises(QuotaExceeded):q.check(user.id)
     with ws.connection() as db:
-        next_month=q._status(db,user.id,datetime.fromisoformat(period()[1]))
-    assert next_month['remaining_percent']==100
-    assert period(datetime(2026,12,15,tzinfo=timezone.utc))[1].startswith('2027-01-01')
+        next_day=q._status(db,user.id,datetime.fromisoformat(period()[1]))
+    assert next_day['remaining_percent']==100
+    assert period(datetime(2026,12,15,tzinfo=timezone.utc))[1].startswith('2026-12-16')
 
 
 def test_quota_atomic_parallel_dispatch_and_role_changes(tmp_path):
@@ -96,15 +96,16 @@ def test_admin_default_override_inheritance_and_authorization(tmp_path):
         assert c.patch('/api/admin/generation-limits',json={'monthly_tokens':1234}).status_code==403
         session(c,app,ot)
         assert c.patch('/api/admin/generation-limits',json={'monthly_tokens':1234}).status_code==200
+        assert c.patch('/api/admin/generation-limits',json={'daily_tokens':1234}).json()['daily_tokens']==1234
         route='/api/admin/users/'+user.id+'/generation-limit'
-        assert c.patch(route,json={'monthly_tokens':2000}).json()['monthly_tokens']==2000
-        assert c.get('/api/admin/users/'+user.id).json()['allowance']['override_monthly_tokens']==2000
-        assert c.patch(route,json={'monthly_tokens':None}).json()['monthly_tokens']==1234
+        assert c.patch(route,json={'monthly_tokens':2000}).json()['daily_tokens']==2000
+        assert c.get('/api/admin/users/'+user.id).json()['allowance']['override_daily_tokens']==2000
+        assert c.patch(route,json={'monthly_tokens':None}).json()['daily_tokens']==1234
         for value in [-1,True,1.5,'5',None]:
             assert c.patch('/api/admin/generation-limits',json={'monthly_tokens':value}).status_code==422
-    assert q.update(admin,1500)['monthly_tokens']==1500
+    assert q.update(admin,1500)['daily_tokens']==1500
     with pytest.raises(HTTPException):q.update(user,2000)
-    with app.state.workspace.connection() as db:assert db.execute('SELECT COUNT(*) FROM admin_audit WHERE action=?',('generation_allowance',)).fetchone()[0]==4
+    with app.state.workspace.connection() as db:assert db.execute('SELECT COUNT(*) FROM admin_audit WHERE action=?',('generation_allowance',)).fetchone()[0]==5
 
 
 def test_exhausted_allowance_blocks_both_generation_routes_before_provider(tmp_path):
@@ -118,7 +119,7 @@ def test_exhausted_allowance_blocks_both_generation_routes_before_provider(tmp_p
         for route in ['/api/study/generate','/api/study/jobs']:
             response=c.post(route,json={'document_id':doc['id'],'pages':[1],'count':1,'mode':'flashcards'})
             assert response.status_code==429,response.text
-            assert 'renews' in response.json()['detail']
+            assert response.json()['code']=='generation_limit' and response.json()['reason']=='disabled'
         assert c.get('/api/generation/allowance').json()['remaining_percent']==0
     assert provider.calls==0
 
