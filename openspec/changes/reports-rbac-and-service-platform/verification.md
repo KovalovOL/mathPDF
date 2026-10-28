@@ -24,4 +24,12 @@ The app, admin and reports services were run on loopback against real PostgreSQL
 
 Preflight (October 28, 2026): three users, four documents, 30 study sets, 12 folders, 30 placement records and four active/retained sessions. Four managed binaries total 1,263,812 bytes. The configured owner account exists. Final counts and hashes must be verified from the stopped-writer migration snapshot, because users can continue working before cutover.
 
-Deployment and final verification are pending.
+Deployed commit `1fcd9015f10fa90238f96014c5ffebcfdf76cc50` successfully through [Actions run 40706702411](https://github.com/KovalovOL/mathPDF/actions/runs/40706702411). Live build: `6daba318442b`.
+
+- All five persistent services report healthy; bootstrap and migration exited successfully.
+- The migration copied and verified 84 source rows and four durable object hashes. An independent post-cutover check on the VPS matched every source row hash in all eight legacy tables, including opaque JSON and session hashes. Counts remained three users, four documents, 30 sets, 12 folders, 30 placements, four sessions and one OAuth flow.
+- The consistent SQLite backup, previous Compose configuration and all four original local binaries remain on the VPS. Verification inspected data locally and returned only counts/boolean hash results; no production content or credentials were exported.
+- Owner bootstrap is correct: one owner for the configured email and two default-free users. No artificial production users, AI calls or reports were added.
+- Anonymous direct admin/report service requests returned 401. Public HTTPS `/health` returned 200 with the expected build, Google configuration is present, `/api/me` returned 401 and `/admin` redirected to login.
+- The deployed sign-in page was also confirmed in the browser. Administrative UI/role mutation behavior was verified locally with synthetic sessions; no production Google session was impersonated.
+- Production AI accounting starts with this release; earlier calls remain explicitly untracked rather than estimated from saved content.

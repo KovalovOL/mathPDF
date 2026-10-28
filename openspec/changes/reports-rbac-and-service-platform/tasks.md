@@ -15,4 +15,4 @@
 
 ## 4. Integration and cutover
 - [x] 4.1 Run full compatibility/security and real PostgreSQL/Garage integration checks; record evidence and validate OpenSpec.
-- [ ] 4.2 Review the concrete migration, deploy with a retained backup and verify all transferred records/object hashes, live services and owner access policy.
+- [x] 4.2 Review the concrete migration, deploy with a retained backup and verify all transferred records/object hashes, live services and owner access policy.
