@@ -26,7 +26,9 @@ The policies live in `formula_lab/quotas.py`; actual usage observations stay in 
 
 ## Flashcard self-assessment
 
-Flip a card, then choose green **Correct** or red **Incorrect** below it. A successful rating advances to the first unreviewed card. The front of the card does not show these controls or reveal the answer. The platform stores one immutable answer per card and round, with account ownership checks. Repeating a request cannot count a card twice.
+Tap a card (or use Space/Enter while focused), then choose green **Correct** or red **Incorrect** below it. Previous/next arrows share one compact footer with the answer actions. There is no separate Flip button or in-round progress bar. The front shows the card index; answer-only grading avoids revealing the answer. Touch selection/callout is disabled on cards, dragging to scroll does not flip, and source links remain interactive. Desktop text selection stays available.
+
+A successful rating advances to the first unreviewed card. The platform stores one immutable answer per card and round, with account ownership checks. Repeating a request cannot count a card twice. Completion summaries and historical rounds remain available.
 
 After all cards are rated, a summary shows correct/incorrect counts, percentage, change from the previous completed round and recent score history. **Practice again** creates another round; **Review cards** browses the completed deck without changing its answers. The API returns the latest 30 completed rounds for the same content revision, and the UI graphs the latest 10. Earlier rounds remain stored.
 

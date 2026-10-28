@@ -61,3 +61,11 @@ Report details start with a computed incident summary: cause/code, user, screen,
 ## Library conversion incident
 
 The October 28 library failure was PostgreSQL `UntranslatableCharacter`, SQLSTATE `22P05`: a valid saved TEXT JSON payload contained an escaped NUL. Casting the whole payload to JSONB for library metadata rejected that character. Library projection now parses the required metadata in Python; canonical saved payloads, formulas and source references are unchanged. Invalid metadata in one set no longer hides all files. The diagnostic identity is `library_metadata_decode_failed` for historical instances of this error.
+
+### Verified rollout
+
+The urgent library fix `d6f0811` and monitoring/card release `85c04f0df2987c729b429477597637d004f611a8` deployed successfully; the latter is [Actions run 40772721676](https://github.com/KovalovOL/mathPDF/actions/runs/40772721676), build `d72b51b49806`. Public health returned HTTP 200 and all five persistent services were healthy. The affected account's library returned 4 files and 30 sets, including the original set with a NUL character. Its historical incident now returns `library_metadata_decode_failed`, `UntranslatableCharacter`, the library screen and a safe application location, with original evidence retained.
+
+Post-release hashes matched all 7 documents, 31 study sets, 12 folders, 33 placements, 3 role assignments and the daily-limit row. All 7 binaries verified, and all prior usage identifiers and known token observations were retained. The administrator's configured daily limit remained 100,000 tokens. A harmless anonymous API request verified JSON log correlation, frontend screen/action context and typed error fields on production without recording a user bug report.
+
+Verification passed 159 default tests plus all 6 separate real PostgreSQL/Garage checks. Synthetic browser checks cover 320-pixel touch layout, drag-versus-tap, source links, keyboard navigation, classic workspace entrypoint parsing, review persistence/retry and collapsed original report evidence. A 390-pixel real workspace preview confirmed the compact footer and answer-to-next-card flow; the admin preview confirmed historical incident presentation. No external AI requests or private document transfers were required.
