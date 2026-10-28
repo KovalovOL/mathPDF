@@ -17,6 +17,7 @@ from typing import Literal
 
 from .report_safety import bounded,sanitize,MAX_CONTEXT_BYTES
 from .web_assets import build_id
+from .diagnostics import error_identity
 
 
 def stamp():return datetime.now(timezone.utc).isoformat()
@@ -122,12 +123,12 @@ class Reports:
                      json.dumps(payload,ensure_ascii=False),json.dumps({'sources':sources,'files':[]}),''))
             return {'id':identifier,'status':'new','collection_status':'pending'}
         except ValueError:raise
-        except Exception:
+        except Exception as error:
             if not spool_on_failure:raise
             data={'user':user.model_dump(),'request':request.model_dump(mode='json'),'received_at':now}
             path=self.spool/(identifier+'.json');temp=path.with_suffix('.tmp')
             temp.write_text(json.dumps(sanitize(data),ensure_ascii=False));temp.chmod(0o600);temp.replace(path)
-            logging.getLogger(__name__).warning('Report queued in durable local spool id=%s',identifier)
+            logging.getLogger(__name__).warning('Report queued in durable local spool',extra={'event':'report.spooled','report_id':identifier,**error_identity(error)})
             return {'id':identifier,'status':'queued','collection_status':'spooled'}
     def flush_spool(self):
         from .auth import User
@@ -175,7 +176,7 @@ class Reports:
         except Exception as error:
             delay=min(600,2**min(report['attempts']+1,9));retry=(datetime.now(timezone.utc)+timedelta(seconds=delay)).isoformat()
             with self.workspace.connection() as db:db.execute("UPDATE reports SET collection_status='retrying',next_attempt=? WHERE id=? AND collection_status='collecting' AND next_attempt=?",(retry,report['id'],lease))
-            logging.getLogger(__name__).warning('Report collection will retry id=%s type=%s',report['id'],type(error).__name__)
+            logging.getLogger(__name__).warning('Report collection will retry',extra={'event':'report.retry','report_id':report['id'],**error_identity(error)})
             return False
     async def worker(self):
         while True:
@@ -184,7 +185,7 @@ class Reports:
                 if not worked:await asyncio.sleep(2)
             except asyncio.CancelledError:raise
             except Exception as error:
-                logging.getLogger(__name__).warning('Report worker unavailable type=%s',type(error).__name__);await asyncio.sleep(5)
+                logging.getLogger(__name__).warning('Report worker unavailable',extra={'event':'report.worker_unavailable',**error_identity(error)});await asyncio.sleep(5)
     def list(self,limit=100,offset=0,status=None):
         with self.workspace.connection() as db:
             return [dict(r) for r in db.execute('''SELECT r.id,r.user_id,u.email,r.origin,r.category,r.comment,r.request_id,r.status,
@@ -192,7 +193,9 @@ class Reports:
     def get(self,identifier):
         with self.workspace.connection() as db:row=db.execute('SELECT * FROM reports WHERE id=?',(identifier,)).fetchone()
         if not row:raise KeyError('Report not found')
-        data=dict(row);data['payload']=json.loads(data['payload']);data['manifest']=json.loads(data['manifest']);return data
+        data=dict(row);data['payload']=json.loads(data['payload']);data['manifest']=json.loads(data['manifest'])
+        from .report_summary import summarize
+        data['summary']=summarize(data);return data
     def update(self,identifier,request,actor):
         self.get(identifier)
         with self.workspace.connection() as db:

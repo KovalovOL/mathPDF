@@ -19,11 +19,10 @@ export function createReviewUI({api,userId,onChange,select,onError}){
       else onChange(record);
     }catch(error){state.saving=false;state.error=error.message;state.conflict=error.status===409;onChange(record);onError(error.message);}}
   function controls(record){const state=get(record),root=make('section',undefined,'review-controls'),status=make('p',undefined,'review-status');status.setAttribute('aria-live','polite');root.append(status);
-    const progress=make('progress');progress.max=record.data.items.length;progress.value=state.data?.answered_count||0;progress.setAttribute('aria-label','Cards reviewed');root.append(progress);
     const actions=make('div',undefined,'review-actions'),correct=make('button','✓ Correct','review-correct'),incorrect=make('button','✕ Incorrect','review-incorrect');correct.type=incorrect.type='button';correct.addEventListener('click',()=>grade(record,true));incorrect.addEventListener('click',()=>grade(record,false));actions.append(incorrect,correct);root.append(actions);
     function update(flipped){const rated=state.data?.answers.find(a=>a.index===record.itemIndex);actions.hidden=!flipped||!!rated||!state.data;
       correct.disabled=incorrect.disabled=state.saving||state.loading||!!state.pending;
-      status.textContent=state.error?state.error:state.saving?'Saving your answer…':state.loading?'Loading your progress…':rated?`Marked ${rated.correct?'correct':'incorrect'} · ${state.data.answered_count} / ${record.data.items.length} reviewed`:`${state.data?.answered_count||0} / ${record.data.items.length} reviewed${flipped?' · How did you do?':' · Flip the card, then rate your answer.'}`;}
+      status.textContent=state.error?state.error:state.saving?'Saving…':state.loading?'Loading progress…':rated?`Marked ${rated.correct?'correct':'incorrect'}`:'';status.hidden=!status.textContent;root.hidden=actions.hidden&&!status.textContent;}
     if(state.error){const retry=make('button',state.conflict?'Use saved progress':state.pending?'Retry saving answer':'Retry progress','small secondary');retry.type='button';retry.addEventListener('click',()=>state.conflict?load(record,state,false,true):state.pending?grade(record,state.pending.correct):load(record,state));root.append(retry);}
     return {root,update};}
   function summary(record){const state=get(record),data=state.data;if(!data?.completed_at)return null;

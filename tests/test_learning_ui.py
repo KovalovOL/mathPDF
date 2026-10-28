@@ -49,7 +49,7 @@ def test_assessment_resume_retry_summary_and_percentage_meter():
                     name=route.request.url.rsplit('/',1)[-1]
                     await route.fulfill(body=(static/name).read_text() if name.endswith('.js') else '<link rel="stylesheet" href="/static/style.css">'+harness if name!='style.css' else (static/name).read_text(),content_type='text/javascript' if name.endswith('.js') else 'text/css' if name=='style.css' else 'text/html')
                 await page.route('**/*',local);await page.goto('http://learning.local/')
-                await page.get_by_text('0 / 2 reviewed · Flip the card, then rate your answer.').wait_for()
+                await page.wait_for_function("window.fixture.rounds.length===1 && document.querySelector('.review-status').hidden")
                 assert not await page.get_by_role('button',name='✓ Correct',exact=True).is_visible()
                 assert '75% left' in await page.locator('.allowance-header').inner_text()
                 assert '25% used' in await page.locator('.allowance-header').inner_text()
@@ -57,9 +57,9 @@ def test_assessment_resume_retry_summary_and_percentage_meter():
                 assert await page.locator('.allowance-header [role=progressbar]').get_attribute('aria-valuenow')=='25'
                 await page.get_by_role('button',name='Flip',exact=True).click()
                 await page.get_by_role('button',name='✓ Correct',exact=True).click()
-                await page.get_by_text('1 / 2 reviewed · Flip the card, then rate your answer.').wait_for()
+                await page.wait_for_function("window.fixture.record.itemIndex===1 && document.querySelector('.review-status').hidden")
                 await page.evaluate('window.remount()')
-                await page.get_by_text('1 / 2 reviewed · Flip the card, then rate your answer.').wait_for()
+                await page.wait_for_function("window.fixture.record.itemIndex===1 && document.querySelector('.review-status').hidden")
                 assert await page.evaluate('window.fixture.record.itemIndex')==1
                 await page.evaluate('window.fixture.fail=true')
                 await page.get_by_role('button',name='Flip',exact=True).click()
@@ -76,7 +76,7 @@ def test_assessment_resume_retry_summary_and_percentage_meter():
                 await page.get_by_role('button',name='Flip',exact=True).click()
                 await page.get_by_role('button',name='✓ Correct',exact=True).click()
                 await page.get_by_role('button',name='Use saved progress').click()
-                await page.get_by_text('1 / 2 reviewed · Flip the card, then rate your answer.').wait_for()
+                await page.wait_for_function("window.fixture.record.itemIndex===1 && document.querySelector('.review-status').hidden")
                 assert await page.evaluate('window.fixture.record.itemIndex')==1
                 await page.get_by_role('button',name='Rename fixture').click()
                 await page.get_by_label('Name',exact=True).fill('My title')

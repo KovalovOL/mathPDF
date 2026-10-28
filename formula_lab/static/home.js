@@ -4,6 +4,7 @@ let uploading = false;
 let uploadTask,uploadFailure,pendingFiles=[];
 let previews;
 let deleteIntent;
+let diagnosticItem;
 const previewModule = import('/static/file-previews.js').catch(() => null);
 function node(tag, className, text) {
   const element = document.createElement(tag); element.className = className;
@@ -93,9 +94,10 @@ function menu(title, actions) {
   details.append(summary,panel);return details;
 }
 function itemMenu(kind,item,title) {
+  const context=operation=>()=>{diagnosticItem={...(kind==='documents'?{document_id:item.id,file_name:title}:{study_set_id:item.id,document_id:item.document_id,file_name:item.document_filename})};return operation();};
   return menu(title,[['Rename',()=>renameLibraryItem(kind,item,title)],['Move',()=>showMove(kind,item.id,title,item.folder_id)],
     [item.archived?'Restore':'Archive',()=>organize(kind,item.id,{archived:!item.archived})],
-    ['Delete',()=>confirmDeletion(kind,item.id),true]]);
+    ['Delete',()=>confirmDeletion(kind,item.id),true]].map(([name,operation,danger])=>[name,context(operation),danger]));
 }
 async function organize(kind,id,update) {
   await MathPDFSession.api(`/api/library/items/${kind}/${encodeURIComponent(id)}`,jsonWrite('PATCH',update));await loadLibrary();
@@ -232,6 +234,7 @@ async function uploadFiles() {
   let completed = 0; const failures = [], targetFolder=archiveView?null:currentFolder;
   try {
     for (const file of [...pendingFiles]) {
+      diagnosticItem={file_name:file.name};
       home('upload-status').textContent = `Uploading ${file.name}…`;
       try {
         if (file.size > 25 * 1024 * 1024) throw new Error('The file exceeds 25 MB.');
@@ -274,6 +277,7 @@ MathPDFSession.setContextProvider?.(()=>({library:{folder_id:currentFolder,archi
   visible_sets:library.sets.filter(set=>archiveView?set.archived:!set.archived&&set.folder_id===currentFolder),pending_uploads:pendingFiles.map(file=>({name:file.name,size:file.size,type:file.type}))}}));
 
 let nameDialog;
+MathPDFSession.setUIContextProvider?.(()=>diagnosticItem||{});
 async function renameLibraryItem(kind,item,title){
   nameDialog??=(await import('/static/rename-ui.js')).createRenameDialog();
   nameDialog.open({name:title,kind,save:async name=>{

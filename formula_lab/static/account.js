@@ -1,6 +1,15 @@
 /* Shared identity and authenticated requests for the library and workspace. */
 window.MathPDFSession = (() => {
   let user, redirecting = false, leaveGuard, cancelLeave;
+  let uiContextProvider=()=>({}),lastAction;
+  document.addEventListener('click',event=>{const target=event.target.closest('button,a,summary');if(target)lastAction={action:(target.getAttribute('aria-label')||target.textContent.trim()).slice(0,80),target:target.id||target.tagName.toLowerCase()};},true);
+  function uiContext(){
+    let active={};try{active=uiContextProvider()||{};}catch{}
+    const context={screen:location.pathname==='/workspace'?'workspace':location.pathname==='/admin'?'administration':location.pathname==='/'?'library':'other',...lastAction};
+    for(const key of ['document_id','study_set_id','file_name'])if(typeof active[key]==='string')context[key]=active[key].slice(0,100);
+    for(const key of ['page','item_index'])if(Number.isInteger(active[key]))context[key]=active[key];
+    return context;
+  }
   let diagnosticCount = 0;
   const reporter=import('/static/reports.js').then(module=>module.initialize({getUser:()=>user})).catch(()=>null);
   let contextProvider=()=>({});
@@ -49,6 +58,7 @@ window.MathPDFSession = (() => {
     const headers = {...options.headers};
     if (!headers['X-MathPDF-Request-ID']) headers['X-MathPDF-Request-ID'] = newReference();
     if (user) headers['X-MathPDF-User'] = user.id;
+    if(path.startsWith('/api/'))headers['X-MathPDF-UI-Context']=encodeURIComponent(JSON.stringify(uiContext()));
     const response = await fetch(path, {...options, headers, credentials: 'same-origin', cache: 'no-store'});
     let diagnosticResponse;try{if(path.startsWith('/api/')&&(response.status>=400||(response.headers.get('content-type')||'').includes('json')))diagnosticResponse=response.clone();}catch{}
     if(diagnosticResponse)reporter.then(r=>r?.observe(path,options,diagnosticResponse)).catch(()=>{});
@@ -156,5 +166,5 @@ window.MathPDFSession = (() => {
   document.addEventListener('visibilitychange', () => {
     if (!document.hidden && user) api('/api/me').catch(() => {});
   });
-  return {api, request, ready, setContextProvider:provider=>contextProvider=provider, setLeaveGuard:(guard,cancel)=>{leaveGuard=guard;cancelLeave=cancel;}, get user() {return user;}};
+  return {api, request, ready, setUIContextProvider:provider=>uiContextProvider=provider,setContextProvider:provider=>contextProvider=provider, setLeaveGuard:(guard,cancel)=>{leaveGuard=guard;cancelLeave=cancel;}, get user() {return user;}};
 })();

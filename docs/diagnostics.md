@@ -16,7 +16,15 @@ cd /opt/mathPDF
 docker compose logs --since=30m --no-color app | grep -F 'PASTE_REFERENCE_HERE'
 ```
 
-Logs use UTC timestamps ending in `Z`. Every application line includes `request=` and `job=` fields. The originating request context is retained by its background generation task, so planning, provider calls, validation and completion can be traced from one reference. A startup line identifies the running build and confirms that HTTP diagnostics are enabled.
+Application, admin/report service and Uvicorn logs use one JSON object per line, with an ISO UTC `timestamp`, `level`, `logger`, `event`, `request_id` and `job_id`. Request logs add `method`, normalized `route`, authenticated `user_id`, `status` and `duration_ms`. Failures add a stable `error_code`, controlled English `summary`, `error_type`, safe application `location` and SQLSTATE when available. Raw exception messages, local values, request bodies and source contents are excluded from stdout. Access logs drop query strings, including OAuth codes.
+
+The originating request context is retained by its background generation task, so provider calls and completion can be traced from one reference. A startup line identifies the running build and confirms that HTTP diagnostics are enabled. Docker prefixes are separate from each application's JSON; use `--no-log-prefix` when piping to a JSON reader:
+
+```sh
+docker compose logs --since=30m --no-color --no-log-prefix app reports admin
+```
+
+The bounded `ui` object comes from `X-MathPDF-UI-Context`: screen, last action, target, document/study-set identifier, filename, PDF page and card index when available. The header is an untrusted diagnostic hint, never authorization. It excludes text inputs and document content. A fresh library load has a screen and route even if no click occurred yet.
 
 API request entries record method, normalized route, status, content type, response length and time to response headers. Successful job polls stay at DEBUG to avoid flooding INFO logs. Failed polls and other API failures are visible. Provider entries record phase, status, output token count when available, duration and safe exception types. Unexpected exceptions include stack file/line/function locations, without exception messages or local values.
 
@@ -47,3 +55,9 @@ The later reference `c7f8c8ee266b400a87fefa2c6004238c` produced five problems in
 ## Private tester reports
 
 The metadata-only `/api/client-errors` logger remains supported. The separate `/api/reports` system additionally collects sanitized business context and private owner-checked source snapshots for administrators. See [platform reports and retention limits](platform.md#automatic-and-manual-reports).
+
+Report details start with a computed incident summary: cause/code, user, screen, action, request/status, safe stack location, page/card and referenced files. Repeated request entries are compacted into a timeline, followed by recent actions. Full original evidence remains in collapsed **Advanced: full diagnostic JSON** and the private download bundle. Historical reports get the same summary without rewriting their stored payloads.
+
+## Library conversion incident
+
+The October 28 library failure was PostgreSQL `UntranslatableCharacter`, SQLSTATE `22P05`: a valid saved TEXT JSON payload contained an escaped NUL. Casting the whole payload to JSONB for library metadata rejected that character. Library projection now parses the required metadata in Python; canonical saved payloads, formulas and source references are unchanged. Invalid metadata in one set no longer hides all files. The diagnostic identity is `library_metadata_decode_failed` for historical instances of this error.

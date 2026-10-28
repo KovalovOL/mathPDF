@@ -10,7 +10,7 @@ from .study import GenerateRequest, GenerationError, StudyProvider, StudySet, ge
 from .workspace import Workspace
 from .reports import ReportInput
 from .quotas import QuotaExceeded
-from .diagnostics import job_context, log_exception,exception_summary, request_context
+from .diagnostics import job_context, log_exception,exception_summary, request_context,error_identity
 
 
 class GenerationBusy(Exception):
@@ -83,6 +83,7 @@ class GenerationJobs:
         token = job_context.set(job.id)
         logger.info("Study job started requested=%s", job.requested_count)
         failure_context=None
+        error_details=None
         try:
             job.result = await generate_study(self.workspace, job.owner_id, selection, provider, job.progress)
             job.status = "completed"
@@ -95,13 +96,14 @@ class GenerationJobs:
             logger.info('Study job limited reason=%s',error.reason)
         except (GenerationError, ValueError) as error:
             failure_context=exception_summary(error)
+            error_details=error_identity(error)
             job.status, job.error = "failed", str(error)
-            logger.warning("Study job failed requested=%s accepted=%s error_type=%s",
-                           job.requested_count, job.accepted_count, type(error).__name__)
+            logger.warning('Study generation failed',extra={'event':'study.failed',**error_details})
         except KeyError:
             job.status, job.error = "failed", "A selected file is no longer available. Reopen your library and try again."
         except Exception as error:
             failure_context=exception_summary(error)
+            error_details=error_identity(error)
             job.status, job.error = "failed", "Generation failed unexpectedly. Please try again."
             log_exception(logger, "Study job failed unexpectedly", error)
         finally:
@@ -109,7 +111,7 @@ class GenerationJobs:
                 try:
                     user=self.workspace.user_identity(job.owner_id)
                     await asyncio.to_thread(self.workspace.reports.record,user,ReportInput(origin='automatic',request_id=job.request_id,
-                        context={'server':{'job_id':job.id,'error':job.error,'exception':failure_context,'selection':selection.model_dump(mode='json')}}))
+                        context={'server':{'job_id':job.id,'error':job.error,'exception':failure_context,'error_details':error_details,'selection':selection.model_dump(mode='json')}}))
                 except Exception as error:
                     logger.warning('Failed generation report unavailable type=%s',type(error).__name__)
             job.finished_at = monotonic()

@@ -21,7 +21,8 @@ from .pdf_export import ExportError, export_pdf
 from .providers import OpenAIProvider
 from .generation_jobs import GenerationBusy, GenerationJobs
 from .diagnostics import (ClientDiagnostic, ClientReportLimit, configure_logging, correlation_id,
-                          job_context, log_exception,exception_summary, request_context, route_label, REQUEST_ID)
+                          job_context, log_exception,exception_summary, request_context, route_label, REQUEST_ID,
+                          http_context,frontend_context,error_identity)
 from .study import GENERATION_SECONDS, MAX_ITEMS, GenerateRequest, GenerationError, StudyProvider, StudySet, generate_study, validate_study
 from .web_assets import ApplicationAssets, build_id, html_page
 from .workspace import MAX_UPLOAD_BYTES, DeletionChanged, Workspace, RenameRequest, RenameConflict
@@ -79,6 +80,7 @@ def create_app(data_dir: Path = Path(".formula-lab"), provider: StudyProvider | 
         if not public_asset:
             user = await run_in_threadpool(auth.session_user, request.cookies.get(auth.config.session_cookie))
         request.state.user = user
+        if user and http_context.get() is not None:http_context.get()['user_id']=user.id
         if not public and user is None:
             if path.startswith("/api/") or request.method not in {"GET", "HEAD"}:
                 response = JSONResponse({"detail": "Sign in to continue."}, status_code=401)
@@ -113,38 +115,43 @@ def create_app(data_dir: Path = Path(".formula-lab"), provider: StudyProvider | 
         token = request_context.set(reference)
         started = perf_counter()
         route = route_label(request.url.path)
+        context_token=http_context.set({'method':request.method,'route':route,'ui':frontend_context(request.headers.get('x-mathpdf-ui-context'))})
         is_api = route.startswith("/api/")
         polling = request.method == "GET" and route == "/api/study/jobs/{id}"
         job_id = request.url.path.rsplit("/", 1)[-1] if route == "/api/study/jobs/{id}" else ""
         job_token = job_context.set(job_id if REQUEST_ID.fullmatch(job_id) else "-")
         quiet = polling or route == "/api/client-errors"
         if is_api and not quiet:
-            logger.info("HTTP started method=%s route=%s build=%s", request.method, route, build_id())
+            logger.info('Request started',extra={'event':'http.request_started','build':build_id()})
         try:
             try:
                 response = await call_next(request)
             except Exception as error:
                 request.state.exception=exception_summary(error)
+                request.state.error_details=error_identity(error,route=route)
                 log_exception(logger, f"HTTP exception method={request.method} route={route}", error)
                 response = JSONResponse({"detail": "An unexpected server error occurred. Use the reference to locate its logs.",
-                                         "request_id": reference}, status_code=500)
+                                         "request_id": reference,**{k:v for k,v in request.state.error_details.items() if k in {'error_code','summary'}}}, status_code=500)
                 response.headers["Cache-Control"] = "no-store"
             response.headers["X-MathPDF-Request-ID"] = reference
             response.headers["X-MathPDF-Build"] = build_id()
             level = logging.ERROR if response.status_code >= 500 else logging.WARNING if response.status_code >= 400 else logging.DEBUG if quiet else logging.INFO
             if is_api or response.status_code >= 400:
-                logger.log(level, "HTTP finished method=%s route=%s status=%s content_type=%s bytes=%s duration_ms=%s build=%s",
-                    request.method, route, response.status_code, response.headers.get("content-type", "-"),
-                    response.headers.get("content-length", "-"), round((perf_counter() - started) * 1000), build_id())
+                details=getattr(request.state,'error_details',None) or (error_identity(route=route,status=response.status_code) if response.status_code>=400 else {})
+                logger.log(level,'Request failed' if response.status_code>=400 else 'Request completed',extra={
+                    'event':'http.request_failed' if response.status_code>=400 else 'http.request_completed','status':response.status_code,
+                    'content_type':response.headers.get('content-type','-'),'response_bytes':response.headers.get('content-length'),
+                    'duration_ms':round((perf_counter()-started)*1000),'build':build_id(),**details})
             return response
         finally:
             request_context.reset(token)
             job_context.reset(job_token)
+            http_context.reset(context_token)
 
     @app.exception_handler(ExportError)
     @app.exception_handler(GenerationError)
     async def generation_failed(request, error):
-        logging.getLogger(__name__).warning("Study request failed path=%s error_type=%s", request.url.path, type(error).__name__)
+        request.state.error_details=error_identity(error,route=route_label(request.url.path),status=502)
         return JSONResponse({"detail": str(error)}, status_code=502)
 
     @app.exception_handler(GenerationBusy)
@@ -158,10 +165,12 @@ def create_app(data_dir: Path = Path(".formula-lab"), provider: StudyProvider | 
 
     @app.exception_handler(ValueError)
     async def invalid_request(request, error):
+        request.state.error_details=error_identity(error,route=route_label(request.url.path),status=400)
         return JSONResponse({"detail": str(error)}, status_code=400)
 
     @app.exception_handler(KeyError)
     async def missing_record(request, error):
+        request.state.error_details=error_identity(error,route=route_label(request.url.path),status=404)
         return JSONResponse({"detail": str(error.args[0]) if error.args else "Resource not found"}, status_code=404)
 
     @app.get("/login", include_in_schema=False)
@@ -214,7 +223,7 @@ def create_app(data_dir: Path = Path(".formula-lab"), provider: StudyProvider | 
         async for chunk in request.stream():
             body.extend(chunk)
             if len(body)>2*1024*1024:raise HTTPException(413,'The request context is too large.')
-        headers={key:value for key,value in request.headers.items() if key.lower() in {'cookie','origin','content-type','x-mathpdf-user','x-mathpdf-request-id','sec-fetch-site'}}
+        headers={key:value for key,value in request.headers.items() if key.lower() in {'cookie','origin','content-type','x-mathpdf-user','x-mathpdf-request-id','x-mathpdf-ui-context','sec-fetch-site'}}
         url=endpoint.rstrip('/')+request.url.path+('?' +request.url.query if request.url.query else '')
         try:
             async with httpx.AsyncClient(timeout=60,follow_redirects=False) as client:
@@ -234,7 +243,9 @@ def create_app(data_dir: Path = Path(".formula-lab"), provider: StudyProvider | 
         return {'status':'ok','build':build_id()}
 
     @app.exception_handler(QuotaExceeded)
-    async def quota_error(request,error):return JSONResponse(error.payload(),status_code=429)
+    async def quota_error(request,error):
+        request.state.error_details={'error_code':'generation_limit','summary':'The daily generation allowance cannot fit this request.'}
+        return JSONResponse(error.payload(),status_code=429)
     @app.exception_handler(RenameConflict)
     async def rename_conflict(request,error):return JSONResponse({'detail':str(error)},status_code=409)
 

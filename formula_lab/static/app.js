@@ -6,7 +6,7 @@ let openDocumentIds = [];
 let activeDocumentId, activeSetId, config, generationActive = false, generationPreparing = false, setEpoch = 0, saveIntent, notes;
 let generationController,lastGenerationSelection;
 let statusTimer, practiceObserver, viewportNotice, viewportSettled = false, layout, initializing = true;
-let preferencePrefix,reviewUI,limitDialog;
+let preferencePrefix,reviewUI,limitDialog,wireFlashcard;
 
 function el(tag, className, text) {
   const item = document.createElement(tag);
@@ -301,38 +301,29 @@ function flashcard(record, item) {
   const frontLabel = el('div', 'card-label'); frontLabel.append(el('span', '', 'Question'), el('span', '', `${record.itemIndex + 1} / ${record.data.items.length}`));
   const frontBody = el('div', 'card-body');
   const question = el('div', 'card-blocks'); MathPDF.renderBlocks(question, item.question, {editable: false}); frontBody.append(question);
-  front.append(frontLabel, frontBody, el('p', 'card-hint', 'Click the card or press Space to flip'));
+  front.append(frontLabel, frontBody, el('p', 'card-hint', 'Tap the card or press Space to reveal'));
   const backLabel = el('div', 'card-label'); backLabel.append(el('span', '', 'Answer'), el('span', '', `${record.itemIndex + 1} / ${record.data.items.length}`));
   const backBody = el('div', 'card-body'); backBody.append(el('h2', '', item.title));
   const answer = el('div', 'card-blocks'); renderAnswer(answer, item, record.data); backBody.append(answer);
   back.append(backLabel, backBody, el('p', 'card-hint', 'Click to return to the question'));
   inner.append(front, back); card.append(inner);
   const assessment=reviewUI?.controls(record);
+  let counter;
   function updateFace() {
     assessment?.update(!!record.flipped);
+    if(counter)counter.hidden=!!record.flipped;
     card.classList.toggle('flipped', !!record.flipped);
     front.inert = !!record.flipped; back.inert = !record.flipped;
     front.setAttribute('aria-hidden', String(!!record.flipped)); back.setAttribute('aria-hidden', String(!record.flipped));
   }
   function flip() {record.flipped = !record.flipped; updateFace();}
-  card.addEventListener('click', event => {
-    if (event.target.closest('a, button, input, textarea, select, summary')) return;
-    if (window.getSelection()?.toString()) return;
-    flip();
-  });
-  card.addEventListener('keydown', event => {
-    if (event.target !== card) return;
-    if (event.code === 'Space' || event.key === 'Enter') {event.preventDefault(); flip();}
-    if (event.key === 'ArrowLeft') {event.preventDefault(); selectItem(record.itemIndex - 1);}
-    if (event.key === 'ArrowRight') {event.preventDefault(); selectItem(record.itemIndex + 1);}
-  });
-  updateFace();
-  const navigation = el('div', 'deck-controls');
+  wireFlashcard(card,{flip,previous:()=>selectItem(record.itemIndex-1),next:()=>selectItem(record.itemIndex+1)});
+  const navigation = el('div', 'deck-footer');navigation.setAttribute('aria-label','Card navigation and self-assessment');
   const previous = button('‹', 'secondary icon-button', () => selectItem(record.itemIndex - 1), 'Previous card');
   const next = button('›', 'secondary icon-button', () => selectItem(record.itemIndex + 1), 'Next card');
   previous.disabled = record.itemIndex === 0; next.disabled = record.itemIndex === record.data.items.length - 1;
-  navigation.append(previous, el('span', 'deck-counter', `${record.itemIndex + 1} / ${record.data.items.length}`), button('Flip card', 'secondary small', flip), next);
-  deck.append(card, navigation);if(assessment)deck.append(assessment.root);return deck;
+  const center=el('div','deck-footer-center');counter=el('span','deck-counter',`${record.itemIndex+1} / ${record.data.items.length}`);center.append(counter);if(assessment)center.append(assessment.root);
+  navigation.append(previous,center,next);deck.append(card,navigation);updateFace();return deck;
 }
 function renderPractice() {
   practiceObserver?.disconnect();
@@ -709,6 +700,7 @@ document.querySelectorAll('.close-dialog').forEach(control => control.addEventLi
 }));
 action(async () => {
   const user = await MathPDFSession.ready;
+  ({wireFlashcard}=await import('/static/card-interaction.js'));
   preferencePrefix = `mathpdf-${user.id}-`;
   const {createReviewUI}=await import('/static/review-ui.js');
   reviewUI=createReviewUI({api,userId:user.id,onChange:record=>{if(record.id===activeSetId)renderPractice();},select:(record,index)=>{record.itemIndex=index;record.flipped=false;if(record.id===activeSetId)renderPractice();},onError:text=>message(text,true)});
@@ -770,6 +762,7 @@ MathPDFSession.setContextProvider?.(async()=>({workspace:{active_document:docume
   study_set:sets.get(activeSetId)?.data||null,item_index:sets.get(activeSetId)?.itemIndex??null,
   generation_selection:lastGenerationSelection||null,generation_running:generationActive,
   unsaved_notes:await notes?.diagnosticContext?.()||[]}}));
+MathPDFSession.setUIContextProvider?.(()=>({document_id:activeDocumentId,study_set_id:activeSetId,file_name:documents.get(activeDocumentId)?.filename,page:activeDocumentId?readState(activeDocumentId).page:undefined,item_index:sets.get(activeSetId)?.itemIndex}));
 
 let nameDialog;
 async function renameActive(kind){

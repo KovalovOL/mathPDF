@@ -10,6 +10,7 @@ from starlette.datastructures import Headers
 from .report_safety import bounded,MAX_CONTEXT_BYTES
 from .reports import ReportInput
 from .web_assets import build_id
+from .diagnostics import frontend_context
 
 
 class RequestReports:
@@ -49,6 +50,8 @@ class RequestReports:
                 event=bounded({'request_id':reference,'method':scope['method'],'path':path,
                     'request':decode(request_body),'response':parsed_response,'status':status,
                     'exception':scope.get('state',{}).get('exception'),
+                    'error_details':scope.get('state',{}).get('error_details'),
+                    'ui':frontend_context(headers.get('x-mathpdf-ui-context')),
                     'duration_ms':round((perf_counter()-start)*1000),'server_build':build_id(),
                     'user_agent':headers.get('user-agent','')[:500],
                     'request_content_type':headers.get('content-type',''),'response_content_type':response_headers.get('content-type','')})

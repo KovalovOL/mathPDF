@@ -14,7 +14,7 @@ from fastapi.responses import JSONResponse,RedirectResponse,Response
 from pydantic import BaseModel,ConfigDict,Field,ValidationError
 
 from .auth import Authentication,AuthConfig
-from .diagnostics import configure_logging,correlation_id,log_exception
+from .diagnostics import configure_logging,correlation_id,log_exception,request_context,http_context,frontend_context,route_label,error_identity
 from .library import Library
 from .reports import Reports,ReportInput,ReportUpdate
 from .roles import RoleChange
@@ -52,6 +52,7 @@ def create_service(kind,directory=None):
     usage=Usage(workspace);workspace.usage=usage;reports=Reports(workspace)
     @asynccontextmanager
     async def lifespan(app):
+        configure_logging()
         task=asyncio.create_task(reports.worker()) if kind=='reports' else None
         try:yield
         finally:
@@ -61,10 +62,13 @@ def create_service(kind,directory=None):
     @app.middleware('http')
     async def security(request,call_next):
         reference=correlation_id(request.headers.get('x-mathpdf-request-id'))
+        request_token=request_context.set(reference)
+        context_token=http_context.set({'service':kind,'method':request.method,'route':route_label(request.url.path),'ui':frontend_context(request.headers.get('x-mathpdf-ui-context'))})
         try:
             if request.url.path=='/health':response=await call_next(request)
             else:
                 user=await asyncio.to_thread(auth.session_user,request.cookies.get(auth.config.session_cookie));request.state.user=user
+                if user:http_context.get()['user_id']=user.id
                 if not user:
                     response=RedirectResponse('/login?next=%2Fadmin',status_code=303) if request.url.path=='/admin' else JSONResponse({'detail':'Sign in to continue.'},status_code=401)
                 elif request.headers.get('x-mathpdf-user',user.id)!=user.id:response=JSONResponse({'detail':'The active account has changed.'},status_code=409)
@@ -76,10 +80,10 @@ def create_service(kind,directory=None):
         except Exception as error:
             import logging
             log_exception(logging.getLogger(__name__),'Platform service request failed',error)
-            response=JSONResponse({'detail':'The service is temporarily unavailable.','request_id':reference},status_code=500)
+            response=JSONResponse({'detail':'The service is temporarily unavailable.','request_id':reference,**{k:v for k,v in error_identity(error).items() if k in {'error_code','summary'}}},status_code=500)
         response.headers.update({'X-MathPDF-Request-ID':reference,'X-MathPDF-Build':build_id(),
             'Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer','X-Frame-Options':'SAMEORIGIN','Vary':'Cookie'})
-        return response
+        request_context.reset(request_token);http_context.reset(context_token);return response
     @app.exception_handler(ValueError)
     async def invalid(request,error):return JSONResponse({'detail':str(error)},status_code=400)
     @app.exception_handler(KeyError)
