@@ -1,5 +1,9 @@
 # Tasks
 
+## 9. Problems beta and assessment colors
+
+- [x] 9.1 Label Problems as Beta in generation and open practice, and use dark assessment outlines with translucent fills; verify browser rendering and OpenSpec validation.
+
 ## 1. Documents and generation context
 
 - [x] 1.1 Add managed PDF/text/image uploads and SQLite document metadata; document supported formats and inspect document identity, upload bounds, and persistent file paths.

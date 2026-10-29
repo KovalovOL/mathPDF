@@ -1,5 +1,9 @@
 # Design
 
+## Problems beta and assessment colors
+
+Label the Problems selector and active problem-set status as Beta, including restored sets, without changing persisted mode values. Keep Correct/Incorrect labels and use dark green/red text and borders over translucent matching fills.
+
 ## Context
 
 The existing FastAPI application serves one configured PDF, single-page PDF.js preview, and transient structured LLM responses. It has reusable KaTeX rendering and external prompts, but no document library or study-set database. See proposal.md for the requested UX.

@@ -6,6 +6,17 @@ Provides a document and practice workspace for exploring source material before 
 
 ## ADDED Requirements
 
+### Requirement: Identify beta problems and readable assessment actions
+The workspace SHALL label Problems as Beta before generation and while studying generated or restored problem sets. Correct and Incorrect actions SHALL have dark green and red outlines and text respectively, with translucent matching fills and visible keyboard focus.
+
+#### Scenario: Choose or reopen problems
+- **WHEN** a learner selects Problems or opens an existing problem set
+- **THEN** the interface displays its Beta status without modifying the stored mode
+
+#### Scenario: Assess a flashcard
+- **WHEN** a learner reveals an answer
+- **THEN** Correct and Incorrect retain their labels and behavior with dark outlines and translucent fills
+
 ### Requirement: Confirm library deletion
 The library SHALL offer owner-scoped deletion of files and saved sets with explicit confirmation before every deletion. File confirmation SHALL prominently identify primary-source sets that will also be deleted. A stale impact confirmation SHALL require renewed review.
 

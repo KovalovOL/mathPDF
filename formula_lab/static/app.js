@@ -335,7 +335,7 @@ function renderPractice() {
   $('save-set').textContent = record?.saved ? 'Saved' : 'Save';
   $('export-set').disabled = !result?.items.length;
   const itemWord = result?.mode === 'flashcards' ? 'card' : 'problem';
-  $('set-status').textContent = result ? `${record.saved ? 'Saved' : 'Unsaved'} · ${result.items.length} ${itemWord}${result.items.length === 1 ? '' : 's'} · Level ${result.difficulty ?? 3}` : 'Study material';
+  $('set-status').textContent = result ? `${record.saved ? 'Saved' : 'Unsaved'} · ${result.items.length} ${itemWord}${result.items.length === 1 ? '' : 's'} · Level ${result.difficulty ?? 3}${result.mode === 'problems' ? ' · Beta' : ''}` : 'Study material';
   $('set-status').title = result ? 'Source transcription has not been verified against the PDF.' : '';
   $('study-notes').hidden = !result?.notes.length;
   const notes = el('details'); notes.append(el('summary', '', 'Generation notes'));
@@ -461,7 +461,7 @@ function updateGenerationSummary() {
   try {
     const selection = selectionRequest(); const doc = documents.get(selection.document_id);
     const count = selection.pages?.length || doc.page_count;
-    $('generation-summary').textContent = `${selection.count} ${selection.mode === 'flashcards' ? 'flashcards' : 'problems'} · Level ${selection.difficulty} · ${count} source ${count === 1 ? 'page' : 'pages'} · ${selection.context.length} context ${selection.context.length === 1 ? 'file' : 'files'}`;
+    $('generation-summary').textContent = `${selection.count} ${selection.mode === 'flashcards' ? 'flashcards' : 'problems (Beta)'} · Level ${selection.difficulty} · ${count} source ${count === 1 ? 'page' : 'pages'} · ${selection.context.length} context ${selection.context.length === 1 ? 'file' : 'files'}`;
     $('generation-summary').className = 'selection-summary';
   } catch (error) {$('generation-summary').textContent = error.message; $('generation-summary').className = 'selection-summary error';}
 }
