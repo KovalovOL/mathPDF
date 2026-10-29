@@ -82,4 +82,6 @@ Only a direct edit of an actual source expression uses a non-null variant: {"ori
 
 ## 8. Final silent check
 
+For flashcards, verify one learning target per card, coverage across the selected concepts, and no pair answered by the same fact under different wording. Read each front without its back, especially proof-specific objects and conditions. Check all source excerpts against the page image and justify added inferences from supported premises. Do not treat a sufficient condition as necessary, a sufficient count as minimal, or an exercise option as a theorem. Do not remove essential reasoning merely to shorten an answer. This review stays inside the single response and is not output.
+
 Before returning the single response, compare each transcribed expression to its page image: all bars/accents, letters, operators, table values and rows must match. Check count, original analogous problems rather than numerical-only copies, complete answers to the actual generated tasks, selected original pages, plain-English titles, explicit math objects, escaped backslashes, balanced grouping and explicit row breaks. Return each item exactly once. Do not print this checklist or a plan. Do not add duplicate expressions or empty blocks to increase output length. If source material is insufficient, use insufficient_source rather than manufacture content.

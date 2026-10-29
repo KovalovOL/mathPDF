@@ -12,6 +12,10 @@ See proposal.md for motivation. `load_prompts` places study-system, formula-guid
 
 ## Decisions
 
+### Follow up measured flashcard regressions
+
+The v2 evaluation with gpt-4o-mini found Sets Level 2 atomicity at 45% versus 100% in v1; Numbers duplicates at 16.7% versus 10%; Proofs source fidelity at 64.3% versus 76.8%; and reduced coverage in Numbers and Pigeonhole Principle. Compound questions and proof-local references are directly observable in the evaluated fronts. Add one-target rules, expected-answer deduplication, a silent concept inventory and a front-only context check to flashcard prompts, coordinating shared system, difficulty and guide instructions. Keep quotations exact and demand reasons for inferences without eliminating useful explanations to improve a judge score. Text extraction can lose mathematical content, so source-fidelity scores alone are not proof of hallucination. Coverage comparisons also depend on the changed Sets page range. No schema or validator changes are required for this follow-up. The updated generation must be retested on the same source selections before reporting quality gains.
+
 ### Separate transcription from task creation
 
 Update all six relevant prompt files together. Select skill and method first for problems; select a literal reference only when it supports that method. Allow page-only references. Replace the coefficient-substitution example with a source-supported transfer example and contrasting rejected copies. Restrict literal-transcription rules to quotes, reference formulas and true variant originals. Generated givens and derivations may be new, but must use the selected source's methods, conventions and prerequisites. This resolves the instruction hierarchy rather than relying on a stronger mode-level prohibition.

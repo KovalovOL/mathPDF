@@ -11,6 +11,7 @@ Practice generation currently permits copied source exercises with changed const
 - Require substantive novelty; renamed objects, paraphrases and numerical substitutions alone do not qualify.
 - Add explicit origin metadata and bounded local checks without additional provider calls. Document the limits of semantic novelty detection.
 - Preserve historical study sets, citations, intentional variants, browser drafts and exports.
+- Follow-up after evaluating 180 v2 flashcards: strengthen one-target questions, semantic deduplication, source-grounded reasoning and concept coverage. This adds a flashcard prompt correction without changing schemas or promising measured improvements before retesting.
 
 ## Capabilities
 

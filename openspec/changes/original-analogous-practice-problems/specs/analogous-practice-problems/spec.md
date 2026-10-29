@@ -6,6 +6,23 @@ Generate original analogous practice that transfers methods from selected lectur
 
 ## ADDED Requirements
 
+### Requirement: Focused source-grounded flashcard instructions
+Flashcard prompts SHALL require one assessable target, self-contained fronts, coverage of distinct selected concepts and removal of semantic duplicates. They SHALL require faithful excerpts and justified explanations without weakening the selected difficulty or existing problem originality rules. These are prompt requirements, not a semantic validation guarantee.
+
+#### Scenario: One card asks for several independent operations
+- **WHEN** a candidate asks for union, intersection and both differences
+- **THEN** instructions require a single focused target instead
+- **AND** essential conditions or dependent proof steps may remain with that target
+
+#### Scenario: Related wording repeats one fact
+- **WHEN** two questions can be answered by the same fact despite different titles or skill labels
+- **THEN** instructions require replacing one with an uncovered supported concept
+
+#### Scenario: Unsupported strengthening of a bound
+- **WHEN** a source gives a sufficient count without establishing minimality
+- **THEN** instructions forbid asserting that count is minimal
+- **AND** a required justification is retained rather than shortened away
+
 ### Requirement: Method-grounded original practice
 Problem-generation instructions SHALL select a source-supported method and target skill before constructing a new statement. They SHALL exclude copies, paraphrases, renamed objects and numerical substitutions as sufficient novelty, while preserving essential conditions and source-supported prerequisites.
 

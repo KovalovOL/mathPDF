@@ -2,6 +2,8 @@
 
 Current user-selected scope: update the prompts using the initial v1/v2 evaluation and the reported numerical-substitution failure. Work on task 2.1 only in this pass. Provider schemas, origin metadata, semantic novelty validation and live comparative evaluation remain pending; prompt edits do not establish those behaviors.
 
+Follow-up scope: the completed evaluation of 180 v2 cards now authorizes task 2.4, targeting measured flashcard regressions. Existing problem changes remain in place. v2 PDFs predate these prompt edits and are not an evaluation of the updated prompts.
+
 ## 1. Compatible provenance representation
 
 - [ ] 1.1 Add optional source/generated/derived origin and problem novelty metadata to canonical readers; verify unchanged historical fixtures and review fingerprints in study compatibility tests, and document defaults in docs/study-contract.md.
@@ -13,6 +15,7 @@ Current user-selected scope: update the prompts using the initial v1/v2 evaluati
 - [x] 2.1 Align study-system, problems, formula-guide, math-patterns, comment and difficulty prompts; replace numerical-only examples and verify the assembled problem instructions distinguish transcription from generated givens while flashcard behavior remains unchanged.
 - [ ] 2.2 Reject explicit copy/numerical-only/rename-only novelty declarations only on new problem generation, preserving count, ownership and exact-duplicate checks; verify clear failure without partial output or a second provider call in test_single_request.py and document the semantic limits.
 - [ ] 2.3 Verify complete solutions, method-selection questions without hints, insufficient source and source-supported difficulty through provider fixtures tied to the specification scenarios.
+- [x] 2.4 Align flashcard, shared system, difficulty and final-review instructions with the observed v2 regressions in atomicity, duplicates, source fidelity, self-contained proof questions and coverage; document the limits of text-based judging and verify existing provider/compatibility tests and strict OpenSpec validation.
 
 ## 3. Source-linked quality evaluation
 
@@ -27,5 +30,6 @@ Current user-selected scope: update the prompts using the initial v1/v2 evaluati
 
 ## Workflow follow-up
 
+- Follow-up verification: 75 provider and compatibility tests passed, strict OpenSpec validation passed. The 180-card evaluation concerns earlier v2 PDFs, not the new prompts; generation-quality improvement remains unmeasured until retesting.
 - Review implementation and evaluation evidence before explicitly archiving this change.
 - Prompt update verification: 75 tests passed in test_single_request.py and test_study_compatibility.py, using the installed Chrome via MATHPDF_CHROMIUM_EXECUTABLE. Template substitution and strict OpenSpec validation also passed. Context citation instructions and docs/study-contract.md were aligned. No paid generation or claim of improved semantic novelty was made; all other tasks remain pending.
