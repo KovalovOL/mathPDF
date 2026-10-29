@@ -6,6 +6,7 @@ Practice generation currently permits copied source exercises with changed const
 
 ## What Changes
 
+- v3 follow-up: remove the answer-paragraph decoding whitelist that excludes mathematical operators, preserve existing front constraints and add a regression test for symbol preservation. Strengthen source-image transcription and solve-before-finalizing checks after visually confirmed corruptions and false proof statements.
 - Design problems from a target skill and source-supported method before selecting a new statement.
 - Distinguish literal source references, generated problem inputs and derived solution steps throughout prompts and provider output.
 - Require substantive novelty; renamed objects, paraphrases and numerical substitutions alone do not qualify.

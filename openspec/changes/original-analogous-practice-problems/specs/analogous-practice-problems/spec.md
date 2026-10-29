@@ -6,6 +6,19 @@ Generate original analogous practice that transfers methods from selected lectur
 
 ## ADDED Requirements
 
+### Requirement: Lossless answer paragraph decoding
+Paragraph strings and problem text SHALL permit source mathematical symbols and operators during provider decoding. Structured math parts SHALL remain preferred. Plain-English flashcard front constraints, saved formats and one-request generation SHALL remain unchanged. The application SHALL NOT infer missing mathematics from corrupted historical text.
+
+#### Scenario: Induction and membership inside a source sentence
+- **WHEN** a new answer paragraph contains a plus sign, inequality, index or membership symbol
+- **THEN** its decoding schema does not require those characters to be removed or replaced
+- **AND** structured mathematical fragments still render through the existing renderer
+
+#### Scenario: Existing corrupted PDF
+- **WHEN** an older exported sentence has already lost its mathematical operators
+- **THEN** the application does not guess replacements from isolated digits or text
+- **AND** regeneration from the primary source remains necessary
+
 ### Requirement: Focused source-grounded flashcard instructions
 Flashcard prompts SHALL require one assessable target, self-contained fronts, coverage of distinct selected concepts and removal of semantic duplicates. They SHALL require faithful excerpts and justified explanations without weakening the selected difficulty or existing problem originality rules. These are prompt requirements, not a semantic validation guarantee.
 

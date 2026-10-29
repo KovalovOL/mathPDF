@@ -284,15 +284,15 @@ def test_source_operators_bar_scope_and_equality_order_are_not_normalized(tex):
 
 
 def test_prose_generation_constraint_does_not_discard_legacy_formatting(source):
-    import re
     from formula_lab.providers import CompactItem
     branches = CompactItem.model_json_schema()['properties']['answer']['items']['anyOf']
-    pattern = next(branch['pattern'] for branch in branches if branch.get('type') == 'string')
-    assert re.fullmatch(pattern, 'An ordinary explanation.')
-    assert not re.fullmatch(pattern, r'Bare \binom{n}{m} and x^n = y')
+    text = next(branch for branch in branches if branch.get('type') == 'string')
+    assert 'pattern' not in text
+    questions = CompactItem.model_json_schema()['properties']['question']['items']['anyOf']
+    assert 'pattern' not in next(b for b in questions if b.get('type') == 'string')
     payload = compact_payload()
     payload['result']['items'][0]['answer'] = [r'Bare \binom{n}{m} and x^n = y']
-    # Formatting is a decoding guide, never a second local rejection/retry gate.
+    # Problem text and legacy answers must not lose operators during decoding.
     assert set_response_format(1).model_validate(payload).result.items
 
 
@@ -303,6 +303,26 @@ def test_generation_schema_requires_complete_flashcard_question_and_structured_a
     assert item['question']['items']['type'] == 'string'
     assert all(branch.get('type') != 'string' for branch in item['answer']['items']['anyOf'])
     assert 'Paragraph' in schema['$defs']
+
+
+def test_answer_paragraph_decoder_preserves_math_symbols_and_operators(source):
+    """The decoder must not force plus, inequalities or membership out of quotes."""
+    from openai import pydantic_function_tool
+    schema = pydantic_function_tool(set_response_format(1, 'flashcards'))['function']['parameters']
+    parts = schema['$defs']['Paragraph']['properties']['parts']['items']['anyOf']
+    text_branch = next(p for p in parts if p.get('type') == 'string')
+    assert 'pattern' not in text_branch
+    question = schema['$defs']['FlashcardOutput']['properties']['question']['items']
+    assert question.get('pattern')  # Front-only English constraint is unchanged.
+    original = 'For n ≥ n₀, P(n) implies P(n + 1). We write x ∈ A and x ∉ B.'
+    item = {'title': 'Induction', 'formula': {'page': 4}, 'skill': 'meaning',
+            'question': ['What does an induction step establish?'], 'answer': [],
+            'from_notes': [{'parts': [original]}], 'explanation': []}
+    payload = {'result': {'status': 'completed', 'items': [item]}}
+    expanded = set_response_format(1, 'flashcards').model_validate(payload).result.items[0].expand(
+        source.document.id, 1, 'flashcards')
+    assert expanded.from_notes[0].text == original
+    assert original in [b.text for b in expanded.answer if b.kind == 'text']
 
 
 def test_exact_formula_repetitions_are_removed_without_merging_sources_or_variants(source):

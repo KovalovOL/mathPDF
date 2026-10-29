@@ -21,10 +21,13 @@ class InsufficientSource(StrictModel):
     reason: str = Field(min_length=1, max_length=1000)
 
 
-# The constrained provider decoder keeps mathematical syntax out of prose.
-# Parsing stays permissive so an older/nonconforming response is still usable.
+# Plain-English flashcard fronts stay constrained. Problem text and paragraphs must not
+# constrain away source symbols when a model puts mathematics in a prose part.
+# Structured math parts remain preferred by the prompts, with legacy recovery.
 Prose = Annotated[str, Field(min_length=1, max_length=8000,
     json_schema_extra={"pattern": r"^[A-Za-z\u00C0-\u024F0-9 \t\r\n.,;:!?'\"()/%’‘“”–—…-]*$"})]
+
+ParagraphText = Annotated[str, Field(min_length=1, max_length=8000)]
 
 
 def normalize_model_tex(latex: str) -> str:
@@ -88,7 +91,7 @@ class InlineMath(StrictModel):
 
 
 class Paragraph(StrictModel):
-    parts: list[Prose | InlineMath] = Field(min_length=1, max_length=40)
+    parts: list[ParagraphText | InlineMath] = Field(min_length=1, max_length=40)
 
 
 class SourcePage(StrictModel):
@@ -99,8 +102,8 @@ class CompactItem(StrictModel):
     title: str = Field(min_length=1, max_length=180)
     formula: Formula | SourcePage
     skill: Skill | None = None
-    question: list[Prose | Formula | Paragraph] = Field(min_length=1, max_length=40)
-    answer: list[Prose | Formula | Paragraph] = Field(min_length=1, max_length=40)
+    question: list[ParagraphText | Formula | Paragraph] = Field(min_length=1, max_length=40)
+    answer: list[ParagraphText | Formula | Paragraph] = Field(min_length=1, max_length=40)
 
     def expand(self, document_id: str, index: int, mode: str = "flashcards") -> StudyItem:
         from_notes = getattr(self, "from_notes", None)
