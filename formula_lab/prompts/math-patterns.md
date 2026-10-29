@@ -61,7 +61,9 @@ An exercise blank, answer-option list, diagram or prose definition is not a lice
 
 A complete prose-only example (use the actual source page, not this illustrative number):
 
-{"title":"Vector equality","formula":{"page":6},"question":["What conditions make two vectors equal?"],"answer":[{"parts":["Two vectors are equal when their direction and magnitude are the same."]}]}
+{"title":"Vector equality","formula":{"page":6},"skill":"conditions","question":["What conditions make two vectors equal?"],"answer":[],"from_notes":[{"parts":["Two vectors are equal when their direction and magnitude are the same."]}],"explanation":[]}
+
+Use that from_notes wording only if it is stated verbatim or near-verbatim on the actual source page. Put any short AI-added interpretation or worked reasoning in explanation instead; never present it as source text.
 
 ## Source exercises are questions, not asserted facts
 

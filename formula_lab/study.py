@@ -80,6 +80,8 @@ class StudyItem(StrictModel):
     title: str = Field(min_length=1, max_length=180)
     skill: Skill | None = None
     question: list[Block] = Field(min_length=1, max_length=40)
+    from_notes: list[Block] | None = Field(default=None, max_length=40)
+    explanation: list[Block] | None = Field(default=None, max_length=40)
     answer: list[Block] = Field(min_length=1, max_length=40)
     source: Citation | None = None
 

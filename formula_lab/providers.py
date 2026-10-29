@@ -103,8 +103,16 @@ class CompactItem(StrictModel):
     answer: list[Prose | Formula | Paragraph] = Field(min_length=1, max_length=40)
 
     def expand(self, document_id: str, index: int, mode: str = "flashcards") -> StudyItem:
+        from_notes = getattr(self, "from_notes", None)
+        explanation = getattr(self, "explanation", None)
+        answer_entries = []
+        if from_notes is not None:
+            answer_entries.extend([Paragraph(parts=["From notes"]), *from_notes])
+        if explanation:
+            answer_entries.extend([Paragraph(parts=["Explanation"]), *explanation])
+        answer_entries.extend(self.answer)
         known = ([self.formula] if isinstance(self.formula, Formula) else []) + [
-            entry for entry in self.question + self.answer if isinstance(entry, Formula)]
+            entry for entry in self.question + answer_entries if isinstance(entry, Formula)]
 
         def blocks(entries):
             output = []
@@ -133,7 +141,7 @@ class CompactItem(StrictModel):
                     "change": entry.variant.change if entry.variant else None,
                 })
             return output
-        question, answer = blocks(self.question), blocks(self.answer)
+        question, answer = blocks(self.question), blocks(answer_entries)
         main = blocks([self.formula])[0] if isinstance(self.formula, Formula) else None
         if mode == "flashcards":
             # Recall cards must not disclose the answer formula before flipping,
@@ -147,7 +155,7 @@ class CompactItem(StrictModel):
                    and block["source"]["page"] == main["source"]["page"]
                    and block["original_latex"] == main["original_latex"]
                    and block["change"] == main["change"] for block in existing):
-            answer.insert(0, main)
+            answer.insert(1 if from_notes is not None else 0, main)
         # Ignore only outer whitespace when comparing exact duplicates.
         # Do not equate alternative symbols, layout, punctuation or citations.
         for side in (question, answer):
@@ -163,12 +171,17 @@ class CompactItem(StrictModel):
             side[:] = unique
         source = None if main else {"document_id": document_id, "page": self.formula.page,
                                     "line_start": None, "line_end": None, "quote": None}
-        return StudyItem(goal_step=index, title=self.title, skill=self.skill, question=question, answer=answer, source=source)
+        return StudyItem(goal_step=index, title=self.title, skill=self.skill, question=question,
+                         from_notes=blocks(from_notes) if from_notes is not None else None,
+                         explanation=blocks(explanation) if explanation is not None else None,
+                         answer=answer, source=source)
 
 
 class FlashcardOutput(CompactItem):
     question: list[Prose] = Field(min_length=1, max_length=1)
-    answer: list[Formula | Paragraph] = Field(min_length=1, max_length=40)
+    answer: list[Formula | Paragraph] = Field(default_factory=list, max_length=40)
+    from_notes: list[Formula | Paragraph] | None = Field(default=None, max_length=20)
+    explanation: list[Formula | Paragraph] | None = Field(default=None, max_length=16)
 
 
 class ProblemOutput(CompactItem):
