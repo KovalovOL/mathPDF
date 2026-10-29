@@ -13,7 +13,7 @@ from openai import APIError, AsyncOpenAI, pydantic_function_tool
 from pydantic import Field, ValidationError, model_validator
 
 from .study import (MAX_ITEMS, GeneratedContent, GenerationError, InputDocument,
-                    ProviderResult, StrictModel, StudyItem)
+                    ProviderResult, Skill, StrictModel, StudyItem)
 
 
 class InsufficientSource(StrictModel):
@@ -98,6 +98,7 @@ class SourcePage(StrictModel):
 class CompactItem(StrictModel):
     title: str = Field(min_length=1, max_length=180)
     formula: Formula | SourcePage
+    skill: Skill | None = None
     question: list[Prose | Formula | Paragraph] = Field(min_length=1, max_length=40)
     answer: list[Prose | Formula | Paragraph] = Field(min_length=1, max_length=40)
 
@@ -162,7 +163,7 @@ class CompactItem(StrictModel):
             side[:] = unique
         source = None if main else {"document_id": document_id, "page": self.formula.page,
                                     "line_start": None, "line_end": None, "quote": None}
-        return StudyItem(goal_step=index, title=self.title, question=question, answer=answer, source=source)
+        return StudyItem(goal_step=index, title=self.title, skill=self.skill, question=question, answer=answer, source=source)
 
 
 class FlashcardOutput(CompactItem):

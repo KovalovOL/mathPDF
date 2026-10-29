@@ -71,11 +71,14 @@ class MathBlock(StrictModel):
 
 
 Block = TextBlock | MathBlock
+Skill = Literal["recall", "meaning", "conditions", "application", "error_diagnosis",
+                "why_justification", "counterexample", "comparison"]
 
 
 class StudyItem(StrictModel):
     goal_step: int | None = Field(default=None, ge=1, le=MAX_ITEMS)
     title: str = Field(min_length=1, max_length=180)
+    skill: Skill | None = None
     question: list[Block] = Field(min_length=1, max_length=40)
     answer: list[Block] = Field(min_length=1, max_length=40)
     source: Citation | None = None
