@@ -1,6 +1,6 @@
 # Reusable LaTeX structures
 
-These are STRUCTURE examples, not a formula catalog or substitute for the source. Reuse the container appropriate to any topic, then transcribe its contents from the selected page image. Never replace the source's symbols with those in an example. The examples below show JSON, so every LaTeX backslash is doubled.
+These are STRUCTURE examples, not a formula catalog or substitute for the source. Reuse the container appropriate to any topic. For source references and quotations, transcribe contents from the selected page image and never replace the source's symbols with those in an example. For original problem inputs and derived solution steps, fill the container with the new task's valid mathematics using source-supported methods and notation; these expressions need not be printed in the source. Cite the supporting method page, use variant null unless directly editing a source expression, and do not present generated mathematics as a quotation. The examples below show JSON, so every LaTeX backslash is doubled.
 
 ## Inline mathematics inside ordinary sentences
 
