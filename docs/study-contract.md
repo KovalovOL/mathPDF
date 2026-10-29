@@ -43,6 +43,14 @@ Evolve formats through compatible defaults or explicit non-destructive upgrades.
 
 The optional `skill`, `from_notes` and `explanation` fields default to `None` when absent and are omitted on serialization when `None`. This preserves the prior normalized item shape and review fingerprint, so opening an old deck resumes its existing round. Empty new section arrays remain explicit. Legacy `answer` blocks, formulas, variants and citations are unchanged; no stored payload migration is performed.
 
+### Verified prompt-quality rollout
+
+Release `a0edeed` deployed on 29 October 2026 in [Actions run 40931901550](https://github.com/KovalovOL/mathPDF/actions/runs/40931901550), build `210976ae8853`. The suite passed 171 tests, with all 6 separate real PostgreSQL/Garage checks also passing. Coverage includes the actual provider response decoder, strict skill-field ordering, optional legacy defaults, labeled back projection, varied problem metadata, old/new set save/restart/export, and resuming a pre-existing review round. Historical JSON fixtures remain unchanged; `split-flashcards.json` covers the additive fields.
+
+Final live smoke checks used only a synthetic PDF and the configured `gpt-4.1-mini`: 5 level-5 flashcards in 4.9 seconds and 3 level-3 problems in 7.17 seconds, one provider request per mode. The samples met their skill quotas; prose-based cards used page-only references, source excerpts and AI explanations stayed separate, and all three problem instances retained changed givens and original/change metadata. These bounded samples do not establish correctness for every source. The production generation path has no additional classifier, validation pass or model retry.
+
+Post-deploy checks confirmed HTTP 200, all five persistent services healthy, unchanged hashes for every prior row in the nine snapshotted content/settings/review tables, and all 7 document binaries verified. All 37 saved sets remained readable with exactly the same normalized review fingerprints. Existing usage identifiers, known token observations, roles and limits were retained. A deployed-container probe confirmed the new decoder and strict schema alongside unchanged legacy serialization.
+
 ## Prompt boundary
 
 All natural-language LLM instructions are loaded from `formula_lab/prompts/`: system instructions, mode-specific templates, the formula-writing guide, reusable math patterns, context-role instructions, per-attachment labels and comments. Runtime values supply selected-page mapping, file metadata, requested count and user comment. Prompt content hashes accompany each result. Provider adapters add no hidden instruction text. Reusable structures apply across topics without changing source operators, accents, fonts or row/equality order; prompts explicitly distinguish worksheet candidates from true assertions. Source fidelity and mathematical correctness remain unproven by schema compliance or successful typesetting.
