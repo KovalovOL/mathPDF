@@ -4,4 +4,10 @@ Make the problem statement a variation by default: use different numbers or a di
 
 Include a clear question and a complete, readable worked solution: state the method, explain each necessary transformation or inference, then state the final result and its meaning or conditions. Solve the varied instance actually stated in the question. Do not jump directly from the question to an unexplained formula. There is no flashcard-sized word or paragraph limit for problem solutions, including simple practice problems; use as much explanation as understanding requires, without filler or repeated equations. Use standalone formula objects or paragraph parts containing explicit inline math objects, as defined by the guide. Put solution transformations in separate answer blocks.
 
+For a changed numerical or configuration instance, do not hide its givens only in paragraph math parts: include a standalone question formula with non-null variant so its original expression and edit are retained. If the source provides worked examples, condition checks and error diagnoses should also use a changed instance where possible. A purely definitional question with no meaningful instance to change is an exception, not the default.
+
+Illustrative shape, assuming the source actually prints the central equation on the cited page:
+{"title":"Solve a linear equation","formula":{"latex":"2x+3=11","page":4,"variant":null},"skill":"application","question":["Solve the stated equation for the real unknown.",{"latex":"3x+5=17","page":4,"variant":{"original":"2x+3=11","change":"Change the coefficient and the constants."}}],"answer":[{"parts":["Subtract five from both sides to obtain ",{"math":"3x=12"},". Divide both sides by three to obtain ",{"math":"x=4"},"."]}]}
+Reuse this structure, never its illustrative source expression, numbers or page unless they actually match the selected source. A derived solution step is not another altered exercise given and does not need its own exercise variant.
+
 Attachment page -> ORIGINAL document page: $page_mapping.

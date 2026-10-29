@@ -1,0 +1,82 @@
+{
+  "id": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+  "title": "Separated source and explanation",
+  "document": {
+    "id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "filename": "legacy-notes.pdf",
+    "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "media_type": "application/pdf",
+    "page_count": 1,
+    "size": 100
+  },
+  "pages": [
+    1
+  ],
+  "mode": "flashcards",
+  "items": [
+    {
+      "goal_step": 1,
+      "title": "Set membership",
+      "skill": "meaning",
+      "question": [
+        {
+          "kind": "text",
+          "text": "What does set membership mean?"
+        }
+      ],
+      "from_notes": [
+        {
+          "kind": "text",
+          "text": "Membership means that the object is an element of the set."
+        }
+      ],
+      "explanation": [
+        {
+          "kind": "text",
+          "text": "The relation connects one object with a set, not two sets."
+        }
+      ],
+      "answer": [
+        {
+          "kind": "text",
+          "text": "From notes"
+        },
+        {
+          "kind": "math",
+          "latex": "x \\in A",
+          "display": true,
+          "source": {
+            "document_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "page": 1,
+            "line_start": null,
+            "line_end": null,
+            "quote": null
+          },
+          "original_latex": null,
+          "change": null
+        },
+        {
+          "kind": "text",
+          "text": "Membership means that the object is an element of the set."
+        },
+        {
+          "kind": "text",
+          "text": "Explanation"
+        },
+        {
+          "kind": "text",
+          "text": "The relation connects one object with a set, not two sets."
+        }
+      ]
+    }
+  ],
+  "notes": [
+    "New optional skill and split back fields with a legacy-compatible answer projection."
+  ],
+  "metadata": {
+    "provider": "fixture",
+    "model": "split-card-back",
+    "source_check": "unchecked"
+  },
+  "schema_version": 1
+}

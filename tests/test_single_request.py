@@ -206,7 +206,7 @@ def test_central_formula_is_in_answer_without_spoiling_question(source, mode):
 def test_flashcard_prompt_requires_recall_without_answer_hints(source):
     system, task, _ = load_prompts(GenerateRequest(mode='flashcards', count=5), [source])
     assert 'Do not reveal or hint at the correct answer on the front' in task
-    assert 'BACK displays the title, required central formula' in task
+    assert 'BACK separates From notes from Explanation' in task
     assert 'never on the flashcard front' in system
 
 
@@ -340,7 +340,8 @@ def test_difficulty_reaches_single_provider_prompt_and_legacy_default(source,lev
     request=GenerateRequest(mode='flashcards',count=2,difficulty=level)
     system,task,hashes=load_prompts(request,[source])
     assert f'Requested overall difficulty: {level} out of 5.' in task
-    assert 'Within the selected band' in task and '45–90' in system
+    assert 'Within the selected level' in task and '45–90' not in system
+    assert 'per-skill quotas' in system and 'from_notes' in system and 'explanation' in system
     assert 'difficulty.md' in hashes
     provider=Provider()
     content,metadata=asyncio.run(collect_study([source],request,provider,lambda _:None))
@@ -349,3 +350,88 @@ def test_difficulty_reaches_single_provider_prompt_and_legacy_default(source,lev
     from pydantic import ValidationError
     for invalid in [0,6,2.5,True,'4']:
         with pytest.raises(ValidationError):GenerateRequest(mode='problems',difficulty=invalid)
+
+
+@pytest.mark.parametrize('shape', ['split', 'formula_only', 'page_only', 'permissive_prose'])
+def test_split_flashcard_back_survives_the_actual_adapter_reader(source, monkeypatch, shape):
+    entry={'title':'Membership','skill':'meaning',
+           'formula':{'latex':r'x \in A','page':4,'variant':None},
+           'question':['What does membership mean?'],'answer':[],
+           'from_notes':[{'parts':['The object belongs to the set.']}],
+           'explanation':[{'parts':['This relates an object to a set.']}]}
+    if shape=='formula_only':entry.update(from_notes=[],explanation=[])
+    if shape=='page_only':entry['formula']={'page':4}
+    if shape=='permissive_prose':
+        entry['question']=['What does membership mean?',{'latex':r'x \in A','page':4,'variant':None}]
+        entry['from_notes']=['The object belongs to the set.']
+        entry['explanation']=[r'Bare x \in A']
+    create=AsyncMock(return_value=SimpleNamespace(status='completed',usage=SimpleNamespace(output_tokens=100),
+        output=[],output_text=json.dumps({'result':{'status':'completed','items':[entry]}})))
+    class Client:
+        def __init__(self,**kwargs):self.responses=SimpleNamespace(create=create)
+        async def __aenter__(self):return self
+        async def __aexit__(self,*args):pass
+    monkeypatch.setattr('formula_lab.providers.AsyncOpenAI',Client)
+    result=asyncio.run(OpenAIProvider('fixture','fixture').generate([source],'system','task',count=1,mode='flashcards'))
+    card=result.content.items[0]
+    assert create.await_count==1 and card.skill=='meaning'
+    assert all(b.kind=='text' for b in card.question)
+    assert card.from_notes is not None and card.explanation is not None
+    assert any(b.kind=='text' and b.text=='From notes' for b in card.answer)
+    assert any(b.kind=='text' and b.text=='Explanation' for b in card.answer)==bool(entry['explanation'])
+    if shape=='page_only':assert card.source.page==4
+    else:assert any(b.kind=='math' and b.latex==r'x \in A' and b.source.document_id==source.document.id for b in card.answer)
+    assert StudyItem.model_validate(card.model_dump(mode='json'))==card
+
+
+@pytest.mark.parametrize('mode', ['flashcards', 'problems'])
+def test_skill_precedes_question_in_strict_provider_and_saved_schema(mode):
+    from openai import pydantic_function_tool
+    schema=pydantic_function_tool(set_response_format(2,mode))['function']['parameters']
+    name='FlashcardOutput' if mode=='flashcards' else 'ProblemOutput'
+    properties=schema['$defs'][name]['properties']
+    assert list(properties).index('skill')<list(properties).index('question')
+    assert list(StudyItem.model_fields).index('skill')<list(StudyItem.model_fields).index('question')
+    values=next(v['enum'] for v in properties['skill']['anyOf'] if 'enum' in v)
+    assert values==['recall','meaning','conditions','application','error_diagnosis','why_justification','counterexample','comparison']
+    if mode=='flashcards':
+        assert {'skill','from_notes','explanation'}<=set(schema['$defs'][name]['required'])
+
+
+def test_varied_problem_keeps_its_source_reference_and_original(source):
+    reference={'latex':'x+1=2','page':4,'variant':None}
+    variation={'latex':'x+3=7','page':4,'variant':{'original':'x+1=2','change':'Use three and seven as the constants.'}}
+    raw={'result':{'status':'completed','items':[{'title':'Solve a linear equation','skill':'application',
+         'formula':reference,'question':['Solve the stated equation.',variation],
+         'answer':[{'parts':['Subtract three from both sides.']},{'latex':'x=4','page':4,'variant':None}]}]}}
+    result=set_response_format(1,'problems',permissive=True).model_validate(raw).result.items[0].expand(source.document.id,1,'problems')
+    assert result.answer[0].latex=='x+1=2' and result.answer[0].original_latex is None
+    changed=result.question[1]
+    assert changed.latex=='x+3=7' and changed.original_latex=='x+1=2' and changed.change
+    assert result.skill=='application' and result.from_notes is result.explanation is None
+
+
+def test_split_card_section_bounds_fit_canonical_answer(source):
+    entry={'title':'Membership','skill':'meaning','formula':{'latex':'x','page':4,'variant':None},
+           'question':['What is the object?'],'answer':[],
+           'from_notes':[{'parts':[f'Source statement {i}.']} for i in range(20)],
+           'explanation':[{'parts':[f'Added context {i}.']} for i in range(16)]}
+    raw={'result':{'status':'completed','items':[entry]}}
+    card=set_response_format(1,'flashcards',permissive=True).model_validate(raw).result.items[0].expand(source.document.id,1)
+    assert len(card.answer)==39 and len(card.from_notes)==20 and len(card.explanation)==16
+
+
+def test_quality_prompts_keep_source_and_added_material_distinct(source):
+    system,card_task,_=load_prompts(GenerateRequest(mode='flashcards',count=5,difficulty=5),[source])
+    assert 'Never refer to numbered exercises, theorems, examples, figures or sections.' in card_task
+    assert 'from_notes: only what the selected primary source actually says' in card_task
+    assert 'explanation: short AI-added context' in card_task
+    assert 'at least 40% why_justification or counterexample; recall at most 20%' in card_task
+    assert 'at least 70% recall or meaning' in card_task
+    assert 'at least 40% conditions, application or error_diagnosis' in card_task
+    assert 'correct complete answers, the requested difficulty and skill distribution, then question variety' in system
+    assert '45–90' not in system+card_task and "source's exercise number in words" not in card_task
+    _,problem_task,_=load_prompts(GenerateRequest(mode='problems',count=5),[source])
+    assert 'Make the problem statement a variation by default' in problem_task
+    assert 'Copy original exercise expressions literally' not in problem_task
+    assert 'Normally variant is null' not in system

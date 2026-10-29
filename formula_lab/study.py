@@ -78,10 +78,10 @@ Skill = Literal["recall", "meaning", "conditions", "application", "error_diagnos
 class StudyItem(StrictModel):
     goal_step: int | None = Field(default=None, ge=1, le=MAX_ITEMS)
     title: str = Field(min_length=1, max_length=180)
-    skill: Skill | None = None
+    skill: Skill | None = Field(default=None, exclude_if=lambda value: value is None)
     question: list[Block] = Field(min_length=1, max_length=40)
-    from_notes: list[Block] | None = Field(default=None, max_length=40)
-    explanation: list[Block] | None = Field(default=None, max_length=40)
+    from_notes: list[Block] | None = Field(default=None, max_length=40, exclude_if=lambda value: value is None)
+    explanation: list[Block] | None = Field(default=None, max_length=40, exclude_if=lambda value: value is None)
     answer: list[Block] = Field(min_length=1, max_length=40)
     source: Citation | None = None
 

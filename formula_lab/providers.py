@@ -188,12 +188,20 @@ class ProblemOutput(CompactItem):
     answer: list[Formula | Paragraph] = Field(min_length=1, max_length=40)
 
 
+class FlashcardRead(FlashcardOutput):
+    question: list[Prose | Formula | Paragraph] = Field(min_length=1, max_length=40)
+    answer: list[Prose | Formula | Paragraph] = Field(default_factory=list, max_length=40)
+    from_notes: list[Prose | Formula | Paragraph] | None = Field(default=None, max_length=20)
+    explanation: list[Prose | Formula | Paragraph] | None = Field(default=None, max_length=16)
+
+
 @lru_cache(maxsize=MAX_ITEMS * 3)
-def set_response_format(count: int, mode: str | None = None) -> type[StrictModel]:
+def set_response_format(count: int, mode: str | None = None, *, permissive: bool = False) -> type[StrictModel]:
     if not 1 <= count <= MAX_ITEMS:
         raise ValueError("Invalid requested item count.")
 
-    item_type = FlashcardOutput if mode == "flashcards" else ProblemOutput if mode == "problems" else CompactItem
+    item_type = (FlashcardRead if permissive else FlashcardOutput) if mode == "flashcards" else (
+        ProblemOutput if mode == "problems" and not permissive else CompactItem)
 
     class CompletedSet(StrictModel):
         status: Literal["completed"]
@@ -275,7 +283,7 @@ class OpenAIProvider:
         try:
             # A broad local reader preserves old/nonconforming formatting;
             # the stricter generation schema guides only this one model call.
-            result = set_response_format(count).model_validate_json(response.output_text).result
+            result = set_response_format(count, mode, permissive=True).model_validate_json(response.output_text).result
             if isinstance(result, InsufficientSource):
                 return ProviderResult(content=GeneratedContent(items=[], notes=[]), provider="openai", model=self.model,
                                       insufficient_source=True)

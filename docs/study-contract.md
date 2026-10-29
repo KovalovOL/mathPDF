@@ -23,6 +23,10 @@ The provider contract also accepts mixed paragraphs as `{"parts":["The coefficie
 
 New generation accepts 1–50 requested items and succeeds only with exactly that many validated questions in a single provider request. The completed-result schema has exact array bounds or an explicit insufficient-source result. No model retry or repair call is made; there is no successful partial output. Exact question repeats, missing source formulas and out-of-selection citations are rejected. Flashcard questions ask for recall without answer hints; the central formula belongs to the answer. A front-side formula is not required. Line ranges must be ordered and either have both endpoints or neither. Existing saved sets remain readable. Schema/scope checks do not prove citation accuracy or mathematical correctness.
 
+Each newly generated item supplies `skill` before `question`: `recall`, `meaning`, `conditions`, `application`, `error_diagnosis`, `why_justification`, `counterexample` or `comparison`. Prompt quotas determine the requested difficulty distribution; they do not introduce a classifier or a new validation/retry pass. Problem questions normally vary source inputs, retaining the literal source reference and the changed instance's original expression/edit metadata separately.
+
+New flashcard backs use `from_notes` for source-only content and `explanation` for short AI-added context. Both contain structured blocks. The adapter also builds the existing `answer` array with separate text labels, keeping workspace/export rendering compatible. The live output schema stays strict; its local reader accepts both the new back fields and historical prose/formula shapes in a single response. No renderer changes are required.
+
 ## Rendering boundary
 
 `window.MathPDF.renderBlocks(container, blocks, options)` renders every block; `renderMath(container, latex, display)` typesets a single expression. Options control editing, source navigation/labels, and whether citations are links. The renderer is independent of provider and document preparation code. It uses locally served KaTeX HTML plus accessibility MathML, strict errors, disabled trusted HTML commands, and bounded expansion. Invalid math is reported locally while other blocks remain available.
@@ -36,6 +40,8 @@ The same text/math fragment parser drives rendering and flashcard projection. De
 Every new release must read all previously supported persisted formats, including saved sets and browser drafts. New study-set payloads include `schema_version: 1`; existing payloads without that field are read as version 1. Reading or displaying an old record does not rewrite it. Explicit saves may add compatible defaults while preserving all content, formulas, source references, variants and metadata.
 
 Evolve formats through compatible defaults or explicit non-destructive upgrades. Keep the historical JSON fixtures in `tests/fixtures/study-sets/` unchanged, adding fixtures for new versions and retaining read/save/render/export coverage for the older ones. Do not remove old readers, silently reinterpret fields or require regeneration of saved content. Breaking read compatibility is allowed only for a major change with the project owner's explicit approval. Approval to implement or deploy a feature does not authorize a compatibility break. Older releases are not required to read newer formats.
+
+The optional `skill`, `from_notes` and `explanation` fields default to `None` when absent and are omitted on serialization when `None`. This preserves the prior normalized item shape and review fingerprint, so opening an old deck resumes its existing round. Empty new section arrays remain explicit. Legacy `answer` blocks, formulas, variants and citations are unchanged; no stored payload migration is performed.
 
 ## Prompt boundary
 
