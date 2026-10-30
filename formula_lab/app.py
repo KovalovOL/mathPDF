@@ -275,7 +275,17 @@ def create_app(data_dir: Path = Path(".formula-lab"), provider: StudyProvider | 
 
     @app.get("/api/me")
     def me(request: Request):
-        return request.state.user
+        with workspace.connection() as db:
+            receipt = db.execute("SELECT pending FROM welcome_receipts WHERE user_id=?", (request.state.user.id,)).fetchone()
+        return {**request.state.user.model_dump(), "welcome_pending": bool(receipt and receipt['pending'])}
+
+    @app.post("/api/welcome/claim")
+    def claim_welcome(request: Request):
+        # Atomically claim the one-time display, including simultaneous tabs/devices.
+        with workspace.connection() as db:
+            receipt = db.execute("UPDATE welcome_receipts SET pending=0 WHERE user_id=? AND pending=1 RETURNING user_id",
+                                 (request.state.user.id,)).fetchone()
+        return {"show": receipt is not None}
 
     @app.get("/", include_in_schema=False)
     def home():

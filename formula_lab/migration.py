@@ -20,7 +20,7 @@ from .reviews import Reviews
 
 MIGRATION_ID='sqlite-to-postgres-v1'
 # Parents precede children; folders are additionally inserted topologically.
-TABLES=['users','documents','study_sets','document_edits','sessions','oauth_flows',
+TABLES=['users','welcome_receipts','documents','study_sets','document_edits','sessions','oauth_flows',
         'library_folders','library_items','user_roles','role_audit','admin_audit',
         'model_prices','ai_usage','request_events','reports','generation_limits','generation_reservations','review_rounds','review_answers']
 IDENTIFIER=re.compile(r'^[a-z_][a-z0-9_]*$')

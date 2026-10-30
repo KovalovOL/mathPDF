@@ -180,11 +180,14 @@ class Authentication:
         name = name.strip()[:200] if isinstance(name, str) and name.strip() else claims["email"][:200]
         with self.workspace.connection() as connection:
             connection.execute("BEGIN IMMEDIATE")
+            is_new = connection.execute("SELECT id FROM users WHERE google_sub=?", (claims["sub"],)).fetchone() is None
             connection.execute("""INSERT INTO users VALUES (?,?,?,?,?,?)
                 ON CONFLICT(google_sub) DO UPDATE SET email=excluded.email,
                 name=excluded.name, updated_at=excluded.updated_at""",
                                (uuid4().hex, claims["sub"], claims["email"], name, stamp, stamp))
             user = connection.execute("SELECT id FROM users WHERE google_sub=?", (claims["sub"],)).fetchone()
+            if is_new:
+                connection.execute("INSERT INTO welcome_receipts (user_id,pending) VALUES (?,1)", (user["id"],))
             connection.execute("DELETE FROM sessions WHERE expires_at<=?", (now,))
             if old_token and len(old_token) <= 256:
                 connection.execute("DELETE FROM sessions WHERE token_hash=?", (token_hash(old_token),))

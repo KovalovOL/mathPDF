@@ -375,3 +375,17 @@ dialog::backdrop { background: #17233d6b; }
 @media(max-width:480px){.app-header:has(.allowance-header:not([hidden])) .brand{font-size:0;gap:0}}
 @media(max-width:360px){.app-header:has(.allowance-header:not([hidden])){padding-inline:8px}}
 @media(max-width:360px){.deck-footer .review-actions button{font-size:.68rem;padding-inline:1px;white-space:nowrap}}
+
+/* Compact first-login welcome, using the shared dialog and button styles. */
+.welcome-dialog{width:min(480px,calc(100vw - 32px));border-radius:14px}
+.welcome-dialog .dialog-header{border-bottom:0;padding:24px 24px 0;gap:12px;align-items:flex-start}
+.welcome-dialog h2{font-size:1.4rem;letter-spacing:-.025em;line-height:1.35}
+.welcome-dialog .dialog-body{padding:16px 24px 6px;max-height:calc(100dvh - 210px)}
+.welcome-dialog #welcome-intro{color:#617089}
+.welcome-features{list-style:none;padding:0;margin:22px 0 8px;display:grid;gap:20px}
+.welcome-features li{padding-left:14px;border-left:2px solid #dbe5fa;display:grid;gap:4px}
+.welcome-features strong{font-weight:600}
+.welcome-features span{color:#617089;font-size:.92rem;line-height:1.6}
+.welcome-dialog .dialog-footer{border-top:0;padding:18px 24px 24px}
+.welcome-dialog .dialog-footer button{min-height:42px;padding-inline:20px}
+@media(max-width:480px){.welcome-dialog .dialog-header{padding:20px 20px 0}.welcome-dialog .dialog-body{padding-inline:20px}.welcome-dialog .dialog-footer{padding:16px 20px 20px}.welcome-dialog .dialog-footer button{width:100%}}

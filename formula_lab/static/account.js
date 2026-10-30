@@ -158,6 +158,9 @@ window.MathPDFSession = (() => {
       document.addEventListener('keydown', event => {if (event.key === 'Escape') {menu.open = false; summary.focus();}});
     }
     import('/static/allowance-ui.js').then(module=>module.createAllowanceUI({api}).refresh()).catch(()=>{});
+    if (user.welcome_pending && ['/', '/workspace'].includes(location.pathname)) {
+      import('/static/welcome.js').then(module => module.showWelcome({api})).catch(() => {});
+    }
     return user;
   });
   // Consumers display request failures in their own status region.

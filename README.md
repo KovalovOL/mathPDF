@@ -17,6 +17,10 @@ Open [http://127.0.0.1:8765](http://127.0.0.1:8765) and sign in with Google. Hom
 
 Set `OPENAI_API_KEY` or the existing `OPENAI_KEY` in the server environment or project `.env`. `OPENAI_MODEL` defaults to `gpt-4.1-mini`; it must support the input modalities and structured output used by the application. Restart the server after changing credentials or model. Only submitting **Generate** sends documents to the provider.
 
+## First-login welcome
+
+New accounts see a compact, dismissible welcome dialog once on the library or workspace. Its display is recorded per account on the server, including across browsers and devices. Existing accounts are not interrupted. Start learning, the close button, Escape, or clicking outside dismisses it. This adds only an account display receipt; existing files, study sets and sessions are unchanged.
+
 ## Workflow
 
 1. Sign in with Google. Home lists your files and saved sets; use **Upload files** to add PDFs, TXT/Markdown, or PNG/JPEG/WebP files. Choose a file to read the complete document by scrolling, page navigation, or zooming. **Add files** adds context from the workspace. Tabs retain reading positions; close them with **×** and reopen files through **Open**. Closing unfinished or failed uploads asks for confirmation; failed uploads can be retried. Click **mathPDF** to return home. The top-right account menu provides **Sign out**.

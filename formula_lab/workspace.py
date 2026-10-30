@@ -86,6 +86,10 @@ class Workspace:
                     email TEXT NOT NULL, name TEXT NOT NULL,
                     created_at TEXT NOT NULL, updated_at TEXT NOT NULL
                 )""")
+            connection.execute("""CREATE TABLE IF NOT EXISTS welcome_receipts (
+                    user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+                    pending INTEGER NOT NULL DEFAULT 1
+                )""")
             connection.execute("""CREATE TABLE IF NOT EXISTS documents (
                     id TEXT PRIMARY KEY, owner_id TEXT NOT NULL REFERENCES users(id),
                     filename TEXT NOT NULL, sha256 TEXT NOT NULL,
