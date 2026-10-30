@@ -528,12 +528,23 @@ async function generate(event) {
   }
   updateElapsed(); const timer = setInterval(updateElapsed, 1000);
   const controller = new AbortController(); generationController = controller;
-  const deadline = setTimeout(() => controller.abort(new Error('Generation timed out. Please try again.')),
-    ((config.generation_timeout_seconds || 150) + 30) * 1000);
+  let deadline;
+  function refreshDeadline() {
+    clearTimeout(deadline);
+    deadline = setTimeout(() => controller.abort(new Error('Generation timed out. Please try again.')),
+      ((config.generation_timeout_seconds || 150) + 30) * 1000);
+  }
+  refreshDeadline();
   let jobId, terminal = false;
   $('cancel-generation').disabled = false;
   $('generation-progress-detail').textContent = 'Preparing source files…';
   function showProgress(job) {
+    if (job.phase === 'queued') {
+      refreshDeadline();
+      $('generation-progress-detail').textContent = job.queue_position > 0
+        ? `Waiting for generation. Requests ahead: ${job.queue_position}…` : 'Starting generation…';
+      return;
+    }
     const phases = {preparing: 'Preparing source files',
       generating: 'Generating your study set', checking: 'Finishing your study set'};
     $('generation-progress-detail').textContent = `${phases[job.phase] || 'Generating'}…`;

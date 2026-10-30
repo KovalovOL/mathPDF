@@ -43,3 +43,6 @@ Add a status panel inside the study pane with a CSS spinner, requested count/typ
 ## Migration Plan
 
 No database migration or data deletion. Deploy code, prompt, and frontend changes together. Existing saved sets remain supported up to the raised maximum. Rollback restores previous generation limits without changing stored data.
+
+## FIFO queue follow-up
+Use the existing fair asyncio lock with at most 20 unfinished jobs and one per owner. Keep status running for older polling clients and add phase queued plus queue_position. Cancel waiting tasks without releasing another job's lock. New clients refresh their waiting deadline while queued. Queue jobs remain process-local; restarts interrupt unfinished jobs. Existing sessions, storage and daily allowances remain unchanged. Deployment retains the existing brief restart; zero downtime is not guaranteed.

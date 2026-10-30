@@ -24,7 +24,8 @@ class GenerationJob:
     id: str = field(default_factory=lambda: uuid4().hex)
     request_id: str = field(default_factory=request_context.get)
     status: str = "running"
-    phase: str = "preparing"
+    phase: str = "queued"
+    queue_position: int = 0
     accepted_count: int = 0
     attempt: int = 0
     result: StudySet | None = None
@@ -41,6 +42,7 @@ class GenerationJob:
     def snapshot(self):
         return {"id": self.id, "request_id": self.request_id, "status": self.status, "phase": self.phase,
                 "accepted_count": self.accepted_count, "requested_count": self.requested_count,
+                "queue_position": self.queue_position,
                 "attempt": self.attempt, "error": self.error,"limit":self.limit,
                 "result": self.result if self.status == "completed" else None}
 
@@ -48,6 +50,7 @@ class GenerationJob:
 class GenerationJobs:
     retention_seconds = 900
     max_finished = 20
+    max_pending = 20
 
     def __init__(self, workspace: Workspace, lock: asyncio.Lock):
         self.workspace, self.lock = workspace, lock
@@ -62,11 +65,14 @@ class GenerationJobs:
 
     async def start(self, owner_id: str, selection: GenerateRequest, provider: StudyProvider) -> GenerationJob:
         self.prune()
-        if self.lock.locked():
-            raise GenerationBusy("A generation request is already running. Wait for it to finish or cancel it.")
-        await self.lock.acquire()
+        pending = [job for job in self.jobs.values() if job.status == "running"]
+        if any(job.owner_id == owner_id for job in pending):
+            raise GenerationBusy("You already have a generation running or waiting. Wait for it to finish or cancel it.")
+        if len(pending) >= self.max_pending:
+            raise GenerationBusy("The generation queue is full. Please try again shortly.")
         job = GenerationJob(owner_id, selection.count)
         self.jobs[job.id] = job
+        job.queue_position = len(pending)
         logging.getLogger(__name__).info("Study job created job_id=%s requested=%s mode=%s", job.id, selection.count, selection.mode)
         job.task = asyncio.create_task(self.run(job, selection, provider))
         return job
@@ -76,6 +82,8 @@ class GenerationJobs:
         job = self.jobs.get(job_id)
         if job is None or job.owner_id != owner_id:
             raise KeyError("Generation was interrupted or has expired. Start a new generation.")
+        if job.status == "running" and job.phase == "queued":
+            job.queue_position = sum(other.status == "running" for other in list(self.jobs.values())[:list(self.jobs).index(job.id)])
         return job
 
     async def run(self, job: GenerationJob, selection: GenerateRequest, provider: StudyProvider):
@@ -84,7 +92,11 @@ class GenerationJobs:
         logger.info("Study job started requested=%s", job.requested_count)
         failure_context=None
         error_details=None
+        acquired = False
         try:
+            await self.lock.acquire()
+            acquired = True
+            job.phase, job.queue_position = "preparing", 0
             job.result = await generate_study(self.workspace, job.owner_id, selection, provider, job.progress)
             job.status = "completed"
             logger.info("Study job completed requested=%s accepted=%s", job.requested_count, job.accepted_count)
@@ -115,7 +127,8 @@ class GenerationJobs:
                 except Exception as error:
                     logger.warning('Failed generation report unavailable type=%s',type(error).__name__)
             job.finished_at = monotonic()
-            self.lock.release()
+            if acquired:
+                self.lock.release()
             self.prune()
             job_context.reset(token)
 
@@ -127,7 +140,6 @@ class GenerationJobs:
             # A task cancelled before its first instruction never enters run's finally.
             if job.finished_at is None:
                 job.status, job.finished_at = "cancelled", monotonic()
-                self.lock.release()
         return job
 
     async def close(self):

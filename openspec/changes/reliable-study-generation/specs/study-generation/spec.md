@@ -35,3 +35,14 @@ The workspace SHALL show an animated, accessible waiting indicator with the requ
 #### Scenario: Generation fails
 - **WHEN** an active generation ends with an error
 - **THEN** the loading state ends, existing study sets remain usable, and generation can be started again
+
+### Requirement: Bounded cancellable FIFO queue
+The service SHALL queue generation requests from different owners in arrival order, enforce one unfinished job per owner and at most 20 unfinished jobs, and automatically run the next job. Queued jobs SHALL remain owner-scoped and cancellable without provider calls or allowance reservation. Existing polling status values SHALL remain compatible.
+
+#### Scenario: Another learner is generating
+- **WHEN** another owner submits a generation
+- **THEN** the request is accepted with queued phase and starts automatically when the active job ends
+
+#### Scenario: Waiting cancellation
+- **WHEN** a waiting job is cancelled
+- **THEN** it does not release the active job lock or invoke the provider

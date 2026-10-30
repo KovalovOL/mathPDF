@@ -17,3 +17,7 @@
 ## 4. Integration
 
 - [x] 4.1 Review the final diff and existing-set compatibility, run static syntax and strict OpenSpec checks, record observations and live-generation limits, and push the completed change through the existing deployment.
+
+## 5. Generation queue
+
+- [ ] 5.1 Implement bounded owner-scoped FIFO waiting, cancellation, position and frontend waiting deadlines; verify queue ordering, failure recovery and compatibility, then deploy.

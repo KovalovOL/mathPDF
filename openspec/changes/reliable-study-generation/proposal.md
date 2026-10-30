@@ -29,3 +29,6 @@ None are archived in main specs. This change supersedes the earlier allowance fo
 - Study schemas, provider contract, OpenAI response schema, prompts, generation orchestration, and API limits.
 - Library preview module using the already vendored PDF.js and owner-protected file endpoint; no thumbnail storage service.
 - Workspace status UI, count input, documentation, and metadata compatibility with existing saved sets.
+
+## Generation queue follow-up
+Add a bounded FIFO generation queue, one unfinished job per account, cancellable waiting feedback and unchanged account/data contracts.

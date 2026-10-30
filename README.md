@@ -34,7 +34,7 @@ Set `OPENAI_API_KEY` or the existing `OPENAI_KEY` in the server environment or p
 
 - PDF, UTF-8 TXT/MD, PNG, JPEG, WebP; 25 MB per upload, 1 MB for text, 40 megapixels for images.
 - Up to six optional context files, 100 selected PDF pages across all attachments, and 40 MB of combined selected input per generation.
-- One to fifty requested items per set, with exactly that count on successful generation; one concurrent generation and one concurrent PDF export per process.
+- One to fifty requested items per set, with exactly that count on successful generation; one concurrent generation with a FIFO waiting queue (up to 20 unfinished jobs, one per account) and one concurrent PDF export per process. Waiting jobs start automatically and can be cancelled. The queue is process-local and does not survive server restarts. Older open tabs keep their previous 180-second client deadline; reload to use extended queue waiting.
 - PDFs must be readable and unencrypted. Version one targets printed digital notes; handwriting/OCR is outside the current scope.
 
 ## Storage
