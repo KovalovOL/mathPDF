@@ -20,4 +20,6 @@
 
 ## 5. Generation queue
 
-- [ ] 5.1 Implement bounded owner-scoped FIFO waiting, cancellation, position and frontend waiting deadlines; verify queue ordering, failure recovery and compatibility, then deploy.
+- [x] 5.1 Implement bounded owner-scoped FIFO waiting, cancellation, position and frontend waiting deadlines; verify queue ordering, failure recovery and compatibility, then deploy.
+
+Queue rollout verified October 30, 2026: full regression 175 passed / 6 opt-in infrastructure tests skipped; final queue suite 4 passed (two additional cases beyond the full-run collection). FIFO, ownership, duplicate/capacity limits, cancellation before and after lock acquisition, recovery after failure, and browser waiting deadlines verified with synthetic data. Deployment fbb6374 succeeded (Actions 41016546247); public health and normalized local build match 9f95308eb874. No persistence schemas, stored content, sessions or allowance configuration changed. Existing open clients retain the earlier waiting timeout until reload. In-process jobs do not survive restart.
