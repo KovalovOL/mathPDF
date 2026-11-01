@@ -57,7 +57,7 @@ def create_service(kind,directory=None):
         try:yield
         finally:
             if task:task.cancel();await asyncio.gather(task,return_exceptions=True)
-    app=FastAPI(title='MathPDF '+kind,docs_url=None,redoc_url=None,lifespan=lifespan)
+    app=FastAPI(title='Acadence '+kind,docs_url=None,redoc_url=None,lifespan=lifespan)
     app.state.workspace,app.state.auth,app.state.usage,app.state.reports=workspace,auth,usage,reports
     @app.middleware('http')
     async def security(request,call_next):

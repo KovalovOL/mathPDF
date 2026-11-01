@@ -5,7 +5,7 @@ export async function showWelcome({api}) {
   dialog.className = 'welcome-dialog';
   dialog.setAttribute('aria-labelledby', 'welcome-title');
   dialog.setAttribute('aria-describedby', 'welcome-intro');
-  dialog.innerHTML = `<div class="dialog-header"><h2 id="welcome-title">Welcome to MathPDF!</h2><button type="button" class="icon-button" aria-label="Close welcome">&times;</button></div>
+  dialog.innerHTML = `<div class="dialog-header"><h2 id="welcome-title">Welcome to Acadence!</h2><button type="button" class="icon-button" aria-label="Close welcome">&times;</button></div>
     <div class="dialog-body"><p id="welcome-intro">Here's what you can do:</p>
     <ul class="welcome-features">
       <li><strong>Annotate your PDFs</strong><span>Highlight, draw, and add notes directly to your documents.</span></li>

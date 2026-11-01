@@ -46,7 +46,7 @@ def test_welcome_desktop_mobile_and_dismissal():
                     await page.add_script_tag(content=(static/'welcome.js').read_text(encoding='utf-8').replace('export async function','async function'))
                     await page.locator('#before').focus()
                     await page.evaluate('showWelcome({api:async()=>({show:true})})')
-                    assert await page.get_by_role('dialog', name='Welcome to MathPDF!').is_visible()
+                    assert await page.get_by_role('dialog', name='Welcome to Acadence!').is_visible()
                     assert await page.get_by_role('button', name='Start learning').evaluate('(e)=>e===document.activeElement')
                     assert await page.evaluate('document.querySelector("dialog").getBoundingClientRect().width<=innerWidth')
                     out = Path('output');out.mkdir(exist_ok=True)

@@ -62,7 +62,7 @@ def create_app(data_dir: Path = Path(".formula-lab"), provider: StudyProvider | 
         finally:
             await jobs.close()
 
-    app = FastAPI(title="mathPDF", docs_url="/api/docs", redoc_url=None, lifespan=lifespan)
+    app = FastAPI(title="Acadence", docs_url="/api/docs", redoc_url=None, lifespan=lifespan)
     app.state.workspace, app.state.auth, app.state.library = workspace, auth, library
     app.state.reviews=reviews
     static = Path(__file__).parent / "static"
@@ -481,7 +481,7 @@ def create_app(data_dir: Path = Path(".formula-lab"), provider: StudyProvider | 
 
 def main():
     import uvicorn
-    parser = argparse.ArgumentParser(description="Run the mathPDF personal study workspace")
+    parser = argparse.ArgumentParser(description="Run the Acadence personal study workspace")
     parser.add_argument("--data-dir", type=Path, default=Path(".formula-lab"))
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8765)

@@ -1,6 +1,6 @@
-# mathPDF
+# Acadence
 
-A personal mathematics study platform with Google sign-in, an account library, PDF browsing and notes, context attachments, flip cards, saved study sets, and formatted PDF downloads. The interface and documentation are English.
+An AI-assisted learning environment for students, with Google sign-in, an account library, PDF browsing and notes, context attachments, flip cards, saved study sets, and formatted PDF downloads. The interface and documentation are English.
 
 ## Run
 
@@ -23,7 +23,7 @@ New accounts see a compact, dismissible welcome dialog once on the library or wo
 
 ## Workflow
 
-1. Sign in with Google. Home lists your files and saved sets; use **Upload files** to add PDFs, TXT/Markdown, or PNG/JPEG/WebP files. Choose a file to read the complete document by scrolling, page navigation, or zooming. **Add files** adds context from the workspace. Tabs retain reading positions; close them with **×** and reopen files through **Open**. Closing unfinished or failed uploads asks for confirmation; failed uploads can be retried. Click **mathPDF** to return home. The top-right account menu provides **Sign out**.
+1. Sign in with Google. Home lists your files and saved sets; use **Upload files** to add PDFs, TXT/Markdown, or PNG/JPEG/WebP files. Choose a file to read the complete document by scrolling, page navigation, or zooming. **Add files** adds context from the workspace. Tabs retain reading positions; close them with **×** and reopen files through **Open**. Closing unfinished or failed uploads asks for confirmation; failed uploads can be retried. Click **Acadence** to return home. The top-right account menu provides **Sign out**.
 2. Drag the divider horizontally to adjust the document and practice panes. The **Hide viewer** icon at the left of the file bar, dragging fully left, or the divider's Home key hides the PDF; the **Show viewer** icon restores it. Fit width retains the reading position and previous canvas during resizing. On phones, scrolling fully into practice hides the viewer; pull down from the top of the answer or use **Show viewer** to restore it. Home's **Files** and **Saved study sets** sections collapse independently.
 3. Open **Generate**. Choose a source PDF, flashcards or problems, and 1–50 items. The whole set is generated in one model request, with varied questions ordered from easier to harder. External LaTeX guides provide reusable inline, equation, row and table structures while requiring the PDF's original notation. The adapter supplies delimiters for explicit inline math; the UI also recovers unambiguous older TeX fragments and displays unsupported syntax as raw text. Formatting does not block the whole set. Prose-only definitions can retain a source-page citation without an invented equation. Successful generation returns exactly the requested count; incomplete or invalid source responses fail explicitly without automatic model retries. The waiting panel shows the actual phase, elapsed time, and **Cancel**. Insufficient source material produces an actionable error instead of a partial set. Choose **Entire PDF** or inclusive **From / To** pages. Set both endpoints to the same page for a single page.
 4. Enable any additional context files. Each PDF has an independent page range; text and images are included in full. Optionally enter a plain-text **Comment** (up to 4,000 characters), with or without attachments, to describe the desired style, difficulty, or focus. Formulas remain grounded in the selected source pages.
@@ -132,3 +132,7 @@ Node is not required to run the Python application with these assets present. Ke
 Correct typesetting does not prove that an LLM transcribed the PDF correctly or that generic math fonts match its original typography. Generated sets retain unchecked source metadata and references for comparison. The current work does not claim universal PDF fidelity.
 
 The regression suite covers generation, provider adaptation, shared mathematical rendering, owner-scoped persistence, historical payload compatibility and PDF export. Run it with `uv run --frozen --extra dev pytest -q`. Real-provider latency and manual browser observations are recorded separately in the OpenSpec change verification notes. The superseded `scripts/browser_check.cjs` does not cover the current workspace.
+
+## Product branding and repository rename
+
+The product is **Acadence**. Technical identifiers and the existing production domain remain compatible with previous releases. See [the branding audit and manual repository rename checklist](docs/rebranding.md). The intended repository name is `acadence`; it has not been renamed by this change.
