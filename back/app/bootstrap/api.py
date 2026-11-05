@@ -77,7 +77,7 @@ def create_app(data_dir: Path = Path(".formula-lab"), provider=None):
     services = Services.create(data_dir)
     runtime = ApplicationRuntime(services, provider or configured_provider())
     app = FastAPI(
-        title="MathPDF", docs_url="/api/docs", redoc_url=None, lifespan=runtime.lifespan
+        title="Acadence", docs_url="/api/docs", redoc_url=None, lifespan=runtime.lifespan
     )
     app.state.services = services
     app.state.runtime = runtime

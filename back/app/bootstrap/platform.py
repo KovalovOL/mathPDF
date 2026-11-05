@@ -42,7 +42,7 @@ def create_service(kind, directory=None):
     )
     runtime = PlatformRuntime(s, kind)
     app = FastAPI(
-        title="MathPDF " + kind,
+        title="Acadence " + kind,
         docs_url=None,
         redoc_url=None,
         lifespan=runtime.lifespan,

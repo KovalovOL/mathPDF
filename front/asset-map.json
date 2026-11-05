@@ -18,6 +18,7 @@
   "pdf-text-layer.css": "assets/pdf-text-layer.css",
   "login.js": "features/account/login.js",
   "account.js": "features/account/account.js",
+  "welcome.js": "features/account/welcome.js",
   "pdf-viewer.html": "pages/pdf-viewer.html",
   "style.css": "assets/style.css",
   "card-interaction.js": "features/study/card-interaction.js",

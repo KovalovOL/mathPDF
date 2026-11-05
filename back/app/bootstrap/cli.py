@@ -5,7 +5,7 @@ from app.bootstrap.api import create_app
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Run the MathPDF backend")
+    parser = argparse.ArgumentParser(description="Run the Acadence backend")
     parser.add_argument("--data-dir", type=Path, default=Path(".formula-lab"))
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8765)

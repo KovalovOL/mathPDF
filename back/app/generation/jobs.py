@@ -29,7 +29,9 @@ class GenerationJob:
     id: str = field(default_factory=lambda: uuid4().hex)
     request_id: str = field(default_factory=request_context.get)
     status: str = "running"
-    phase: str = "preparing"
+    phase: str = "queued"
+    queue_position: int = 0
+    lock_acquired: bool = False
     accepted_count: int = 0
     attempt: int = 0
     result: StudySet | None = None
@@ -49,6 +51,7 @@ class GenerationJob:
             "request_id": self.request_id,
             "status": self.status,
             "phase": self.phase,
+            "queue_position": self.queue_position,
             "accepted_count": self.accepted_count,
             "requested_count": self.requested_count,
             "attempt": self.attempt,
@@ -61,6 +64,7 @@ class GenerationJob:
 class GenerationJobs:
     retention_seconds = 900
     max_finished = 20
+    max_pending = 20
 
     def __init__(self, generator, lock: asyncio.Lock, incidents):
         self._generator, self._lock, self._incidents = (generator, lock, incidents)
@@ -82,12 +86,13 @@ class GenerationJobs:
         self, owner_id: str, selection: GenerateRequest, provider: StudyProvider
     ) -> GenerationJob:
         self.prune()
-        if self._lock.locked():
-            raise GenerationBusy(
-                "A generation request is already running. Wait for it to finish or cancel it."
-            )
-        await self._lock.acquire()
+        pending = [job for job in self._jobs.values() if job.status == "running"]
+        if any(job.owner_id == owner_id for job in pending):
+            raise GenerationBusy("You already have a generation running or waiting. Wait for it to finish or cancel it.")
+        if len(pending) >= self.max_pending:
+            raise GenerationBusy("The generation queue is full. Please try again shortly.")
         job = GenerationJob(owner_id, selection.count)
+        job.queue_position = len(pending)
         self._jobs[job.id] = job
         logging.getLogger(__name__).info(
             "Study job created job_id=%s requested=%s mode=%s",
@@ -105,6 +110,12 @@ class GenerationJobs:
             raise KeyError(
                 "Generation was interrupted or has expired. Start a new generation."
             )
+        if job.status == "running" and job.phase == "queued":
+            earlier = list(self._jobs).index(job.id)
+            job.queue_position = sum(
+                item.status == "running"
+                for item in list(self._jobs.values())[:earlier]
+            )
         return job
 
     async def _run_job(
@@ -112,6 +123,9 @@ class GenerationJobs:
     ):
         logger, token, failure_context, error_details = self._begin_job_log(job)
         try:
+            await self._lock.acquire()
+            job.lock_acquired = True
+            job.phase, job.queue_position = "preparing", 0
             job.result = await self._generator.execute(
                 job.owner_id, selection, provider, job.progress
             )
@@ -160,7 +174,6 @@ class GenerationJobs:
             await asyncio.gather(job.task, return_exceptions=True)
             if job.finished_at is None:
                 job.status, job.finished_at = ("cancelled", monotonic())
-                self._lock.release()
         return job
 
     async def close(self):
@@ -198,7 +211,9 @@ class GenerationJobs:
                     "Failed generation report unavailable type=%s", type(error).__name__
                 )
         job.finished_at = monotonic()
-        self._lock.release()
+        if job.lock_acquired:
+            self._lock.release()
+            job.lock_acquired = False
         self.prune()
         job_context.reset(token)
 

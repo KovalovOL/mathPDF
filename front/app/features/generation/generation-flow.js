@@ -92,6 +92,21 @@ export class GenerationFlow {
     return job;
   }
   #progress(job) {
+    if (job.phase === "queued") {
+      clearTimeout(this.#deadline);
+      this.#deadline = setTimeout(
+        () =>
+          this.#controller.abort(
+            new Error("Generation timed out. Please try again."),
+          ),
+        this.#timeout,
+      );
+      const ahead = Number(job.queue_position || 0);
+      this.#ui("generation-progress-detail").textContent = ahead
+        ? `Waiting in queue · ${ahead} ${ahead === 1 ? "request" : "requests"} ahead`
+        : "Starting generation…";
+      return;
+    }
     const phases = {
       preparing: "Preparing source files",
       generating: "Generating your study set",

@@ -31,7 +31,7 @@ def register_handlers(app, runtime):
     saver = SaveStudySet(validator, s.sets)
     exporter = ExportStudySet(validator, export_pdf, runtime.export_lock)
     handlers = [
-        IdentityHandler(s.auth),
+        IdentityHandler(s.auth, s.users),
         DocumentsHandler(
             s.documents, s.annotation_reader, s.annotation_saver, preview, delete
         ),

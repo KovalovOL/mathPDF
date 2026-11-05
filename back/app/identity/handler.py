@@ -10,8 +10,8 @@ from app.infrastructure.http.frontend import html_page
 
 
 class IdentityHandler:
-    def __init__(self, auth):
-        self._auth = auth
+    def __init__(self, auth, users):
+        self._auth, self._users = auth, users
 
     def register(self, router):
         router.add_api_route(
@@ -36,6 +36,7 @@ class IdentityHandler:
             "/auth/logout", self.logout, methods=["POST"], include_in_schema=False
         )
         router.add_api_route("/api/me", self.me, methods=["GET"])
+        router.add_api_route("/api/welcome/claim", self.claim_welcome, methods=["POST"])
 
     def login(self, request: Request, next: str = "/"):
         if request.state.user:
@@ -90,4 +91,8 @@ class IdentityHandler:
         return response
 
     def me(self, request: Request):
-        return request.state.user
+        user = request.state.user
+        return {**user.model_dump(), "welcome_pending": self._users.welcome_pending(user.id)}
+
+    def claim_welcome(self, request: Request):
+        return {"show": self._users.claim_welcome(request.state.user.id)}

@@ -758,7 +758,7 @@ class WorkspaceController {
       const doc = this.#documents.get(selection.document_id);
       const count = selection.pages?.length || doc.page_count;
       (0, this.#$)("generation-summary").textContent =
-        `${selection.count} ${selection.mode === "flashcards" ? "flashcards" : "problems"} · Level ${selection.difficulty} · ${count} source ${count === 1 ? "page" : "pages"} · ${selection.context.length} context ${selection.context.length === 1 ? "file" : "files"}`;
+        `${selection.count} ${selection.mode === "flashcards" ? "flashcards" : "problems (Beta)"} · Level ${selection.difficulty} · ${count} source ${count === 1 ? "page" : "pages"} · ${selection.context.length} context ${selection.context.length === 1 ? "file" : "files"}`;
       (0, this.#$)("generation-summary").className = "selection-summary";
     } catch (error) {
       (0, this.#$)("generation-summary").textContent = error.message;
@@ -1441,7 +1441,7 @@ class WorkspaceController {
     (0, this.#$)("export-set").disabled = !result?.items.length;
     const itemWord = result?.mode === "flashcards" ? "card" : "problem";
     (0, this.#$)("set-status").textContent = result
-      ? `${record.saved ? "Saved" : "Unsaved"} · ${result.items.length} ${itemWord}${result.items.length === 1 ? "" : "s"} · Level ${result.difficulty ?? 3}`
+      ? `${record.saved ? "Saved" : "Unsaved"} · ${result.items.length} ${itemWord}${result.items.length === 1 ? "" : "s"} · Level ${result.difficulty ?? 3}${result.mode === "problems" ? " · Beta" : ""}`
       : "Study material";
     (0, this.#$)("set-status").title = result
       ? "Source transcription has not been verified against the PDF."

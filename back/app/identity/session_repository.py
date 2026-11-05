@@ -49,6 +49,9 @@ class SessionRepository:
     ) -> str:
         with self._context.connection() as db:
             db.execute("BEGIN IMMEDIATE")
+            existing = db.execute(
+                "SELECT id FROM users WHERE google_sub=?", (claims["sub"],)
+            ).fetchone()
             db.execute(
                 """INSERT INTO users VALUES (?,?,?,?,?,?) ON CONFLICT(google_sub)
                 DO UPDATE SET email=excluded.email,name=excluded.name,updated_at=excluded.updated_at""",
@@ -57,6 +60,11 @@ class SessionRepository:
             user = db.execute(
                 "SELECT id FROM users WHERE google_sub=?", (claims["sub"],)
             ).fetchone()
+            if not existing:
+                db.execute(
+                    "INSERT INTO welcome_receipts (user_id,pending) VALUES (?,1) ON CONFLICT(user_id) DO NOTHING",
+                    (user["id"],),
+                )
             db.execute("DELETE FROM sessions WHERE expires_at<=?", (now,))
             if previous:
                 db.execute("DELETE FROM sessions WHERE token_hash=?", (previous,))

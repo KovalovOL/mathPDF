@@ -24,6 +24,9 @@ def initialize_base(context):
             "CREATE TABLE IF NOT EXISTS users (\n                    id TEXT PRIMARY KEY, google_sub TEXT UNIQUE NOT NULL,\n                    email TEXT NOT NULL, name TEXT NOT NULL,\n                    created_at TEXT NOT NULL, updated_at TEXT NOT NULL\n                )"
         )
         connection.execute(
+            "CREATE TABLE IF NOT EXISTS welcome_receipts (user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE, pending INTEGER NOT NULL DEFAULT 1)"
+        )
+        connection.execute(
             "CREATE TABLE IF NOT EXISTS documents (\n                    id TEXT PRIMARY KEY, owner_id TEXT NOT NULL REFERENCES users(id),\n                    filename TEXT NOT NULL, sha256 TEXT NOT NULL,\n                    media_type TEXT NOT NULL, page_count INTEGER, size INTEGER NOT NULL,\n                    stored_name TEXT NOT NULL, created_at TEXT NOT NULL,\n                    UNIQUE(owner_id, sha256)\n                )"
         )
         connection.execute(

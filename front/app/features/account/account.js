@@ -236,8 +236,19 @@ class AccountSession {
     this.#leaveGuard = guard;
     this.#cancelLeave = cancel;
   }
+  #showWelcome(identity) {
+    if (
+      !identity.welcome_pending ||
+      !["/", "/workspace"].includes(location.pathname)
+    )
+      return;
+    import("/static/welcome.js")
+      .then((module) => module.showWelcome({ api: this.#api.bind(this) }))
+      .catch(() => {});
+  }
   #applyIdentity(identity) {
     this.#user = identity;
+    this.#showWelcome(identity);
     const container = document.getElementById("account");
     if (container) {
       const [menu, summary] = this.#createAccountHeader();

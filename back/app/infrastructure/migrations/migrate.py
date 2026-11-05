@@ -19,6 +19,7 @@ MIGRATION_ID = "sqlite-to-postgres-v1"
 # Parents precede children; folders are additionally inserted topologically.
 TABLES = [
     "users",
+    "welcome_receipts",
     "documents",
     "study_sets",
     "document_edits",
