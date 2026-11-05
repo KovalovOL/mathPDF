@@ -293,14 +293,14 @@
   },
   "prompts": {
     "attachment-label.md": "5000f795e2a3873074909a0ab754393877ca157ef5e3697062eee5b5d4b2b570",
-    "comment.md": "0b2335f17e71272761ad55d3fa927a4f9aba41a7a832170c1a5db6895c4d679e",
-    "context.md": "516b213093e91ab3760d6eaf407dec3efe1ae899b900f38ef3f59e34b4111daa",
-    "difficulty.md": "7359c801f3110875759b017959c6739f9fef17ed70c60b0e6191e0ba70adcec9",
-    "flashcards.md": "d4727e59bf65f96c13b4ee49cbe9317353202dad364bae6afcc1dfa12931e574",
-    "formula-guide.md": "4519c4401bd6052587ec7b5c3cf6a8a12ee9b92308736c058ad1249eaa3c596a",
-    "math-patterns.md": "ad3b613cfa4c943be89e717fa40fd8d83d263271f0a2adf4bb81a8906c6bc03e",
-    "problems.md": "753a58252f8606afccd9f32d723ff37e2e5af3daf3479784258d3e992657cc54",
-    "study-system.md": "210c2f24bb9c9352ff191f85cc82557f6c9a6ff7c4f30cb9482e1c2051126eca"
+    "comment.md": "c36ba6c5573806c4bd3e737b8ca60e67d247f5519402b1f3586bccd572ef6683",
+    "context.md": "71b2434d229131a2de88b960645d030e9103e48e2986190edc24360cbb8acbc5",
+    "difficulty.md": "586aa4d81291f5b0cf35f87400f595c720e5b9c10b3ba7b3863e8d82aa27342b",
+    "flashcards.md": "a9d5a282e6c76956f11aaeac27ac85f4ace6c625cb339fff54ee18beb0ee8797",
+    "formula-guide.md": "711ce22cc416a533b80ac1fb2d2808b8c059620bfb677237d90f86aa0b038fff",
+    "math-patterns.md": "563258479e3e82c4b3d870e6522fea5b26f069b33aee971d825f80f26b9d10a5",
+    "problems.md": "1090ad0f5c43a41b4eb0ea18a43ee6b07d5208631097e21337ee1def74e2b8cc",
+    "study-system.md": "12f8ee163d14de5561e44a5631c511a1ffa6ec56494b80a8730a90576660e0d0"
   },
   "browser_keys": [
     {

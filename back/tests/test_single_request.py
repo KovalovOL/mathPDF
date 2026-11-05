@@ -745,8 +745,13 @@ def test_quality_prompts_keep_source_and_added_material_distinct(source):
     _, problem_task, _ = load_prompts(
         GenerateRequest(mode="problems", count=5), [source]
     )
-    assert "Make the problem statement a variation by default" in problem_task
+    assert "original analogous practice problems" in problem_task
+    assert "Choose each problem's target skill and source-supported solution method BEFORE" in problem_task
+    assert "changing only numbers or signs" in problem_task
+    assert "Do not invent a variant.original" in problem_task
+    assert "independently generated question inputs and derived steps" in system
     assert "Copy original exercise expressions literally" not in problem_task
+    assert "change numbers or configuration" not in system + problem_task
     assert "Normally variant is null" not in system
 
 
