@@ -1,0 +1,1128 @@
+{
+  "version": 1,
+  "moves": {
+    "formula_lab/platform_services.py": [
+      "back/app/bootstrap/platform.py",
+      "back/app/administration/handler.py",
+      "back/app/administration/repository.py"
+    ],
+    "formula_lab/auth.py": [
+      "back/app/identity/authentication.py",
+      "back/app/identity/session_repository.py",
+      "back/app/infrastructure/identity/google.py"
+    ],
+    "formula_lab/store.py": [
+      "back/app/formula_extraction/repository.py"
+    ],
+    "formula_lab/report_summary.py": [
+      "back/app/reports/summary.py"
+    ],
+    "formula_lab/reviews.py": [
+      "back/app/reviews/repository.py",
+      "back/app/reviews/service.py",
+      "back/app/reviews/policies.py"
+    ],
+    "formula_lab/library.py": [
+      "back/app/library/repository.py",
+      "back/app/library/service.py",
+      "back/app/library/projection.py"
+    ],
+    "formula_lab/variants.py": [
+      "back/app/formula_extraction/variants.py"
+    ],
+    "formula_lab/models.py": [
+      "back/app/formula_extraction/models.py"
+    ],
+    "formula_lab/roles.py": [
+      "back/app/identity/roles.py",
+      "back/app/identity/role_repository.py"
+    ],
+    "formula_lab/math_validation.py": [
+      "back/app/infrastructure/export/math_diagnostic.py"
+    ],
+    "formula_lab/diagnostics.py": [
+      "back/app/core/observability/diagnostics.py"
+    ],
+    "formula_lab/infrastructure.py": [
+      "back/app/infrastructure/cli.py"
+    ],
+    "formula_lab/blob_storage.py": [
+      "back/app/infrastructure/object_storage/storage.py"
+    ],
+    "formula_lab/database.py": [
+      "back/app/infrastructure/database/connection.py"
+    ],
+    "formula_lab/__init__.py": [
+      "back/app/__init__.py"
+    ],
+    "formula_lab/request_reports.py": [
+      "back/app/infrastructure/http/request_reports.py",
+      "back/app/infrastructure/http/request_capture.py"
+    ],
+    "formula_lab/providers.py": [
+      "back/app/infrastructure/providers/openai.py",
+      "back/app/generation/output.py"
+    ],
+    "formula_lab/report_safety.py": [
+      "back/app/core/serialization.py"
+    ],
+    "formula_lab/generation_jobs.py": [
+      "back/app/generation/jobs.py"
+    ],
+    "formula_lab/reports.py": [
+      "back/app/reports/repository.py",
+      "back/app/reports/service.py",
+      "back/app/infrastructure/reports/bundles.py"
+    ],
+    "formula_lab/app.py": [
+      "back/app/bootstrap/api.py",
+      "back/app/bootstrap/routing.py",
+      "back/app/documents/handler.py",
+      "back/app/generation/handler.py",
+      "back/app/study/handler.py"
+    ],
+    "formula_lab/web_assets.py": [
+      "back/app/infrastructure/http/frontend.py",
+      "front/scripts/build.mjs"
+    ],
+    "formula_lab/workspace.py": [
+      "back/app/infrastructure/persistence.py",
+      "back/app/infrastructure/database/schema.py",
+      "back/app/documents/repository.py",
+      "back/app/study/repository.py",
+      "back/app/annotations/repository.py",
+      "back/app/documents/deletion_repository.py"
+    ],
+    "formula_lab/fonts.py": [
+      "back/app/infrastructure/formula_extraction/fonts.py"
+    ],
+    "formula_lab/annotations.py": [
+      "back/app/annotations/models.py",
+      "back/app/annotations/repository.py",
+      "back/app/application/use_cases/save_document_annotations.py",
+      "back/app/infrastructure/documents/overlay.py"
+    ],
+    "formula_lab/migration.py": [
+      "back/app/infrastructure/migrations/migrate.py"
+    ],
+    "formula_lab/usage.py": [
+      "back/app/usage/service.py",
+      "back/app/usage/repository.py",
+      "back/app/core/journal.py"
+    ],
+    "formula_lab/pdf_export.py": [
+      "back/app/infrastructure/export/browser.py"
+    ],
+    "formula_lab/extract.py": [
+      "back/app/infrastructure/formula_extraction/reader.py"
+    ],
+    "formula_lab/__main__.py": [
+      "back/app/bootstrap/cli.py"
+    ],
+    "formula_lab/study.py": [
+      "back/app/study/contract.py",
+      "back/app/study/policies.py",
+      "back/app/generation/service.py",
+      "back/app/application/use_cases/generate_study.py"
+    ],
+    "formula_lab/quotas.py": [
+      "back/app/usage/quotas.py"
+    ],
+    "formula_lab/static/pdf-source.js": [
+      "front/app/features/documents/pdf-source.js"
+    ],
+    "formula_lab/static/leave-guard.js": [
+      "front/app/core/navigation/leave-guard.js"
+    ],
+    "formula_lab/static/allowance-ui.js": [
+      "front/app/features/study/allowance-ui.js"
+    ],
+    "formula_lab/static/index.html": [
+      "front/app/pages/index.html"
+    ],
+    "formula_lab/static/home.html": [
+      "front/app/pages/home.html"
+    ],
+    "formula_lab/static/pdf-annotation-model.js": [
+      "front/app/features/annotations/pdf-annotation-model.js"
+    ],
+    "formula_lab/static/admin.html": [
+      "front/app/pages/admin.html"
+    ],
+    "formula_lab/static/file-previews.js": [
+      "front/app/features/documents/file-previews.js"
+    ],
+    "formula_lab/static/workspace-layout.js": [
+      "front/app/features/workspace/workspace-layout.js"
+    ],
+    "formula_lab/static/source-renderer.js": [
+      "front/app/rendering/math/source-renderer.js"
+    ],
+    "formula_lab/static/pdf-annotations.js": [
+      "front/app/features/annotations/pdf-annotations.js"
+    ],
+    "formula_lab/static/math-renderer.js": [
+      "front/app/rendering/math/math-renderer.js"
+    ],
+    "formula_lab/static/login.html": [
+      "front/app/pages/login.html"
+    ],
+    "formula_lab/static/review-ui.js": [
+      "front/app/features/study/review-ui.js"
+    ],
+    "formula_lab/static/print.html": [
+      "front/app/rendering/print/print.html"
+    ],
+    "formula_lab/static/home.js": [
+      "front/app/features/library/home.js"
+    ],
+    "formula_lab/static/pdf-text-layer.css": [
+      "front/app/assets/pdf-text-layer.css"
+    ],
+    "formula_lab/static/login.js": [
+      "front/app/features/account/login.js"
+    ],
+    "formula_lab/static/account.js": [
+      "front/app/features/account/account.js"
+    ],
+    "formula_lab/static/pdf-viewer.html": [
+      "front/app/pages/pdf-viewer.html"
+    ],
+    "formula_lab/static/style.css": [
+      "front/app/assets/style.css"
+    ],
+    "formula_lab/static/card-interaction.js": [
+      "front/app/features/study/card-interaction.js"
+    ],
+    "formula_lab/static/admin.js": [
+      "front/app/features/administration/admin.js"
+    ],
+    "formula_lab/static/print.css": [
+      "front/app/rendering/print/print.css"
+    ],
+    "formula_lab/static/pdf-viewer.js": [
+      "front/app/rendering/pdf/pdf-viewer.js"
+    ],
+    "formula_lab/static/annotation-toolbar.js": [
+      "front/app/features/annotations/annotation-toolbar.js"
+    ],
+    "formula_lab/static/visual-cache.js": [
+      "front/app/core/browser-storage/visual-cache.js"
+    ],
+    "formula_lab/static/rename-ui.js": [
+      "front/app/features/library/rename-ui.js"
+    ],
+    "formula_lab/static/reports.js": [
+      "front/app/features/reports/reports.js"
+    ],
+    "formula_lab/static/app.js": [
+      "front/app/features/workspace/app.js"
+    ],
+    "formula_lab/static/favicon.svg": [
+      "front/app/assets/favicon.svg"
+    ],
+    "formula_lab/static/print.js": [
+      "front/app/rendering/print/print.js"
+    ],
+    "formula_lab/prompts/context.md": [
+      "back/app/generation/prompts/context.md"
+    ],
+    "formula_lab/prompts/attachment-label.md": [
+      "back/app/generation/prompts/attachment-label.md"
+    ],
+    "formula_lab/prompts/problems.md": [
+      "back/app/generation/prompts/problems.md"
+    ],
+    "formula_lab/prompts/formula-guide.md": [
+      "back/app/generation/prompts/formula-guide.md"
+    ],
+    "formula_lab/prompts/comment.md": [
+      "back/app/generation/prompts/comment.md"
+    ],
+    "formula_lab/prompts/study-system.md": [
+      "back/app/generation/prompts/study-system.md"
+    ],
+    "formula_lab/prompts/math-patterns.md": [
+      "back/app/generation/prompts/math-patterns.md"
+    ],
+    "formula_lab/prompts/difficulty.md": [
+      "back/app/generation/prompts/difficulty.md"
+    ],
+    "formula_lab/prompts/flashcards.md": [
+      "back/app/generation/prompts/flashcards.md"
+    ],
+    "formula_lab/static/vendor/katex/LICENSE": [
+      "front/app/assets/vendor/katex/LICENSE"
+    ],
+    "formula_lab/static/vendor/katex/katex.min.css": [
+      "front/app/assets/vendor/katex/katex.min.css"
+    ],
+    "formula_lab/static/vendor/katex/katex.min.js": [
+      "front/app/assets/vendor/katex/katex.min.js"
+    ],
+    "formula_lab/static/vendor/pdfjs/LICENSE": [
+      "front/app/assets/vendor/pdfjs/LICENSE"
+    ],
+    "formula_lab/static/vendor/pdfjs/pdf.mjs": [
+      "front/app/assets/vendor/pdfjs/pdf.mjs"
+    ],
+    "formula_lab/static/vendor/pdfjs/pdf.worker.mjs": [
+      "front/app/assets/vendor/pdfjs/pdf.worker.mjs"
+    ],
+    "formula_lab/static/vendor/katex/fonts/KaTeX_Typewriter-Regular.woff2": [
+      "front/app/assets/vendor/katex/fonts/KaTeX_Typewriter-Regular.woff2"
+    ],
+    "formula_lab/static/vendor/katex/fonts/KaTeX_Main-Regular.woff": [
+      "front/app/assets/vendor/katex/fonts/KaTeX_Main-Regular.woff"
+    ],
+    "formula_lab/static/vendor/katex/fonts/KaTeX_AMS-Regular.ttf": [
+      "front/app/assets/vendor/katex/fonts/KaTeX_AMS-Regular.ttf"
+    ],
+    "formula_lab/static/vendor/katex/fonts/KaTeX_Main-BoldItalic.woff": [
+      "front/app/assets/vendor/katex/fonts/KaTeX_Main-BoldItalic.woff"
+    ],
+    "formula_lab/static/vendor/katex/fonts/KaTeX_AMS-Regular.woff2": [
+      "front/app/assets/vendor/katex/fonts/KaTeX_AMS-Regular.woff2"
+    ],
+    "formula_lab/static/vendor/katex/fonts/KaTeX_Size3-Regular.woff2": [
+      "front/app/assets/vendor/katex/fonts/KaTeX_Size3-Regular.woff2"
+    ],
+    "formula_lab/static/vendor/katex/fonts/KaTeX_Main-Regular.woff2": [
+      "front/app/assets/vendor/katex/fonts/KaTeX_Main-Regular.woff2"
+    ],
+    "formula_lab/static/vendor/katex/fonts/KaTeX_Script-Regular.ttf": [
+      "front/app/assets/vendor/katex/fonts/KaTeX_Script-Regular.ttf"
+    ],
+    "formula_lab/static/vendor/katex/fonts/KaTeX_Caligraphic-Bold.woff2": [
+      "front/app/assets/vendor/katex/fonts/KaTeX_Caligraphic-Bold.woff2"
+    ],
+    "formula_lab/static/vendor/katex/fonts/KaTeX_Size3-Regular.ttf": [
+      "front/app/assets/vendor/katex/fonts/KaTeX_Size3-Regular.ttf"
+    ],
+    "formula_lab/static/vendor/katex/fonts/KaTeX_Typewriter-Regular.woff": [
+      "front/app/assets/vendor/katex/fonts/KaTeX_Typewriter-Regular.woff"
+    ],
+    "formula_lab/static/vendor/katex/fonts/KaTeX_Caligraphic-Regular.woff": [
+      "front/app/assets/vendor/katex/fonts/KaTeX_Caligraphic-Regular.woff"
+    ],
+    "formula_lab/static/vendor/katex/fonts/KaTeX_Typewriter-Regular.ttf": [
+      "front/app/assets/vendor/katex/fonts/KaTeX_Typewriter-Regular.ttf"
+    ],
+    "formula_lab/static/vendor/katex/fonts/KaTeX_Main-Italic.woff": [
+      "front/app/assets/vendor/katex/fonts/KaTeX_Main-Italic.woff"
+    ],
+    "formula_lab/static/vendor/katex/fonts/KaTeX_Caligraphic-Bold.ttf": [
+      "front/app/assets/vendor/katex/fonts/KaTeX_Caligraphic-Bold.ttf"
+    ],
+    "formula_lab/static/vendor/katex/fonts/KaTeX_SansSerif-Bold.woff2": [
+      "front/app/assets/vendor/katex/fonts/KaTeX_SansSerif-Bold.woff2"
+    ],
+    "formula_lab/static/vendor/katex/fonts/KaTeX_Math-Italic.woff2": [
+      "front/app/assets/vendor/katex/fonts/KaTeX_Math-Italic.woff2"
+    ],
+    "formula_lab/static/vendor/katex/fonts/KaTeX_Size4-Regular.woff2": [
+      "front/app/assets/vendor/katex/fonts/KaTeX_Size4-Regular.woff2"
+    ],
+    "formula_lab/static/vendor/katex/fonts/KaTeX_Fraktur-Bold.woff2": [
+      "front/app/assets/vendor/katex/fonts/KaTeX_Fraktur-Bold.woff2"
+    ],
+    "formula_lab/static/vendor/katex/fonts/KaTeX_Caligraphic-Bold.woff": [
+      "front/app/assets/vendor/katex/fonts/KaTeX_Caligraphic-Bold.woff"
+    ],
+    "formula_lab/static/vendor/katex/fonts/KaTeX_SansSerif-Bold.ttf": [
+      "front/app/assets/vendor/katex/fonts/KaTeX_SansSerif-Bold.ttf"
+    ],
+    "formula_lab/static/vendor/katex/fonts/KaTeX_Fraktur-Regular.woff": [
+      "front/app/assets/vendor/katex/fonts/KaTeX_Fraktur-Regular.woff"
+    ],
+    "formula_lab/static/vendor/katex/fonts/KaTeX_Main-Bold.ttf": [
+      "front/app/assets/vendor/katex/fonts/KaTeX_Main-Bold.ttf"
+    ],
+    "formula_lab/static/vendor/katex/fonts/KaTeX_SansSerif-Italic.woff2": [
+      "front/app/assets/vendor/katex/fonts/KaTeX_SansSerif-Italic.woff2"
+    ],
+    "formula_lab/static/vendor/katex/fonts/KaTeX_Main-Bold.woff2": [
+      "front/app/assets/vendor/katex/fonts/KaTeX_Main-Bold.woff2"
+    ],
+    "formula_lab/static/vendor/katex/fonts/KaTeX_SansSerif-Regular.woff2": [
+      "front/app/assets/vendor/katex/fonts/KaTeX_SansSerif-Regular.woff2"
+    ],
+    "formula_lab/static/vendor/katex/fonts/KaTeX_Fraktur-Regular.ttf": [
+      "front/app/assets/vendor/katex/fonts/KaTeX_Fraktur-Regular.ttf"
+    ],
+    "formula_lab/static/vendor/katex/fonts/KaTeX_Main-Regular.ttf": [
+      "front/app/assets/vendor/katex/fonts/KaTeX_Main-Regular.ttf"
+    ],
+    "formula_lab/static/vendor/katex/fonts/KaTeX_Size2-Regular.woff": [
+      "front/app/assets/vendor/katex/fonts/KaTeX_Size2-Regular.woff"
+    ],
+    "formula_lab/static/vendor/katex/fonts/KaTeX_Main-BoldItalic.woff2": [
+      "front/app/assets/vendor/katex/fonts/KaTeX_Main-BoldItalic.woff2"
+    ],
+    "formula_lab/static/vendor/katex/fonts/KaTeX_Fraktur-Regular.woff2": [
+      "front/app/assets/vendor/katex/fonts/KaTeX_Fraktur-Regular.woff2"
+    ],
+    "formula_lab/static/vendor/katex/fonts/KaTeX_Script-Regular.woff2": [
+      "front/app/assets/vendor/katex/fonts/KaTeX_Script-Regular.woff2"
+    ],
+    "formula_lab/static/vendor/katex/fonts/KaTeX_Size4-Regular.woff": [
+      "front/app/assets/vendor/katex/fonts/KaTeX_Size4-Regular.woff"
+    ],
+    "formula_lab/static/vendor/katex/fonts/KaTeX_Size3-Regular.woff": [
+      "front/app/assets/vendor/katex/fonts/KaTeX_Size3-Regular.woff"
+    ],
+    "formula_lab/static/vendor/katex/fonts/KaTeX_AMS-Regular.woff": [
+      "front/app/assets/vendor/katex/fonts/KaTeX_AMS-Regular.woff"
+    ],
+    "formula_lab/static/vendor/katex/fonts/KaTeX_Main-Bold.woff": [
+      "front/app/assets/vendor/katex/fonts/KaTeX_Main-Bold.woff"
+    ],
+    "formula_lab/static/vendor/katex/fonts/KaTeX_SansSerif-Italic.ttf": [
+      "front/app/assets/vendor/katex/fonts/KaTeX_SansSerif-Italic.ttf"
+    ],
+    "formula_lab/static/vendor/katex/fonts/KaTeX_Math-Italic.ttf": [
+      "front/app/assets/vendor/katex/fonts/KaTeX_Math-Italic.ttf"
+    ],
+    "formula_lab/static/vendor/katex/fonts/KaTeX_Size1-Regular.woff": [
+      "front/app/assets/vendor/katex/fonts/KaTeX_Size1-Regular.woff"
+    ],
+    "formula_lab/static/vendor/katex/fonts/KaTeX_SansSerif-Regular.woff": [
+      "front/app/assets/vendor/katex/fonts/KaTeX_SansSerif-Regular.woff"
+    ],
+    "formula_lab/static/vendor/katex/fonts/KaTeX_Main-Italic.ttf": [
+      "front/app/assets/vendor/katex/fonts/KaTeX_Main-Italic.ttf"
+    ],
+    "formula_lab/static/vendor/katex/fonts/KaTeX_Math-Italic.woff": [
+      "front/app/assets/vendor/katex/fonts/KaTeX_Math-Italic.woff"
+    ],
+    "formula_lab/static/vendor/katex/fonts/KaTeX_Math-BoldItalic.woff2": [
+      "front/app/assets/vendor/katex/fonts/KaTeX_Math-BoldItalic.woff2"
+    ],
+    "formula_lab/static/vendor/katex/fonts/KaTeX_Fraktur-Bold.ttf": [
+      "front/app/assets/vendor/katex/fonts/KaTeX_Fraktur-Bold.ttf"
+    ],
+    "formula_lab/static/vendor/katex/fonts/KaTeX_Size2-Regular.ttf": [
+      "front/app/assets/vendor/katex/fonts/KaTeX_Size2-Regular.ttf"
+    ],
+    "formula_lab/static/vendor/katex/fonts/KaTeX_SansSerif-Italic.woff": [
+      "front/app/assets/vendor/katex/fonts/KaTeX_SansSerif-Italic.woff"
+    ],
+    "formula_lab/static/vendor/katex/fonts/KaTeX_Main-Italic.woff2": [
+      "front/app/assets/vendor/katex/fonts/KaTeX_Main-Italic.woff2"
+    ],
+    "formula_lab/static/vendor/katex/fonts/KaTeX_Size1-Regular.woff2": [
+      "front/app/assets/vendor/katex/fonts/KaTeX_Size1-Regular.woff2"
+    ],
+    "formula_lab/static/vendor/katex/fonts/KaTeX_Fraktur-Bold.woff": [
+      "front/app/assets/vendor/katex/fonts/KaTeX_Fraktur-Bold.woff"
+    ],
+    "formula_lab/static/vendor/katex/fonts/KaTeX_Script-Regular.woff": [
+      "front/app/assets/vendor/katex/fonts/KaTeX_Script-Regular.woff"
+    ],
+    "formula_lab/static/vendor/katex/fonts/KaTeX_SansSerif-Regular.ttf": [
+      "front/app/assets/vendor/katex/fonts/KaTeX_SansSerif-Regular.ttf"
+    ],
+    "formula_lab/static/vendor/katex/fonts/KaTeX_Math-BoldItalic.woff": [
+      "front/app/assets/vendor/katex/fonts/KaTeX_Math-BoldItalic.woff"
+    ],
+    "formula_lab/static/vendor/katex/fonts/KaTeX_Size1-Regular.ttf": [
+      "front/app/assets/vendor/katex/fonts/KaTeX_Size1-Regular.ttf"
+    ],
+    "formula_lab/static/vendor/katex/fonts/KaTeX_Caligraphic-Regular.ttf": [
+      "front/app/assets/vendor/katex/fonts/KaTeX_Caligraphic-Regular.ttf"
+    ],
+    "formula_lab/static/vendor/katex/fonts/KaTeX_Size4-Regular.ttf": [
+      "front/app/assets/vendor/katex/fonts/KaTeX_Size4-Regular.ttf"
+    ],
+    "formula_lab/static/vendor/katex/fonts/KaTeX_Size2-Regular.woff2": [
+      "front/app/assets/vendor/katex/fonts/KaTeX_Size2-Regular.woff2"
+    ],
+    "formula_lab/static/vendor/katex/fonts/KaTeX_Caligraphic-Regular.woff2": [
+      "front/app/assets/vendor/katex/fonts/KaTeX_Caligraphic-Regular.woff2"
+    ],
+    "formula_lab/static/vendor/katex/fonts/KaTeX_Main-BoldItalic.ttf": [
+      "front/app/assets/vendor/katex/fonts/KaTeX_Main-BoldItalic.ttf"
+    ],
+    "formula_lab/static/vendor/katex/fonts/KaTeX_SansSerif-Bold.woff": [
+      "front/app/assets/vendor/katex/fonts/KaTeX_SansSerif-Bold.woff"
+    ],
+    "formula_lab/static/vendor/katex/fonts/KaTeX_Math-BoldItalic.ttf": [
+      "front/app/assets/vendor/katex/fonts/KaTeX_Math-BoldItalic.ttf"
+    ],
+    "formula_lab/static/vendor/pdfjs/wasm/LICENSE_JBIG2": [
+      "front/app/assets/vendor/pdfjs/wasm/LICENSE_JBIG2"
+    ],
+    "formula_lab/static/vendor/pdfjs/wasm/openjpeg.wasm": [
+      "front/app/assets/vendor/pdfjs/wasm/openjpeg.wasm"
+    ],
+    "formula_lab/static/vendor/pdfjs/wasm/jbig2.wasm": [
+      "front/app/assets/vendor/pdfjs/wasm/jbig2.wasm"
+    ],
+    "formula_lab/static/vendor/pdfjs/wasm/jbig2_nowasm_fallback.js": [
+      "front/app/assets/vendor/pdfjs/wasm/jbig2_nowasm_fallback.js"
+    ],
+    "formula_lab/static/vendor/pdfjs/wasm/openjpeg_nowasm_fallback.js": [
+      "front/app/assets/vendor/pdfjs/wasm/openjpeg_nowasm_fallback.js"
+    ],
+    "formula_lab/static/vendor/pdfjs/wasm/quickjs-eval.wasm": [
+      "front/app/assets/vendor/pdfjs/wasm/quickjs-eval.wasm"
+    ],
+    "formula_lab/static/vendor/pdfjs/wasm/LICENSE_QCMS": [
+      "front/app/assets/vendor/pdfjs/wasm/LICENSE_QCMS"
+    ],
+    "formula_lab/static/vendor/pdfjs/wasm/LICENSE_PDFJS_JBIG2": [
+      "front/app/assets/vendor/pdfjs/wasm/LICENSE_PDFJS_JBIG2"
+    ],
+    "formula_lab/static/vendor/pdfjs/wasm/quickjs-eval.js": [
+      "front/app/assets/vendor/pdfjs/wasm/quickjs-eval.js"
+    ],
+    "formula_lab/static/vendor/pdfjs/wasm/LICENSE_OPENJPEG": [
+      "front/app/assets/vendor/pdfjs/wasm/LICENSE_OPENJPEG"
+    ],
+    "formula_lab/static/vendor/pdfjs/wasm/LICENSE_PDFJS_OPENJPEG": [
+      "front/app/assets/vendor/pdfjs/wasm/LICENSE_PDFJS_OPENJPEG"
+    ],
+    "formula_lab/static/vendor/pdfjs/wasm/qcms_bg.wasm": [
+      "front/app/assets/vendor/pdfjs/wasm/qcms_bg.wasm"
+    ],
+    "formula_lab/static/vendor/pdfjs/wasm/LICENSE_PDFJS_QCMS": [
+      "front/app/assets/vendor/pdfjs/wasm/LICENSE_PDFJS_QCMS"
+    ],
+    "formula_lab/static/vendor/pdfjs/standard_fonts/FoxitDingbats.pfb": [
+      "front/app/assets/vendor/pdfjs/standard_fonts/FoxitDingbats.pfb"
+    ],
+    "formula_lab/static/vendor/pdfjs/standard_fonts/LiberationSans-Bold.ttf": [
+      "front/app/assets/vendor/pdfjs/standard_fonts/LiberationSans-Bold.ttf"
+    ],
+    "formula_lab/static/vendor/pdfjs/standard_fonts/FoxitSymbol.pfb": [
+      "front/app/assets/vendor/pdfjs/standard_fonts/FoxitSymbol.pfb"
+    ],
+    "formula_lab/static/vendor/pdfjs/standard_fonts/LiberationSans-BoldItalic.ttf": [
+      "front/app/assets/vendor/pdfjs/standard_fonts/LiberationSans-BoldItalic.ttf"
+    ],
+    "formula_lab/static/vendor/pdfjs/standard_fonts/LICENSE_LIBERATION": [
+      "front/app/assets/vendor/pdfjs/standard_fonts/LICENSE_LIBERATION"
+    ],
+    "formula_lab/static/vendor/pdfjs/standard_fonts/FoxitFixedBoldItalic.pfb": [
+      "front/app/assets/vendor/pdfjs/standard_fonts/FoxitFixedBoldItalic.pfb"
+    ],
+    "formula_lab/static/vendor/pdfjs/standard_fonts/FoxitFixedItalic.pfb": [
+      "front/app/assets/vendor/pdfjs/standard_fonts/FoxitFixedItalic.pfb"
+    ],
+    "formula_lab/static/vendor/pdfjs/standard_fonts/FoxitSerifItalic.pfb": [
+      "front/app/assets/vendor/pdfjs/standard_fonts/FoxitSerifItalic.pfb"
+    ],
+    "formula_lab/static/vendor/pdfjs/standard_fonts/FoxitSerifBoldItalic.pfb": [
+      "front/app/assets/vendor/pdfjs/standard_fonts/FoxitSerifBoldItalic.pfb"
+    ],
+    "formula_lab/static/vendor/pdfjs/standard_fonts/FoxitSerifBold.pfb": [
+      "front/app/assets/vendor/pdfjs/standard_fonts/FoxitSerifBold.pfb"
+    ],
+    "formula_lab/static/vendor/pdfjs/standard_fonts/FoxitFixed.pfb": [
+      "front/app/assets/vendor/pdfjs/standard_fonts/FoxitFixed.pfb"
+    ],
+    "formula_lab/static/vendor/pdfjs/standard_fonts/LiberationSans-Italic.ttf": [
+      "front/app/assets/vendor/pdfjs/standard_fonts/LiberationSans-Italic.ttf"
+    ],
+    "formula_lab/static/vendor/pdfjs/standard_fonts/FoxitSerif.pfb": [
+      "front/app/assets/vendor/pdfjs/standard_fonts/FoxitSerif.pfb"
+    ],
+    "formula_lab/static/vendor/pdfjs/standard_fonts/LICENSE_FOXIT": [
+      "front/app/assets/vendor/pdfjs/standard_fonts/LICENSE_FOXIT"
+    ],
+    "formula_lab/static/vendor/pdfjs/standard_fonts/LiberationSans-Regular.ttf": [
+      "front/app/assets/vendor/pdfjs/standard_fonts/LiberationSans-Regular.ttf"
+    ],
+    "formula_lab/static/vendor/pdfjs/standard_fonts/FoxitFixedBold.pfb": [
+      "front/app/assets/vendor/pdfjs/standard_fonts/FoxitFixedBold.pfb"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/78-EUC-V.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/78-EUC-V.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/GBKp-EUC-H.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/GBKp-EUC-H.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/Katakana.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/Katakana.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/KSCpc-EUC-H.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/KSCpc-EUC-H.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/Adobe-CNS1-UCS2.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/Adobe-CNS1-UCS2.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/Adobe-CNS1-5.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/Adobe-CNS1-5.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/Adobe-Japan1-6.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/Adobe-Japan1-6.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/Adobe-Japan1-4.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/Adobe-Japan1-4.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/Adobe-Japan1-UCS2.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/Adobe-Japan1-UCS2.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/HKscs-B5-H.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/HKscs-B5-H.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/UniJISX0213-UTF32-H.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/UniJISX0213-UTF32-H.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/HKdla-B5-V.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/HKdla-B5-V.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/ETenms-B5-H.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/ETenms-B5-H.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/H.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/H.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/Adobe-Korea1-UCS2.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/Adobe-Korea1-UCS2.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/UniJIS-UTF8-V.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/UniJIS-UTF8-V.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/WP-Symbol.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/WP-Symbol.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/Add-H.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/Add-H.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/Adobe-Japan1-0.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/Adobe-Japan1-0.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/Adobe-CNS1-3.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/Adobe-CNS1-3.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/HKm314-B5-H.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/HKm314-B5-H.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/UniCNS-UTF8-V.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/UniCNS-UTF8-V.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/LICENSE": [
+      "front/app/assets/vendor/pdfjs/cmaps/LICENSE"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/ETHK-B5-H.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/ETHK-B5-H.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/KSC-Johab-V.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/KSC-Johab-V.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/Adobe-CNS1-1.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/Adobe-CNS1-1.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/UniGB-UCS2-V.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/UniGB-UCS2-V.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/Adobe-Japan1-2.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/Adobe-Japan1-2.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/KSC-V.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/KSC-V.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/UniJISPro-UTF8-V.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/UniJISPro-UTF8-V.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/KSC-EUC-H.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/KSC-EUC-H.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/RKSJ-H.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/RKSJ-H.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/Add-RKSJ-V.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/Add-RKSJ-V.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/UniKS-UCS2-V.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/UniKS-UCS2-V.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/78-V.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/78-V.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/CNS-EUC-H.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/CNS-EUC-H.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/HKm471-B5-V.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/HKm471-B5-V.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/HKgccs-B5-H.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/HKgccs-B5-H.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/UniCNS-UTF8-H.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/UniCNS-UTF8-H.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/HKm314-B5-V.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/HKm314-B5-V.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/Adobe-Japan1-5.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/Adobe-Japan1-5.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/Adobe-CNS1-6.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/Adobe-CNS1-6.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/Add-V.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/Add-V.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/UniJIS-UTF8-H.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/UniJIS-UTF8-H.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/UniJISPro-UCS2-HW-V.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/UniJISPro-UCS2-HW-V.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/HKgccs-B5-V.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/HKgccs-B5-V.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/HKm471-B5-H.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/HKm471-B5-H.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/CNS-EUC-V.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/CNS-EUC-V.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/78-H.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/78-H.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/UniKS-UCS2-H.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/UniKS-UCS2-H.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/KSC-EUC-V.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/KSC-EUC-V.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/Add-RKSJ-H.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/Add-RKSJ-H.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/RKSJ-V.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/RKSJ-V.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/Adobe-CNS1-4.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/Adobe-CNS1-4.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/UniGB-UCS2-H.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/UniGB-UCS2-H.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/KSC-Johab-H.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/KSC-Johab-H.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/KSC-H.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/KSC-H.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/ETHK-B5-V.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/ETHK-B5-V.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/Adobe-CNS1-0.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/Adobe-CNS1-0.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/Adobe-Japan1-3.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/Adobe-Japan1-3.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/KSCpc-EUC-V.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/KSCpc-EUC-V.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/GBKp-EUC-V.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/GBKp-EUC-V.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/78-EUC-H.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/78-EUC-H.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/Roman.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/Roman.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/V.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/V.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/ETenms-B5-V.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/ETenms-B5-V.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/HKdla-B5-H.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/HKdla-B5-H.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/UniJISX0213-UTF32-V.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/UniJISX0213-UTF32-V.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/HKscs-B5-V.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/HKscs-B5-V.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/Adobe-Japan1-1.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/Adobe-Japan1-1.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/Adobe-CNS1-2.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/Adobe-CNS1-2.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/90msp-RKSJ-V.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/90msp-RKSJ-V.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/B5pc-V.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/B5pc-V.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/Adobe-GB1-1.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/Adobe-GB1-1.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/B5-H.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/B5-H.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/UniCNS-UTF16-V.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/UniCNS-UTF16-V.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/UniGB-UTF16-H.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/UniGB-UTF16-H.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/Hankaku.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/Hankaku.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/90ms-RKSJ-V.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/90ms-RKSJ-V.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/EUC-V.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/EUC-V.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/UniJIS2004-UTF16-H.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/UniJIS2004-UTF16-H.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/UniJIS2004-UTF8-H.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/UniJIS2004-UTF8-H.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/GBTpc-EUC-V.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/GBTpc-EUC-V.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/UniCNS-UTF32-H.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/UniCNS-UTF32-H.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/UniGB-UTF32-V.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/UniGB-UTF32-V.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/GBT-H.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/GBT-H.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/78-RKSJ-H.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/78-RKSJ-H.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/78ms-RKSJ-H.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/78ms-RKSJ-H.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/HKdlb-B5-H.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/HKdlb-B5-H.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/83pv-RKSJ-H.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/83pv-RKSJ-H.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/GBT-EUC-H.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/GBT-EUC-H.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/UniJIS2004-UTF32-V.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/UniJIS2004-UTF32-V.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/GBpc-EUC-V.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/GBpc-EUC-V.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/Adobe-Korea1-1.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/Adobe-Korea1-1.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/ETen-B5-H.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/ETen-B5-H.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/KSCms-UHC-HW-H.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/KSCms-UHC-HW-H.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/CNS1-V.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/CNS1-V.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/GBK-EUC-H.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/GBK-EUC-H.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/Ext-V.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/Ext-V.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/Adobe-GB1-3.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/Adobe-GB1-3.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/UniJIS-UCS2-H.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/UniJIS-UCS2-H.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/CNS2-H.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/CNS2-H.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/UniKS-UTF16-V.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/UniKS-UTF16-V.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/NWP-V.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/NWP-V.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/KSCms-UHC-V.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/KSCms-UHC-V.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/GB-V.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/GB-V.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/UniJIS-UTF32-V.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/UniJIS-UTF32-V.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/UniJIS-UCS2-HW-H.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/UniJIS-UCS2-HW-H.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/UniCNS-UCS2-H.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/UniCNS-UCS2-H.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/UniJISX02132004-UTF32-H.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/UniJISX02132004-UTF32-H.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/UniGB-UTF8-H.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/UniGB-UTF8-H.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/GB-EUC-V.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/GB-EUC-V.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/UniJIS-UTF16-H.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/UniJIS-UTF16-H.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/Adobe-GB1-5.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/Adobe-GB1-5.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/UniKS-UTF8-H.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/UniKS-UTF8-H.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/UniKS-UTF32-H.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/UniKS-UTF32-H.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/90pv-RKSJ-H.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/90pv-RKSJ-H.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/GBK2K-V.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/GBK2K-V.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/Ext-RKSJ-V.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/Ext-RKSJ-V.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/UniCNS-UCS2-V.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/UniCNS-UCS2-V.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/UniJIS-UCS2-HW-V.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/UniJIS-UCS2-HW-V.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/UniJIS-UTF32-H.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/UniJIS-UTF32-H.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/GB-H.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/GB-H.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/KSCms-UHC-H.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/KSCms-UHC-H.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/NWP-H.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/NWP-H.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/UniKS-UTF16-H.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/UniKS-UTF16-H.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/Adobe-GB1-2.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/Adobe-GB1-2.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/CNS2-V.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/CNS2-V.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/Hiragana.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/Hiragana.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/UniJIS-UCS2-V.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/UniJIS-UCS2-V.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/Adobe-Korea1-0.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/Adobe-Korea1-0.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/GBK2K-H.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/GBK2K-H.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/90pv-RKSJ-V.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/90pv-RKSJ-V.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/Ext-RKSJ-H.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/Ext-RKSJ-H.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/Adobe-Korea1-2.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/Adobe-Korea1-2.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/UniKS-UTF32-V.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/UniKS-UTF32-V.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/UniKS-UTF8-V.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/UniKS-UTF8-V.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/Adobe-GB1-0.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/Adobe-GB1-0.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/UniJIS-UTF16-V.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/UniJIS-UTF16-V.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/UniJISPro-UCS2-V.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/UniJISPro-UCS2-V.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/GB-EUC-H.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/GB-EUC-H.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/UniGB-UTF8-V.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/UniGB-UTF8-V.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/UniJISX02132004-UTF32-V.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/UniJISX02132004-UTF32-V.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/GBTpc-EUC-H.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/GBTpc-EUC-H.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/Adobe-GB1-UCS2.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/Adobe-GB1-UCS2.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/UniJIS2004-UTF16-V.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/UniJIS2004-UTF16-V.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/UniJIS2004-UTF8-V.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/UniJIS2004-UTF8-V.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/90ms-RKSJ-H.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/90ms-RKSJ-H.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/EUC-H.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/EUC-H.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/UniGB-UTF16-V.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/UniGB-UTF16-V.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/UniCNS-UTF16-H.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/UniCNS-UTF16-H.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/B5pc-H.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/B5pc-H.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/90msp-RKSJ-H.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/90msp-RKSJ-H.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/B5-V.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/B5-V.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/Adobe-GB1-4.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/Adobe-GB1-4.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/Ext-H.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/Ext-H.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/GBK-EUC-V.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/GBK-EUC-V.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/CNS1-H.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/CNS1-H.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/ETen-B5-V.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/ETen-B5-V.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/KSCms-UHC-HW-V.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/KSCms-UHC-HW-V.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/UniJIS2004-UTF32-H.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/UniJIS2004-UTF32-H.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/GBpc-EUC-H.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/GBpc-EUC-H.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/GBT-EUC-V.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/GBT-EUC-V.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/HKdlb-B5-V.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/HKdlb-B5-V.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/78ms-RKSJ-V.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/78ms-RKSJ-V.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/78-RKSJ-V.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/78-RKSJ-V.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/GBT-V.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/GBT-V.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/UniGB-UTF32-H.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/UniGB-UTF32-H.bcmap"
+    ],
+    "formula_lab/static/vendor/pdfjs/cmaps/UniCNS-UTF32-V.bcmap": [
+      "front/app/assets/vendor/pdfjs/cmaps/UniCNS-UTF32-V.bcmap"
+    ],
+    "tests/test_annotation_choices.py": [
+      "front/tests/test_annotation_choices.py"
+    ],
+    "tests/test_daily_allowance.py": [
+      "back/tests/test_daily_allowance.py"
+    ],
+    "tests/test_incident_diagnostics.py": [
+      "back/tests/test_incident_diagnostics.py"
+    ],
+    "tests/test_pdf_viewer_cache.py": [
+      "front/tests/test_pdf_viewer_cache.py"
+    ],
+    "tests/test_study_compatibility.py": [
+      "back/tests/test_study_compatibility.py"
+    ],
+    "tests/test_library_deletion.py": [
+      "back/tests/test_library_deletion.py"
+    ],
+    "tests/test_reports_ui.py": [
+      "front/tests/test_reports_ui.py"
+    ],
+    "tests/test_learning_features.py": [
+      "back/tests/test_learning_features.py"
+    ],
+    "tests/test_account_departure.py": [
+      "front/tests/test_account_departure.py"
+    ],
+    "tests/test_variants.py": [
+      "back/tests/test_variants.py"
+    ],
+    "tests/test_annotation_interaction.py": [
+      "front/tests/test_annotation_interaction.py"
+    ],
+    "tests/test_store.py": [
+      "back/tests/test_store.py"
+    ],
+    "tests/test_library_ui.py": [
+      "front/tests/test_library_ui.py"
+    ],
+    "tests/test_leave_guard.py": [
+      "front/tests/test_leave_guard.py"
+    ],
+    "tests/test_annotations.py": [
+      "back/tests/test_annotations.py"
+    ],
+    "tests/test_library_organization.py": [
+      "back/tests/test_library_organization.py"
+    ],
+    "tests/test_card_interaction.py": [
+      "front/tests/test_card_interaction.py"
+    ],
+    "tests/test_platform_migration.py": [
+      "back/tests/test_platform_migration.py"
+    ],
+    "tests/test_allowance_ui.py": [
+      "front/tests/test_allowance_ui.py"
+    ],
+    "tests/test_visual_cache.py": [
+      "front/tests/test_visual_cache.py"
+    ],
+    "tests/test_platform.py": [
+      "back/tests/test_platform.py"
+    ],
+    "tests/test_extract.py": [
+      "back/tests/test_extract.py"
+    ],
+    "tests/test_workspace_layout.py": [
+      "front/tests/test_workspace_layout.py"
+    ],
+    "tests/test_math_validation.py": [
+      "back/tests/test_math_validation.py"
+    ],
+    "tests/test_learning_ui.py": [
+      "front/tests/test_learning_ui.py"
+    ],
+    "tests/test_app.py": [
+      "back/tests/test_app.py"
+    ],
+    "tests/test_single_request.py": [
+      "back/tests/test_single_request.py"
+    ]
+  }
+}

@@ -1,0 +1,28 @@
+<!doctype html><link rel="stylesheet" href="/style.css" />
+<header class="app-header">Layout component</header>
+<main id="workspace" class="workspace">
+  <section id="document-pane" class="pane">
+    <button id="hide-source">Hide viewer</button>
+    <iframe title="Retained document" src="about:blank"></iframe>
+  </section>
+  <div id="splitter" tabindex="0"></div>
+  <section id="practice-pane" class="pane">
+    <button id="show-source">Show viewer</button>
+    <div class="practice-content">
+      <div id="answer" style="height: 1600px; flex-shrink: 0">Long answer</div>
+    </div>
+  </section>
+</main>
+<script type="module">
+  import { createWorkspaceLayout } from "/workspace-layout.js";
+  const values = new Map();
+  window.layout = createWorkspaceLayout({
+    preference: (key, value) => {
+      if (value !== undefined) values.set(key, String(value));
+      return values.get(key);
+    },
+    onViewport: () => {},
+  });
+  window.initialFrame = document.querySelector("iframe");
+  window.ready = true;
+</script>

@@ -1,0 +1,56 @@
+<!doctype html>
+<meta name="viewport" content="width=device-width,initial-scale=1" /><link
+  rel="stylesheet"
+  href="/static/style.css"
+/>
+<main
+  class="practice-content"
+  style="
+    height: calc(100dvh - 16px);
+    width: calc(100vw - 16px);
+    margin: 8px;
+    padding: 10px;
+  "
+>
+  <div class="deck">
+    <section class="flashcard" tabindex="0">
+      <div class="card-inner">
+        <div class="card-face card-front">
+          <div class="card-body">
+            <p id="text" class="text-block">
+              Question with a very long unbroken word: LONGWORD
+            </p>
+            <a href="#source">Source page 1</a>
+          </div>
+        </div>
+        <div class="card-face card-back">
+          <div class="card-body">Answer</div>
+        </div>
+      </div>
+    </section>
+    <div class="deck-footer">
+      <button class="icon-button" aria-label="Previous card">‹</button>
+      <div class="deck-footer-center">
+        <div class="review-controls">
+          <div class="review-actions">
+            <button class="review-incorrect">✕ Incorrect</button
+            ><button class="review-correct">✓ Correct</button>
+          </div>
+        </div>
+      </div>
+      <button class="icon-button" aria-label="Next card">›</button>
+    </div>
+  </div>
+</main>
+<script type="module">
+  import { wireFlashcard } from "/static/card-interaction.js";
+  window.flips = 0;
+  window.moves = 0;
+  const card = document.querySelector(".flashcard");
+  wireFlashcard(card, {
+    flip: () => window.flips++,
+    previous: () => window.moves--,
+    next: () => window.moves++,
+  });
+  window.ready = true;
+</script>

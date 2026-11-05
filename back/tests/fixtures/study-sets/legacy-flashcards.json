@@ -1,0 +1,42 @@
+{
+  "id": "cccccccccccccccccccccccccccccccc",
+  "title": "Legacy recall cards",
+  "document": {
+    "id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "filename": "legacy-notes.pdf",
+    "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "media_type": "application/pdf",
+    "page_count": 1,
+    "size": 100
+  },
+  "pages": [1],
+  "mode": "flashcards",
+  "items": [
+    {
+      "title": "Negated membership",
+      "question": [
+        {"kind": "text", "text": "Which relation expresses non-membership?"},
+        {
+          "kind": "math", "latex": "x \\notin A", "display": true,
+          "source": {"document_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "page": 1, "line_start": 2, "line_end": 3, "quote": "Membership notation"},
+          "original_latex": "x \\in A", "change": "Negate the source membership relation."
+        }
+      ],
+      "answer": [{"kind": "text", "text": "The element does not belong to the set."}]
+    },
+    {
+      "title": "Subset inclusion",
+      "question": [{"kind": "text", "text": "Which relation denotes subset inclusion? \\(A \\subseteq B\\)"}],
+      "answer": [
+        {
+          "kind": "math", "latex": "A \\subseteq B", "display": true,
+          "source": {"document_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "page": 1, "line_start": null, "line_end": null, "quote": null},
+          "original_latex": null, "change": null
+        },
+        {"kind": "text", "text": "Every element of the first set belongs to the second."}
+      ]
+    }
+  ],
+  "notes": ["Historical fixture with front-side formulas and no version, goal or item-source fields."],
+  "metadata": {"provider": "fixture", "model": "historical", "source_check": "unchecked"}
+}

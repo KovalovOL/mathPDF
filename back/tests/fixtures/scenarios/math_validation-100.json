@@ -1,0 +1,90 @@
+[
+  [
+    "The implication P \\Rightarrow Q means if P then Q.",
+    [
+      "P \\Rightarrow Q"
+    ]
+  ],
+  [
+    "Equivalently, \\neg P \\lor Q (not P or Q).",
+    [
+      "\\neg P \\lor Q"
+    ]
+  ],
+  [
+    "where \\binom{n}{m} is the coefficient.",
+    [
+      "\\binom{n}{m}"
+    ]
+  ],
+  [
+    "where |A \\cap B| is the intersection size.",
+    [
+      "|A \\cap B|"
+    ]
+  ],
+  [
+    "It evaluates as: \\begin{aligned}\\bar{w}\\Leftrightarrow0=w\\end{aligned}.",
+    [
+      "\\begin{aligned}\\bar{w}\\Leftrightarrow0=w\\end{aligned}"
+    ]
+  ],
+  [
+    "From the law: \\begin{aligned}w\\vee y=\\overline{\\bar{w}\\&\\bar{y}}\\end{aligned}.",
+    [
+      "\\begin{aligned}w\\vee y=\\overline{\\bar{w}\\&\\bar{y}}\\end{aligned}"
+    ]
+  ],
+  [
+    "If |S| = n, then |P(S)| = 2^n.",
+    [
+      "|S| = n",
+      "|P(S)| = 2^n"
+    ]
+  ],
+  [
+    "Already $x \\in A$, also \\binom{n}{k} here.",
+    [
+      "x \\in A",
+      "\\binom{n}{k}"
+    ]
+  ],
+  [
+    "Constant false (t&t \\Leftrightarrow 0) and idempotent (t&t \\Leftrightarrow t).",
+    [
+      "t\\&t \\Leftrightarrow 0",
+      "t\\&t \\Leftrightarrow t"
+    ]
+  ],
+  [
+    "Conjunction \\(t&t \\Leftrightarrow t\\), with \\(t & \\bar{t} \\Leftrightarrow 0\\).",
+    [
+      "t\\&t \\Leftrightarrow t",
+      "t \\& \\bar{t} \\Leftrightarrow 0"
+    ]
+  ],
+  [
+    "Conjunction t&t keeps the source notation.",
+    [
+      "t\\&t"
+    ]
+  ],
+  [
+    "Without spaces: t&t\\Leftrightarrow0.",
+    [
+      "t\\&t\\Leftrightarrow0"
+    ]
+  ],
+  [
+    "An ordinary English explanation. A vector has magnitude and direction.",
+    []
+  ],
+  [
+    "Research & development and an entity &amp; stay text.",
+    []
+  ],
+  [
+    "Unsupported \\unknownCommand{x} remains readable.",
+    []
+  ]
+]

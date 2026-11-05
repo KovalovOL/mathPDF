@@ -1,0 +1,71 @@
+{
+  "/api/me": {
+    "json": {
+      "id": "cccccccccccccccccccccccccccccccc",
+      "email": "fixture@example.invalid",
+      "name": "Fixture user",
+      "role": "free"
+    }
+  },
+  "/api/client-errors": {
+    "status": 204
+  },
+  "/api/bad": {
+    "status": 400,
+    "json": {
+      "detail": "Invalid fixture",
+      "request_id": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+    },
+    "headers": {
+      "x-mathpdf-request-id": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+    }
+  },
+  "/api/outage": {
+    "status": 500,
+    "json": {
+      "detail": "Offline fixture",
+      "request_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    },
+    "headers": {
+      "x-mathpdf-request-id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    }
+  },
+  "/api/server-error": {
+    "status": 500,
+    "json": {
+      "detail": "Failure fixture",
+      "request_id": "ffffffffffffffffffffffffffffffff"
+    },
+    "headers": {
+      "x-mathpdf-request-id": "ffffffffffffffffffffffffffffffff"
+    }
+  },
+  "/api/failed-job": {
+    "json": {
+      "status": "failed",
+      "error": "Fixture failure",
+      "request_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    }
+  },
+  "/api/allowance-limited": {
+    "status": 429,
+    "json": {
+      "code": "generation_limit",
+      "reason": "exhausted",
+      "detail": "Daily allowance used up.",
+      "allowance": {
+        "remaining_percent": 0
+      }
+    }
+  },
+  "/api/quota-job": {
+    "json": {
+      "status": "failed",
+      "error": "Daily allowance used up.",
+      "limit": {
+        "code": "generation_limit",
+        "reason": "insufficient"
+      }
+    }
+  }
+}

@@ -1,0 +1,28 @@
+<!doctype html><button id="leave">Home</button>
+<script type="module">
+  import { createLeaveGuard } from "/static/leave-guard.js";
+  window.items = [
+    "Lecture.pdf · Unsaved notes",
+    "Practice · Unsaved study set",
+  ];
+  window.saved = 0;
+  const guard = createLeaveGuard({
+    pending: () => window.items,
+    save: async () => {
+      window.saved++;
+      await new Promise((resolve) => (window.finishSave = resolve));
+      if (window.fail) throw new Error("Save failed; local notes retained.");
+      window.items = [];
+    },
+  });
+  document.querySelector("#leave").onclick = () => {
+    window.result = undefined;
+    guard.confirm().then((value) => (window.result = value));
+  };
+  window.unloadBlocked = () => {
+    const event = new Event("beforeunload", { cancelable: true });
+    dispatchEvent(event);
+    return event.defaultPrevented;
+  };
+  window.ready = true;
+</script>

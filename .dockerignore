@@ -1,8 +1,0 @@
-**
-!Dockerfile
-!pyproject.toml
-!uv.lock
-!formula_lab/
-!formula_lab/**
-**/__pycache__/
-**/*.pyc

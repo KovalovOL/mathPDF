@@ -1,0 +1,64 @@
+<!doctype html>
+<style>
+  * {
+    box-sizing: border-box;
+  }
+  body {
+    margin: 0;
+    padding: 12px;
+  }
+  .pdf-page {
+    margin: 0 0 12px;
+  }
+  .pdf-sheet {
+    position: relative;
+  }
+  canvas {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+  }
+  .annotation-layer {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 4;
+  }
+  .annotation-layer.drawing {
+    pointer-events: auto;
+    touch-action: none;
+  }
+</style>
+<p id="status">Loading</p>
+<div id="pages"></div>
+<script type="module">
+  const file = { id: "original", sha256: "source", page_count: 1 };
+  window.saved = [];
+  window.MathPDFSession = {
+    ready: Promise.resolve({ id: "viewer-owner" }),
+    api: async (path, options) => {
+      if (options) {
+        window.saved.push(JSON.parse(options.body));
+        return {
+          document: { ...file, id: "copy", original_document_id: "original" },
+          base_document: file,
+          copy_document: { id: "copy" },
+          revision: 1,
+          annotations: window.saved.at(-1),
+        };
+      }
+      if (path.endsWith("/annotations"))
+        return {
+          document: file,
+          base_document: file,
+          copy_document: null,
+          revision: 0,
+          annotations: { schema_version: 1, items: [] },
+        };
+      return file;
+    },
+  };
+  await import("/static/pdf-viewer.js");
+</script>

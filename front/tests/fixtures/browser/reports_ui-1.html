@@ -1,0 +1,19 @@
+<!doctype html>
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<div id="account"></div>
+<script src="/static/account.js"></script>
+<script>
+  MathPDFSession.setContextProvider(() => ({
+    document: {
+      id: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      filename: "fixture.pdf",
+      sha256: "b".repeat(64),
+      media_type: "application/pdf",
+    },
+    page: 4,
+    item_index: 2,
+    answer: "Preserved formula: \\cap",
+    clientSecret: "never retain",
+    cookies: ["never retain"],
+  }));
+</script>

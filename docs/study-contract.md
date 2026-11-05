@@ -59,7 +59,7 @@ Post-deploy checks confirmed HTTP 200, all five persistent services healthy, unc
 
 ## Prompt boundary
 
-All natural-language LLM instructions are loaded from `formula_lab/prompts/`: system instructions, mode-specific templates, the formula-writing guide, reusable math patterns, context-role instructions, per-attachment labels and comments. Runtime values supply selected-page mapping, file metadata, requested count and user comment. Prompt content hashes accompany each result. Provider adapters add no hidden instruction text. Reusable structures apply across topics without changing source operators, accents, fonts or row/equality order; prompts explicitly distinguish worksheet candidates from true assertions. Source fidelity and mathematical correctness remain unproven by schema compliance or successful typesetting.
+All natural-language LLM instructions are loaded from `back/app/generation/prompts/`: system instructions, mode-specific templates, the formula-writing guide, reusable math patterns, context-role instructions, per-attachment labels and comments. Runtime values supply selected-page mapping, file metadata, requested count and user comment. Prompt content hashes accompany each result. Provider adapters add no hidden instruction text. Reusable structures apply across topics without changing source operators, accents, fonts or row/equality order; prompts explicitly distinguish worksheet candidates from true assertions. Source fidelity and mathematical correctness remain unproven by schema compliance or successful typesetting.
 
 ## Historical diagnostic routes
 

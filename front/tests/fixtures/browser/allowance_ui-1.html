@@ -1,0 +1,48 @@
+<!doctype html>
+<meta name="viewport" content="width=device-width, initial-scale=1" /><link
+  rel="stylesheet"
+  href="/static/style.css"
+/>
+<header class="app-header">MathPDF</header>
+<button id="limit">Generate fixture</button
+><input aria-label="Items" value="10" /><textarea aria-label="Comment">
+Keep my comment.</textarea>
+<script type="module">
+  import {
+    createAllowanceUI,
+    createGenerationLimitDialog,
+  } from "/static/allowance-ui.js";
+  window.fixture = {
+    calls: 0,
+    adjusted: false,
+    reason: "insufficient",
+    state: {
+      limited: true,
+      daily_tokens: 200000,
+      remaining_tokens: 20000,
+      remaining_percent: 10,
+      reserved_tokens: 0,
+      resets_at: new Date(Date.now() + 7200000).toISOString(),
+    },
+  };
+  window.meter = createAllowanceUI({
+    api: async () => {
+      window.fixture.calls++;
+      return structuredClone(window.fixture.state);
+    },
+  });
+  await window.meter.refresh();
+  const dialog = createGenerationLimitDialog({
+    onAdjust: () => {
+      window.fixture.adjusted = true;
+      document.querySelector("input").focus();
+    },
+  });
+  document.querySelector("#limit").onclick = () =>
+    dialog.show({
+      code: "generation_limit",
+      reason: window.fixture.reason,
+      allowance: window.fixture.state,
+      required_percent: 20,
+    });
+</script>

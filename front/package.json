@@ -1,0 +1,26 @@
+{
+  "name": "mathpdf-assets",
+  "private": true,
+  "scripts": {
+    "vendor:math": "node scripts/vendor_math.cjs",
+    "check:browser": "node scripts/browser_check.cjs",
+    "build": "node scripts/build.mjs",
+    "start": "node scripts/serve.mjs",
+    "format": "prettier --write \"app/**/*.js\" \"scripts/*.{mjs,cjs}\"",
+    "format:check": "prettier --check \"app/**/*.js\" \"scripts/*.{mjs,cjs}\"",
+    "test": "uv run --project . pytest tests"
+  },
+  "devDependencies": {
+    "@babel/generator": "8.1.0",
+    "@babel/parser": "8.1.0",
+    "@babel/traverse": "8.1.0",
+    "@babel/types": "8.1.0",
+    "acorn": "8.19.0",
+    "playwright": "1.62.1",
+    "prettier": "3.9.10"
+  },
+  "dependencies": {
+    "katex": "0.19.1",
+    "pdfjs-dist": "6.4.299"
+  }
+}

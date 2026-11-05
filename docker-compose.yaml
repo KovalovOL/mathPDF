@@ -1,5 +1,5 @@
 x-platform: &platform
-  image: mathpdf-platform:production
+  image: ${MATHPDF_BACKEND_IMAGE:-mathpdf-platform:production}
   restart: always
   labels: ["traefik.enable=false"]
   logging:
@@ -7,6 +7,7 @@ x-platform: &platform
     options:
       max-size: "10m"
       max-file: "3"
+      labels: "com.docker.compose.service,com.docker.compose.project"
   volumes:
     - ./.formula-lab:/app/.formula-lab
     - ./.infrastructure/secrets:/run/mathpdf-secrets:ro
@@ -19,6 +20,8 @@ x-platform: &platform
     POSTGRES_PASSWORD_FILE: /run/mathpdf-secrets/postgres-password
     MATHPDF_S3_ENDPOINT: http://garage:3900
     MATHPDF_S3_CREDENTIALS_FILE: /run/mathpdf-secrets/s3.json
+    MATHPDF_FRONTEND_URL: http://front:8081
+    MATHPDF_ENV: production
     APP_BASE_URL: ${APP_BASE_URL:-https://mathpdf.site}
   depends_on:
     db:
@@ -37,9 +40,9 @@ x-platform: &platform
 services:
   bootstrap:
     labels: ["traefik.enable=false"]
-    image: mathpdf-platform:production
+    image: ${MATHPDF_BACKEND_IMAGE:-mathpdf-platform:production}
     restart: "no"
-    command: ["python", "-m", "formula_lab.infrastructure"]
+    command: ["python", "-m", "app.infrastructure.cli"]
     volumes:
       - ./.infrastructure/secrets:/run/mathpdf-secrets
   db:
@@ -63,9 +66,9 @@ services:
       retries: 20
   garage:
     labels: ["traefik.enable=false"]
-    image: mathpdf-platform:production
+    image: ${MATHPDF_BACKEND_IMAGE:-mathpdf-platform:production}
     restart: always
-    command: ["python", "-m", "formula_lab.infrastructure", "garage"]
+    command: ["python", "-m", "app.infrastructure.cli", "garage"]
     environment:
       MATHPDF_S3_CREDENTIALS_FILE: /run/mathpdf-secrets/s3.json
     volumes:
@@ -83,7 +86,7 @@ services:
   migrate:
     <<: *platform
     restart: "no"
-    command: ["python", "-m", "formula_lab.migration"]
+    command: ["python", "-m", "app.infrastructure.migrations.migrate"]
     healthcheck:
       disable: true
     depends_on:
@@ -93,13 +96,22 @@ services:
         condition: service_healthy
   reports:
     <<: *platform
-    command: ["uvicorn", "formula_lab.platform_services:reports_app", "--factory", "--host", "0.0.0.0", "--port", "8765"]
+    environment:
+      <<: *platform-env
+      MATHPDF_SERVICE: reports
+    command: ["uvicorn", "app.bootstrap.platform:reports_app", "--factory", "--host", "0.0.0.0", "--port", "8765"]
   admin:
     <<: *platform
-    command: ["uvicorn", "formula_lab.platform_services:admin_app", "--factory", "--host", "0.0.0.0", "--port", "8765"]
+    environment:
+      <<: *platform-env
+      MATHPDF_SERVICE: admin
+    command: ["uvicorn", "app.bootstrap.platform:admin_app", "--factory", "--host", "0.0.0.0", "--port", "8765"]
   app:
     <<: *platform
-    build: .
+    build:
+      context: ./back
+      args:
+        MATHPDF_BUILD: ${MATHPDF_BUILD:-}
     env_file: [.env]
     environment:
       <<: *platform-env
@@ -112,6 +124,21 @@ services:
         condition: service_healthy
       admin:
         condition: service_healthy
+    labels: ["traefik.enable=false"]
+    networks: [default]
+  front:
+    image: ${MATHPDF_FRONTEND_IMAGE:-mathpdf-frontend:production}
+    build: ./front
+    restart: always
+    depends_on:
+      app:
+        condition: service_healthy
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+        labels: "com.docker.compose.service,com.docker.compose.project"
     labels:
       - "traefik.enable=true"
       - "traefik.docker.network=traefik-public"
@@ -119,7 +146,7 @@ services:
       - "traefik.http.routers.mathpdf.entrypoints=websecure"
       - "traefik.http.routers.mathpdf.tls=true"
       - "traefik.http.routers.mathpdf.tls.certresolver=myresolver"
-      - "traefik.http.services.mathpdf.loadbalancer.server.port=8765"
+      - "traefik.http.services.mathpdf.loadbalancer.server.port=8080"
     networks: [default, traefik-public]
 
 networks:

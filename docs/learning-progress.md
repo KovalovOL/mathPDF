@@ -22,7 +22,7 @@ Historical `generation_limits.monthly_tokens` values remain intact. A nullable `
 
 When a request cannot fit, a dedicated dialog distinguishes exhausted, insufficient and disabled allowance. It shows remaining usage and reset timing, and offers **Adjust request** without losing files, page ranges, item count or comments. Expected quota limits do not create automatic bug reports; real 4xx/5xx failures and manual reports continue to work.
 
-The policies live in `formula_lab/quotas.py`; actual usage observations stay in `formula_lab/usage.py`. Future provider adapters must reserve through `Usage.start` before dispatch and settle through `Usage.finish`. The OpenAI adapter continues to make exactly one provider request.
+The policies live in `back/app/usage/quotas.py`; actual usage observations stay in `back/app/usage/service.py`. Future provider adapters must reserve through `Usage.start` before dispatch and settle through `Usage.finish`. The OpenAI adapter continues to make exactly one provider request.
 
 ## Flashcard self-assessment
 

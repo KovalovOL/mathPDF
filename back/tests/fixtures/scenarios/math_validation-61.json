@@ -1,0 +1,24 @@
+{
+  "title": "Raw math",
+  "question": [
+    {
+      "kind": "math",
+      "latex": "\\unknownCommand{x}",
+      "display": true,
+      "source": {
+        "page": 1,
+        "line_start": null,
+        "line_end": null,
+        "quote": null
+      },
+      "original_latex": null,
+      "change": null
+    }
+  ],
+  "answer": [
+    {
+      "kind": "text",
+      "text": "An explanation."
+    }
+  ]
+}

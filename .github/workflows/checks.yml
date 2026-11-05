@@ -1,0 +1,43 @@
+name: Architecture and regressions
+
+on:
+  pull_request:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: front/package-lock.json
+      - run: python -m pip install uv==0.13.5
+      - run: uv sync --project back --extra dev --frozen
+      - run: npm ci --prefix front --ignore-scripts
+      - run: npm --prefix front run build
+      - name: Enforce source ownership and the 50-line limit
+        run: |
+          uv run --project back --extra dev python infrastructure/quality/architecture.py
+          uv run --project back --extra dev python infrastructure/quality/function_inventory.py
+          npm --prefix front run format:check
+      - run: uv run --project back --extra dev playwright install --with-deps chromium
+      - name: Backend and isolated browser regressions
+        env:
+          OPENAI_API_KEY: ""
+          OPENAI_KEY: ""
+        run: |
+          node front/scripts/serve.mjs --assets-only > /tmp/mathpdf-assets.log 2>&1 &
+          asset_pid=$!
+          trap 'kill "$asset_pid"' EXIT
+          uv run --project back --extra dev pytest back/tests front/tests

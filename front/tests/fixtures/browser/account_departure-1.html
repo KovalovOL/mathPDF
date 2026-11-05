@@ -1,0 +1,11 @@
+<!doctype html>
+<div id="account"></div>
+<script src="/static/account.js"></script>
+<script>
+  window.permit = false;
+  window.resets = 0;
+  MathPDFSession.setLeaveGuard(
+    async () => window.permit,
+    () => window.resets++,
+  );
+</script>

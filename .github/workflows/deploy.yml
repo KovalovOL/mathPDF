@@ -13,7 +13,10 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  checks:
+    uses: ./.github/workflows/checks.yml
   deploy:
+    needs: checks
     runs-on: ubuntu-latest
     env:
       VPS_HOST: ${{ secrets.VPS_HOST }}
@@ -35,6 +38,26 @@ jobs:
       - name: Deploy to /opt/mathPDF
         run: |
           ssh "$VPS_USER@$VPS_HOST" 'mkdir -p /opt/mathPDF/.formula-lab/migration-backups && chmod 700 /opt/mathPDF/.formula-lab/migration-backups && if [ -f /opt/mathPDF/docker-compose.yaml ]; then cp -n /opt/mathPDF/docker-compose.yaml /opt/mathPDF/.formula-lab/migration-backups/pre-postgres-compose.yaml; fi'
-          rsync -az --delete --exclude='.git' --exclude='.env*' --exclude='.formula-lab' --exclude='.infrastructure' ./ "$VPS_USER@$VPS_HOST:/opt/mathPDF/"
+          rsync -az --delete --exclude='.git' --exclude='.env*' --exclude='.formula-lab' --exclude='.infrastructure' --exclude='.venv' --exclude='node_modules' --exclude='dist' --exclude='artifacts' --exclude='.agents' --exclude='.codex' --exclude='.DS_Store' --exclude='/*.pdf' ./ "$VPS_USER@$VPS_HOST:/opt/mathPDF/"
           printf '%s\n' "$APP_ENV" | ssh "$VPS_USER@$VPS_HOST" 'umask 077 && cat > /opt/mathPDF/.env && chmod 600 /opt/mathPDF/.env'
-          ssh "$VPS_USER@$VPS_HOST" 'cd /opt/mathPDF && docker compose build app && docker compose stop app reports admin && docker compose up -d --wait --wait-timeout 180 && docker compose rm -f bootstrap migrate'
+          ssh "$VPS_USER@$VPS_HOST" bash -s -- "$GITHUB_SHA" <<'REMOTE'
+          set -euo pipefail
+          cd /opt/mathPDF
+          release="$1"
+          [[ "$release" =~ ^[a-f0-9]{40}$ ]]
+          export MATHPDF_BUILD="$release"
+          export MATHPDF_BACKEND_IMAGE="mathpdf-platform:$release"
+          export MATHPDF_FRONTEND_IMAGE="mathpdf-frontend:$release"
+          docker compose build app front
+          docker compose stop front app reports admin
+          docker compose up -d --no-build --wait --wait-timeout 180
+          docker tag "$MATHPDF_BACKEND_IMAGE" mathpdf-platform:production
+          docker tag "$MATHPDF_FRONTEND_IMAGE" mathpdf-frontend:production
+          mkdir -p .infrastructure
+          if [ -f .infrastructure/release.env ]; then
+            cp .infrastructure/release.env .infrastructure/previous-release.env
+          fi
+          printf 'MATHPDF_BACKEND_IMAGE=%s\nMATHPDF_FRONTEND_IMAGE=%s\n' "$MATHPDF_BACKEND_IMAGE" "$MATHPDF_FRONTEND_IMAGE" > .infrastructure/release.env.next
+          mv .infrastructure/release.env.next .infrastructure/release.env
+          docker compose rm -f bootstrap migrate
+          REMOTE

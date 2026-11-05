@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "items": [
+    {
+      "id": "highlight-one",
+      "kind": "highlight",
+      "page": 1,
+      "color": "#facc15",
+      "quads": [
+        [
+          [
+            150,
+            650
+          ],
+          [
+            250,
+            650
+          ],
+          [
+            250,
+            625
+          ],
+          [
+            150,
+            625
+          ]
+        ]
+      ]
+    },
+    {
+      "id": "ink-one",
+      "kind": "ink",
+      "page": 1,
+      "color": "#2563eb",
+      "width": 4,
+      "points": [
+        [
+          200,
+          600
+        ],
+        [
+          300,
+          500
+        ]
+      ]
+    }
+  ]
+}

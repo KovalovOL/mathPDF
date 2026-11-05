@@ -22,10 +22,10 @@ Only `openid email profile` are requested. No Drive permissions or Google offlin
 For local development, use the ignored project `.env` (see `.env.example`) and set:
 
 ```dotenv
-APP_BASE_URL=http://127.0.0.1:8765
+APP_BASE_URL=http://127.0.0.1:8770
 ```
 
-Register `http://127.0.0.1:8765/auth/google/callback` on a development web client, then restart the server. Use the same hostname in the browser. HTTP is accepted only for loopback origins. There is no anonymous login bypass. Missing Google credentials disable sign-in while private pages/APIs remain protected.
+Register `http://127.0.0.1:8770/auth/google/callback` on a development web client, then restart the server. Use the same hostname in the browser. HTTP is accepted only for loopback origins. There is no anonymous login bypass. Missing Google credentials disable sign-in while private pages/APIs remain protected.
 
 ## Login and sessions
 

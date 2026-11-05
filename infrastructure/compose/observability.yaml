@@ -1,0 +1,15 @@
+# Optional Linux-host log shipper. No Docker socket or application data is mounted.
+services:
+  alloy:
+    image: grafana/alloy:v1.11.2
+    profiles: [observability]
+    user: "0:0"
+    restart: unless-stopped
+    command: [run, --storage.path=/var/lib/alloy, /etc/alloy/config.alloy]
+    environment:
+      LOKI_URL: ${LOKI_URL:?Set the authenticated Loki push URL}
+    volumes:
+      - ./infrastructure/observability/alloy.alloy:/etc/alloy/config.alloy:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - ./.infrastructure/alloy:/var/lib/alloy
+    labels: ["traefik.enable=false"]

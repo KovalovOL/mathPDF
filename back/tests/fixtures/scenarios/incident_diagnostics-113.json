@@ -1,0 +1,15 @@
+{
+  "path": "/api/library",
+  "method": "GET",
+  "status": 500,
+  "exception": [
+    {
+      "type": "UntranslatableCharacter",
+      "frames": [
+        "app.py:334:library_contents",
+        "library.py:132:snapshot",
+        "database.py:78:execute"
+      ]
+    }
+  ]
+}

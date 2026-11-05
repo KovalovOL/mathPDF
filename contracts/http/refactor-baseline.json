@@ -1,0 +1,359 @@
+{
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/login",
+      "handler": "login"
+    },
+    {
+      "method": "GET",
+      "path": "/auth/config",
+      "handler": "auth_config"
+    },
+    {
+      "method": "GET",
+      "path": "/auth/google/login",
+      "handler": "google_login"
+    },
+    {
+      "method": "GET",
+      "path": "/auth/google/callback",
+      "handler": "google_callback"
+    },
+    {
+      "method": "POST",
+      "path": "/auth/logout",
+      "handler": "logout"
+    },
+    {
+      "method": "GET",
+      "path": "/health",
+      "handler": "health"
+    },
+    {
+      "method": "GET",
+      "path": "/api/generation/allowance",
+      "handler": "allowance"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/library/items/{kind}/{identifier}/name",
+      "handler": "rename_item"
+    },
+    {
+      "method": "POST",
+      "path": "/api/study-sets/{identifier}/reviews",
+      "handler": "review_start"
+    },
+    {
+      "method": "POST",
+      "path": "/api/reviews/{identifier}/answers",
+      "handler": "review_answer"
+    },
+    {
+      "method": "GET",
+      "path": "/api/me",
+      "handler": "me"
+    },
+    {
+      "method": "GET",
+      "path": "/",
+      "handler": "home"
+    },
+    {
+      "method": "GET",
+      "path": "/workspace",
+      "handler": "index"
+    },
+    {
+      "method": "GET",
+      "path": "/api/generation/config",
+      "handler": "generation_config"
+    },
+    {
+      "method": "GET",
+      "path": "/api/documents",
+      "handler": "documents"
+    },
+    {
+      "method": "GET",
+      "path": "/api/documents/{identifier}",
+      "handler": "document_metadata"
+    },
+    {
+      "method": "GET",
+      "path": "/api/documents/{identifier}/annotations",
+      "handler": "annotations"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/documents/{identifier}/annotations",
+      "handler": "save_annotations"
+    },
+    {
+      "method": "GET",
+      "path": "/api/documents/{identifier}/deletion",
+      "handler": "document_deletion"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/documents/{identifier}",
+      "handler": "delete_document"
+    },
+    {
+      "method": "POST",
+      "path": "/api/documents",
+      "handler": "upload_document"
+    },
+    {
+      "method": "GET",
+      "path": "/api/documents/{identifier}/file",
+      "handler": "workspace_file"
+    },
+    {
+      "method": "GET",
+      "path": "/api/library",
+      "handler": "library_contents"
+    },
+    {
+      "method": "POST",
+      "path": "/api/library/folders",
+      "handler": "create_folder"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/library/folders/{identifier}",
+      "handler": "update_folder"
+    },
+    {
+      "method": "GET",
+      "path": "/api/library/folders/{identifier}/deletion",
+      "handler": "folder_deletion"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/library/folders/{identifier}",
+      "handler": "delete_folder"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/library/items/{kind}/{identifier}",
+      "handler": "organize_item"
+    },
+    {
+      "method": "GET",
+      "path": "/api/study-sets",
+      "handler": "study_sets"
+    },
+    {
+      "method": "GET",
+      "path": "/api/study-sets/{identifier}",
+      "handler": "study_set"
+    },
+    {
+      "method": "GET",
+      "path": "/api/study-sets/{identifier}/deletion",
+      "handler": "set_deletion"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/study-sets/{identifier}",
+      "handler": "delete_set"
+    },
+    {
+      "method": "POST",
+      "path": "/api/study-sets",
+      "handler": "save_study_set"
+    },
+    {
+      "method": "POST",
+      "path": "/api/study/export.pdf",
+      "handler": "download_study_pdf"
+    },
+    {
+      "method": "POST",
+      "path": "/api/study/generate",
+      "handler": "generate"
+    },
+    {
+      "method": "POST",
+      "path": "/api/study/jobs",
+      "handler": "start_generation"
+    },
+    {
+      "method": "GET",
+      "path": "/api/study/jobs/{job_id}",
+      "handler": "generation_status"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/study/jobs/{job_id}",
+      "handler": "cancel_generation"
+    },
+    {
+      "method": "POST",
+      "path": "/api/client-errors",
+      "handler": "client_error"
+    },
+    {
+      "method": "GET",
+      "path": "/health",
+      "handler": "health"
+    },
+    {
+      "method": "GET",
+      "path": "/admin",
+      "handler": "admin"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/overview",
+      "handler": "overview"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/users",
+      "handler": "users"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/users/{identifier}",
+      "handler": "user_details"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/admin/users/{identifier}/role",
+      "handler": "role"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/generation-limits",
+      "handler": "generation_limits"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/admin/generation-limits",
+      "handler": "default_limit"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/admin/users/{identifier}/generation-limit",
+      "handler": "individual_limit"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/usage",
+      "handler": "metrics"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/prices",
+      "handler": "prices"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/prices",
+      "handler": "new_price"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/reports",
+      "handler": "report_list"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/reports/{identifier}",
+      "handler": "detail"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/admin/reports/{identifier}",
+      "handler": "update"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/reports/{identifier}/bundle",
+      "handler": "download"
+    },
+    {
+      "method": "POST",
+      "path": "/api/reports",
+      "handler": "submit"
+    },
+    {
+      "method": "GET",
+      "path": "/api/reports/{identifier}",
+      "handler": "report_status"
+    }
+  ],
+  "fixtures": {
+    "legacy-flashcards.json": "204df054f03b3026cb2366850275c50502b38efed2f781764f5623cf8c4b0d77",
+    "legacy-problems.json": "b2309d3f3146df2aa34ec6bad9b642fb590ed21c72f8455f98669a207117c79f",
+    "split-flashcards.json": "894231ef268022df3a09efd12d4b88722ac3ce23ed53d17e2577f9d0b126422e"
+  },
+  "prompts": {
+    "attachment-label.md": "5000f795e2a3873074909a0ab754393877ca157ef5e3697062eee5b5d4b2b570",
+    "comment.md": "0b2335f17e71272761ad55d3fa927a4f9aba41a7a832170c1a5db6895c4d679e",
+    "context.md": "516b213093e91ab3760d6eaf407dec3efe1ae899b900f38ef3f59e34b4111daa",
+    "difficulty.md": "7359c801f3110875759b017959c6739f9fef17ed70c60b0e6191e0ba70adcec9",
+    "flashcards.md": "d4727e59bf65f96c13b4ee49cbe9317353202dad364bae6afcc1dfa12931e574",
+    "formula-guide.md": "4519c4401bd6052587ec7b5c3cf6a8a12ee9b92308736c058ad1249eaa3c596a",
+    "math-patterns.md": "ad3b613cfa4c943be89e717fa40fd8d83d263271f0a2adf4bb81a8906c6bc03e",
+    "problems.md": "753a58252f8606afccd9f32d723ff37e2e5af3daf3479784258d3e992657cc54",
+    "study-system.md": "210c2f24bb9c9352ff191f85cc82557f6c9a6ff7c4f30cb9482e1c2051126eca"
+  },
+  "browser_keys": [
+    {
+      "file": "review-ui.js",
+      "line": "function pending(id){try{const item=JSON.parse(localStorage.getItem(storageKey(id))||'null');return item&&typeof item.correct==='boolean'&&Number.isInteger(item.index)&&/^[a-f0-9]{32}$/.test(item.round_id)?item:null;}catch{return null;}}"
+    },
+    {
+      "file": "review-ui.js",
+      "line": "function store(id,value){try{value?localStorage.setItem(storageKey(id),JSON.stringify({schema_version:1,...value})):localStorage.removeItem(storageKey(id));}catch{}}"
+    },
+    {
+      "file": "home.js",
+      "line": "try{section.open=localStorage.getItem(key)!=='false';}catch{section.open=true;}"
+    },
+    {
+      "file": "home.js",
+      "line": "section.addEventListener('toggle',()=>{try{localStorage.setItem(key,String(section.open));}catch{}});"
+    },
+    {
+      "file": "home.js",
+      "line": "try {section.open = localStorage.getItem(key) !== 'false';} catch {}"
+    },
+    {
+      "file": "home.js",
+      "line": "section.addEventListener('toggle', () => {try {localStorage.setItem(key, String(section.open));} catch {}});"
+    },
+    {
+      "file": "visual-cache.js",
+      "line": "const REVISION = 'pdfjs-6.4-visual-v1', DB_NAME = 'mathpdf-visual-cache';"
+    },
+    {
+      "file": "visual-cache.js",
+      "line": "channel = new BroadcastChannel('mathpdf-visual-cache');"
+    },
+    {
+      "file": "visual-cache.js",
+      "line": "const request = indexedDB.open(DB_NAME, 1);"
+    },
+    {
+      "file": "reports.js",
+      "line": "function persist(){const user=getUser();if(user)try{sessionStorage.setItem(`mathpdf-reports-${user.id}`,JSON.stringify(queue.slice(-10)));}catch{}}"
+    },
+    {
+      "file": "reports.js",
+      "line": "function restore(){const user=getUser();if(!user||restoredUser===user.id)return;restoredUser=user.id;try{for(const item of JSON.parse(sessionStorage.getItem(`mathpdf-reports-${user.id}`)||'[]'))if(item&&item.context&&!queue.some(q=>q.origin===item.origin&&q.request_id===item.request_id)){queue.push(item);if(item.request_id)seen.add(item.request_id);}}catch{}}"
+    },
+    {
+      "file": "app.js",
+      "line": "if (value === undefined) return localStorage.getItem(`${preferencePrefix}${key}`);"
+    },
+    {
+      "file": "app.js",
+      "line": "localStorage.setItem(`${preferencePrefix}${key}`, String(value));"
+    }
+  ]
+}

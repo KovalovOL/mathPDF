@@ -1,0 +1,36 @@
+// Docker JSON envelopes retain Compose metadata before the log body is unwrapped.
+local.file_match "mathpdf" {
+  path_targets = [{"__path__" = "/var/lib/docker/containers/*/*-json.log", "app" = "mathpdf"}]
+}
+
+loki.source.file "mathpdf" {
+  targets    = local.file_match.mathpdf.targets
+  forward_to = [loki.process.mathpdf.receiver]
+}
+
+loki.process "mathpdf" {
+  stage.json {
+    expressions = {
+      compose_project = "attrs.\"com.docker.compose.project\"",
+      compose_service = "attrs.\"com.docker.compose.service\"",
+    }
+  }
+  stage.labels { values = {compose_project = "", service = "compose_service"} }
+  stage.match {
+    selector = "{compose_project!=\"mathpdf\"}"
+    action = "drop"
+    drop_counter_reason = "other_compose_project"
+  }
+  stage.docker {}
+  stage.json {
+    expressions = {service = "service", environment = "environment", level = "level"}
+  }
+  stage.labels { values = {service = "", environment = "", level = ""} }
+  // IDs, filenames, users, routes and exception details remain JSON fields.
+  stage.label_keep { values = ["app", "service", "environment", "level"] }
+  forward_to = [loki.write.mathpdf.receiver]
+}
+
+loki.write "mathpdf" {
+  endpoint { url = sys.env("LOKI_URL") }
+}

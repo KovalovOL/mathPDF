@@ -4,9 +4,9 @@ For administrator-editable free generation allowances, see [learning progress](l
 
 ## Production services
 
-Docker Compose runs five persistent services: `app`, PostgreSQL `db` (17), `garage` (2.5), `reports`, and `admin`. Only the app joins `traefik-public`; it proxies authenticated `/api/reports`, `/admin`, and `/api/admin/*` requests to private services. Database, S3, admin and report ports are not published on the VPS. `bootstrap` and `migrate` are short-lived setup jobs. They exit automatically; after all five persistent services become healthy, the deployment removes their stopped containers. Failed setup containers remain available for diagnosis. Their Compose definitions stay available for the next deployment.
+Docker Compose runs six persistent services: `front`, backend API `app`, PostgreSQL `db` (17), `garage` (2.5), `reports`, and `admin`. Only `front` joins `traefik-public`; it serves the website and gateways authorized API requests to private backend services. Database, S3, backend, admin and report ports are not published on the VPS. `bootstrap` and `migrate` are short-lived setup jobs. They exit automatically; after all six persistent services become healthy, the deployment removes their stopped containers. Failed setup containers remain available for diagnosis. Their Compose definitions stay available for the next deployment.
 
-`mathpdf-platform:production` is the shared image built on the VPS from the checked-out GitHub release. Its tag labels the image; it does not select a development mode or copy a developer workstation image. The app, reports, admin, Garage launcher and setup jobs use separate containers from this shared image.
+`mathpdf-platform:production` is the backend image built on the VPS from the checked-out GitHub release. `mathpdf-frontend:production` is built independently from `front/`. The app, reports, admin, Garage launcher and setup jobs use separate containers from the backend image.
 
 The existing GitHub secrets remain `VPS_HOST`, `VPS_USER`, `VPS_SSH_KEY`, and multiline `APP_ENV`. Keep the Google and OpenAI configuration in `APP_ENV`. No additional infrastructure credentials need to be pasted there: the first bootstrap creates private random credentials in `/opt/mathPDF/.infrastructure/secrets`, and subsequent deployments retain them. Never remove this directory to fix a startup error.
 
@@ -48,7 +48,7 @@ docker compose exec db pg_isready -U mathpdf -d mathpdf
 
 Without PostgreSQL/S3 environment variables, the compatible SQLite/local-file backend remains available. For server storage set `MATHPDF_POSTGRES_HOST`, optional `MATHPDF_POSTGRES_PORT`, `POSTGRES_DB`, `POSTGRES_USER`, and `POSTGRES_PASSWORD_FILE`. `DATABASE_URL` can alternatively specify a full PostgreSQL connection. Keep it private. Set `MATHPDF_S3_ENDPOINT` and `MATHPDF_S3_CREDENTIALS_FILE` for Garage; the JSON file contains `access_key_id`, `secret_access_key`, `bucket`, and `region`.
 
-The main app uses `MATHPDF_ADMIN_URL` and `MATHPDF_REPORTS_URL` for private service routing. Standalone service entry points are `formula_lab.platform_services:admin_app` and `:reports_app` with Uvicorn `--factory`. All services share the same `APP_BASE_URL`, database, managed data directory and private storage credentials. The migration command is `python -m formula_lab.migration` with writers stopped.
+The frontend gateway uses `MATHPDF_BACKEND_URL`, `MATHPDF_ADMIN_URL` and `MATHPDF_REPORTS_URL` to route requests to the private backend services. Standalone backend entry points are `app.bootstrap.platform:app`, `:admin_app` and `:reports_app` with Uvicorn `--factory`; the backend CLI runs the primary API. All services share the same `APP_BASE_URL`, database, managed data directory and private storage credentials. The migration command is `python -m app.infrastructure.migrations.migrate` with writers stopped.
 
 ## Roles
 

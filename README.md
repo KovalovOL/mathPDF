@@ -2,18 +2,28 @@
 
 An AI-assisted learning environment for students, with Google sign-in, an account library, PDF browsing and notes, context attachments, flip cards, saved study sets, and formatted PDF downloads. The interface and documentation are English.
 
-## Run
+## Run the two applications
 
-Requires Python 3.12+ and [uv](https://docs.astral.sh/uv/).
+Requires Python 3.12+, Node.js 24+ and [uv](https://docs.astral.sh/uv/).
 
 ```sh
-uv sync
-APP_BASE_URL=http://127.0.0.1:8765 uv run formula-lab --port 8765
+uv sync --python 3.12 --project back --extra dev
+npm ci --prefix front
+npm --prefix front run build
 ```
 
-Set `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` in the environment or ignored project `.env`; `.env.example` contains placeholders. Register `http://127.0.0.1:8765/auth/google/callback` for a development Google web client. See [Google setup and authentication](docs/authentication.md).
+Run these processes from the repository root, in separate terminals:
 
-Open [http://127.0.0.1:8765](http://127.0.0.1:8765) and sign in with Google. Home shows your own files with first-page previews and saved study sets. A fresh account starts empty with **Upload PDF**. Selecting a file or set opens the existing reading workspace. `--data-dir` changes the persistent location; the default is `.formula-lab/`. The server binds to localhost. No startup PDF or anonymous development bypass is provided.
+```sh
+APP_BASE_URL=http://127.0.0.1:8770 uv run --python 3.12 --project back formula-lab --port 8765
+APP_BASE_URL=http://127.0.0.1:8770 uv run --python 3.12 --project back uvicorn app.bootstrap.platform:admin_app --factory --port 8767
+APP_BASE_URL=http://127.0.0.1:8770 uv run --python 3.12 --project back uvicorn app.bootstrap.platform:reports_app --factory --port 8768
+npm --prefix front start
+```
+
+Open [http://127.0.0.1:8770](http://127.0.0.1:8770). Only the frontend gateway is public. Its private asset server uses port 8771; API, admin and report processes have separate ports. Set the same `APP_BASE_URL`, data directory and storage configuration for backend services. `MATHPDF_FRONTEND_URL` defaults to `http://127.0.0.1:8771` for local PDF exports.
+
+Set `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` in the environment or ignored root `.env`; `.env.example` contains placeholders. Register `http://127.0.0.1:8770/auth/google/callback` for development. See [authentication](docs/authentication.md). A fresh account starts empty; no anonymous development login is provided. `--data-dir` changes the default `.formula-lab/` location.
 
 Set `OPENAI_API_KEY` or the existing `OPENAI_KEY` in the server environment or project `.env`. `OPENAI_MODEL` defaults to `gpt-4.1-mini`; it must support the input modalities and structured output used by the application. Restart the server after changing credentials or model. Only submitting **Generate** sends documents to the provider.
 
@@ -58,7 +68,7 @@ On the first ownership upgrade, the application deletes pre-authentication manag
 Export uses Chromium and the same local KaTeX renderer/fonts as the workspace. Fractions, indices, operators, and aligned expressions remain typeset text; study formulas are not screenshots. The original PDF reader uses PDF.js independently.
 
 ```sh
-uv run playwright install chromium
+uv run --python 3.12 --project back playwright install chromium
 ```
 
 An installed Google Chrome is detected on macOS. To use another installation, set `MATHPDF_CHROMIUM_EXECUTABLE` to its executable path. Export waits for rendering and fonts and reports unsupported/oversized formulas rather than silently dropping them.
@@ -73,18 +83,7 @@ Document tabs + continuous PDF viewer
     -> explicit SQLite save / Chromium PDF export
 ```
 
-- `formula_lab/auth.py`: Google identity, one-use OAuth transactions, and revocable server-side sessions.
-- `formula_lab/workspace.py`: owner-scoped document/file adapter and SQLite repository.
-- `formula_lab/study.py`: canonical study schema, selected-page preparation, prompts/hashes, source-scope validation.
-- `formula_lab/providers.py`: OpenAI adapter for PDF/text/image attachments.
-- `formula_lab/prompts/`: all LLM instruction text and templates.
-- `formula_lab/static/math-renderer.js`: reusable TeX to HTML/MathML rendering.
-- `formula_lab/static/pdf-viewer.js`: continuous lazy document preview.
-- `formula_lab/static/workspace-layout.js`: pane resizing, collapse and mobile focus gestures.
-- `formula_lab/static/visual-cache.js`: bounded account-scoped derived previews and page images.
-- `formula_lab/annotations.py` and `static/pdf-annotation*.js`: versioned vector marks, coordinate/history handling and portable PDF overlays; `static/annotation-toolbar.js` handles controls and save/generation choices.
-- `formula_lab/pdf_export.py` and `static/print.*`: isolated print document and PDF worker.
-- `formula_lab/app.py`: authenticated FastAPI routes, origin checks, and private response handling.
+See [the architecture and dependency rules](docs/architecture.md) for domain ownership, public ports, transaction boundaries and lifecycle invariants. Runtime code lives in `back/app/` and `front/app/`; each application has independent manifests, lockfiles, Dockerfile and tests. [Source ownership](contracts/source-ownership.json) records the complete move from the former flat package.
 
 [Workspace behavior and API](docs/workspace.md) describes the request contract, persistence, controls, and export. [The earlier fidelity report](docs/fidelity-report.md) concerns the separate source-font diagnostic experiment. Its Python modules remain as offline tooling; shared legacy diagnostic HTTP endpoints are no longer exposed by the web application.
 
@@ -92,7 +91,7 @@ Document tabs + continuous PDF viewer
 
 ## VPS deployment
 
-The single GitHub Actions job in `.github/workflows/deploy.yml` deploys pushes to `main` and also supports manual runs. It syncs the repository to `/opt/mathPDF`, writes `.env` directly on the VPS from `APP_ENV`, builds the image, stops writers for verified migration, and starts the five services with health checks. All deployment commands are inline in the workflow.
+The single GitHub Actions job in `.github/workflows/deploy.yml` deploys pushes to `main` and also supports manual runs. It syncs the repository to `/opt/mathPDF`, writes `.env` directly on the VPS from `APP_ENV`, builds both application images before stopping writers for verified migration, and starts the coordinated frontend/backend services with health checks. All deployment commands are inline in the workflow.
 
 Add these **repository secrets** under **Settings → Secrets and variables → Actions → Secrets**:
 
@@ -112,7 +111,7 @@ GOOGLE_CLIENT_ID=your-web-client-id.apps.googleusercontent.com
 GOOGLE_CLIENT_SECRET=your-client-secret
 ```
 
-The VPS needs Docker with the Compose plugin, `rsync`, and the existing Traefik attached to `traefik-public`, with entrypoint `websecure` and certificate resolver `myresolver`. The domain `mathpdf.site` is fixed in `docker-compose.yaml`; point its DNS records at the VPS. Compose joins the [existing external network](https://docs.docker.com/reference/compose-file/networks/#external) and configures [Traefik's Docker labels](https://doc.traefik.io/traefik/routing/providers/docker/) to route HTTPS to container port 8765.
+The VPS needs Docker with the Compose plugin, `rsync`, and the existing Traefik attached to `traefik-public`, with entrypoint `websecure` and certificate resolver `myresolver`. The domain `mathpdf.site` is fixed in `docker-compose.yaml`; point its DNS records at the VPS. Compose joins the [existing external network](https://docs.docker.com/reference/compose-file/networks/#external) and configures [Traefik's Docker labels](https://doc.traefik.io/traefik/routing/providers/docker/) to route HTTPS to frontend gateway port 8080.
 
 Production PostgreSQL/Garage data and persistent credentials live in `/opt/mathPDF/.infrastructure`; verified migration backups, retained original files and caches live in `.formula-lab`. Deployment excludes both directories and `.env` from file synchronization; `.env` is replaced separately from the secret with permissions `600`. The image includes Chromium for PDF export and installs dependencies from `uv.lock`. Google sign-in is mandatory; the production callback is fixed by the default origin to `https://mathpdf.site/auth/google/callback`. Omit the local `APP_BASE_URL` override on the VPS. Missing Google credentials leave private content protected and sign-in unavailable.
 
@@ -121,8 +120,8 @@ Production PostgreSQL/Garage data and persistent credentials live in `/opt/mathP
 Runtime assets require no CDN. To refresh vendored KaTeX/PDF.js after dependency changes:
 
 ```sh
-npm ci --ignore-scripts
-npm run vendor:math
+npm ci --prefix front --ignore-scripts
+npm --prefix front run vendor:math
 ```
 
 Node is not required to run the Python application with these assets present. Keep lockfiles and bundled licenses.
@@ -131,7 +130,7 @@ Node is not required to run the Python application with these assets present. Ke
 
 Correct typesetting does not prove that an LLM transcribed the PDF correctly or that generic math fonts match its original typography. Generated sets retain unchecked source metadata and references for comparison. The current work does not claim universal PDF fidelity.
 
-The regression suite covers generation, provider adaptation, shared mathematical rendering, owner-scoped persistence, historical payload compatibility and PDF export. Run it with `uv run --frozen --extra dev pytest -q`. Real-provider latency and manual browser observations are recorded separately in the OpenSpec change verification notes. The superseded `scripts/browser_check.cjs` does not cover the current workspace.
+The regression suite covers generation, provider adaptation, shared mathematical rendering, owner-scoped persistence, historical payload compatibility and PDF export. Run it with `uv run --python 3.12 --project back --extra dev pytest -q`. Real-provider latency is outside the offline acceptance suite. The browser checks live under `front/scripts/browser_check.cjs`.
 
 ## Product branding and repository rename
 

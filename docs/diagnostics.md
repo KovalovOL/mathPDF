@@ -28,7 +28,7 @@ The bounded `ui` object comes from `X-MathPDF-UI-Context`: screen, last action, 
 
 API request entries record method, normalized route, status, content type, response length and time to response headers. Successful job polls stay at DEBUG to avoid flooding INFO logs. Failed polls and other API failures are visible. Provider entries record phase, status, output token count when available, duration and safe exception types. Unexpected exceptions include stack file/line/function locations, without exception messages or local values.
 
-The app container uses the Docker `json-file` driver with three rotating files of up to 10 MB. Container replacement starts a new container log history; no external log service is introduced.
+Each application container uses the Docker `json-file` driver with three rotating files of up to 10 MB. Container replacement starts a new container log history. An optional Grafana Alloy service can read Docker log envelopes and send only MathPDF's structured application entries to Loki; it has no dependency on Loki for app startup. See [observability rollout](refactor-rollout.md#json-logs-and-loki).
 
 ## Browser diagnostics
 

@@ -1,0 +1,26 @@
+{
+  "result": {
+    "status": "completed",
+    "items": [
+      {
+        "title": "Membership",
+        "formula": {
+          "latex": "x \\in A",
+          "page": 4,
+          "variant": null
+        },
+        "question": [
+          "Explain this relation.",
+          {
+            "latex": "x \\in A",
+            "page": 4,
+            "variant": null
+          }
+        ],
+        "answer": [
+          "It denotes membership."
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,21 @@
+# Run from the repository root with --project-directory . and both Compose files.
+services:
+  front:
+    ports: ["127.0.0.1:8770:8080"]
+    labels: ["traefik.enable=false"]
+    networks: [default]
+  app:
+    environment:
+      APP_BASE_URL: http://127.0.0.1:8770
+      MATHPDF_ENV: development
+  admin:
+    environment:
+      APP_BASE_URL: http://127.0.0.1:8770
+      MATHPDF_ENV: development
+  reports:
+    environment:
+      APP_BASE_URL: http://127.0.0.1:8770
+      MATHPDF_ENV: development
+networks:
+  traefik-public:
+    external: false

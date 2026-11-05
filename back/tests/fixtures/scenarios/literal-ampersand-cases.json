@@ -1,0 +1,66 @@
+[
+  [
+    "t&t\\Leftrightarrow t",
+    "t\\&t\\Leftrightarrow t"
+  ],
+  [
+    "t \\& \\bar{t}\\Leftrightarrow0",
+    "t \\& \\bar{t}\\Leftrightarrow0"
+  ],
+  [
+    "t\\vee z\\Leftrightarrow z\\vee t\\\\t&t\\Leftrightarrow0\\\\t&t\\Leftrightarrow t",
+    "\\begin{aligned}&t\\vee z\\Leftrightarrow z\\vee t\\\\&t\\&t\\Leftrightarrow0\\\\&t\\&t\\Leftrightarrow t\\end{aligned}"
+  ],
+  [
+    "\\begin{aligned}t\\vee z\\Leftrightarrow z\\vee t\\\\t&t\\Leftrightarrow0\\\\t&t\\Leftrightarrow t\\end{aligned}",
+    "\\begin{aligned}t\\vee z\\Leftrightarrow z\\vee t\\\\t\\&t\\Leftrightarrow0\\\\t\\&t\\Leftrightarrow t\\end{aligned}"
+  ],
+  [
+    "\\begin{aligned}t&\\bar t&\\Leftrightarrow0\\\\t&t &\\Leftrightarrow t\\end{aligned}",
+    "\\begin{aligned}t\\&\\bar t&\\Leftrightarrow0\\\\t\\&t &\\Leftrightarrow t\\end{aligned}"
+  ],
+  [
+    "a&=b\\\\c&=d",
+    "\\begin{aligned}a&=b\\\\c&=d\\end{aligned}"
+  ],
+  [
+    "\\begin{aligned}a&=b\\\\c&=d\\end{aligned}",
+    "\\begin{aligned}a&=b\\\\c&=d\\end{aligned}"
+  ],
+  [
+    "\\begin{aligned}a&\\Leftrightarrow b\\end{aligned}",
+    "\\begin{aligned}a&\\Leftrightarrow b\\end{aligned}"
+  ],
+  [
+    "\\begin{array}{c|c}t&t\\Leftrightarrow0\\\\0&1\\end{array}",
+    "\\begin{array}{c|c}t&t\\Leftrightarrow0\\\\0&1\\end{array}"
+  ],
+  [
+    "\\begin{pmatrix}a&b\\\\c&d\\end{pmatrix}",
+    "\\begin{pmatrix}a&b\\\\c&d\\end{pmatrix}"
+  ],
+  [
+    "\\begin{matrix*}[l]a&b\\\\c&d\\end{matrix*}",
+    "\\begin{matrix*}[l]a&b\\\\c&d\\end{matrix*}"
+  ],
+  [
+    "\\begin{darray}{cc}a&b\\\\c&d\\end{darray}",
+    "\\begin{darray}{cc}a&b\\\\c&d\\end{darray}"
+  ],
+  [
+    "\\begin{cases}x&x>0\\\\0&\\text{otherwise}\\end{cases}",
+    "\\begin{cases}x&x>0\\\\0&\\text{otherwise}\\end{cases}"
+  ],
+  [
+    "\\begin{aligned}a&=\\begin{matrix}b&c\\end{matrix}\\\\t&t&\\Leftrightarrow t\\end{aligned}",
+    "\\begin{aligned}a&=\\begin{matrix}b&c\\end{matrix}\\\\t\\&t&\\Leftrightarrow t\\end{aligned}"
+  ],
+  [
+    "\\begin{aligned}\\overline{t&t}&\\Leftrightarrow t\\end{aligned}",
+    "\\begin{aligned}\\overline{t\\&t}&\\Leftrightarrow t\\end{aligned}"
+  ],
+  [
+    "\\text{A & B}",
+    "\\text{A \\& B}"
+  ]
+]

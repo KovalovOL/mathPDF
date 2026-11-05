@@ -1,0 +1,99 @@
+# Disposable local acceptance stack. No host application data or secrets are mounted.
+x-backend: &backend
+  image: mathpdf-backend:refactor-check
+  volumes:
+    - acceptance-data:/data
+    - acceptance-secrets:/run/mathpdf-secrets:ro
+  environment: &environment
+    MATHPDF_DATA_DIR: /data
+    MATHPDF_FRONTEND_URL: http://front:8081
+    MATHPDF_ENV: test
+    APP_BASE_URL: http://127.0.0.1:18770
+    MATHPDF_POSTGRES_HOST: db
+    MATHPDF_POSTGRES_PORT: "5432"
+    POSTGRES_DB: mathpdf
+    POSTGRES_USER: mathpdf
+    POSTGRES_PASSWORD_FILE: /run/mathpdf-secrets/postgres-password
+    MATHPDF_S3_ENDPOINT: http://garage:3900
+    MATHPDF_S3_CREDENTIALS_FILE: /run/mathpdf-secrets/s3.json
+    GOOGLE_CLIENT_ID: fixture.apps.googleusercontent.com
+    GOOGLE_CLIENT_SECRET: fixture-only
+  depends_on: &dependencies
+    db: {condition: service_healthy}
+    garage: {condition: service_healthy}
+  healthcheck:
+    test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8765/health')"]
+    interval: 2s
+    timeout: 5s
+    retries: 30
+services:
+  admin:
+    <<: *backend
+    command: [uvicorn, app.bootstrap.platform:admin_app, --factory, --host, 0.0.0.0, --port, "8765"]
+    environment:
+      <<: *environment
+      MATHPDF_SERVICE: admin
+  reports:
+    <<: *backend
+    command: [uvicorn, app.bootstrap.platform:reports_app, --factory, --host, 0.0.0.0, --port, "8765"]
+    environment:
+      <<: *environment
+      MATHPDF_SERVICE: reports
+  app:
+    <<: *backend
+    command: [formula-lab, --host, 0.0.0.0, --port, "8765", --data-dir, /data]
+    depends_on:
+      <<: *dependencies
+      admin: {condition: service_healthy}
+      reports: {condition: service_healthy}
+  front:
+    image: mathpdf-frontend:refactor-check
+    ports: ["127.0.0.1:18770:8080"]
+    depends_on:
+      app: {condition: service_healthy}
+  bootstrap:
+    image: mathpdf-backend:refactor-check
+    profiles: [storage]
+    command: [python, -m, app.infrastructure.cli]
+    volumes: ["acceptance-secrets:/run/mathpdf-secrets"]
+  db:
+    image: postgres:17-alpine
+    profiles: [storage]
+    ports: ["127.0.0.1:18773:5432"]
+    environment:
+      POSTGRES_DB: mathpdf
+      POSTGRES_USER: mathpdf
+      POSTGRES_PASSWORD_FILE: /run/mathpdf-secrets/postgres-password
+    volumes:
+      - acceptance-secrets:/run/mathpdf-secrets:ro
+      - acceptance-postgres:/var/lib/postgresql/data
+    depends_on:
+      bootstrap: {condition: service_completed_successfully}
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -U mathpdf -d mathpdf"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+  garage:
+    image: mathpdf-backend:refactor-check
+    profiles: [storage]
+    ports: ["127.0.0.1:18774:3900"]
+    command: [python, -m, app.infrastructure.cli, garage]
+    environment:
+      MATHPDF_S3_CREDENTIALS_FILE: /run/mathpdf-secrets/s3.json
+    volumes:
+      - acceptance-secrets:/run/mathpdf-secrets:ro
+      - acceptance-garage:/var/lib/garage
+      - ../garage.toml:/etc/garage.toml:ro
+    depends_on:
+      bootstrap: {condition: service_completed_successfully}
+    healthcheck:
+      test: [CMD, /usr/local/bin/garage, status]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+volumes:
+  acceptance-data:
+  acceptance-secrets:
+  acceptance-postgres:
+  acceptance-garage:

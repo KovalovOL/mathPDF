@@ -1,0 +1,111 @@
+<!doctype html>
+<style>
+  body {
+    margin: 0;
+  }
+  .sheet {
+    position: relative;
+    width: 600px;
+    height: 800px;
+    background: white;
+  }
+  .annotation-layer {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+  }
+  .annotation-layer.drawing {
+    pointer-events: auto;
+    touch-action: none;
+  }
+  .textLayer span {
+    position: absolute;
+    left: 80px;
+    top: 80px;
+    font: 20px serif;
+  }
+</style>
+<div class="sheet">
+  <div class="textLayer"><span>Source text can be highlighted.</span></div>
+</div>
+<script type="module">
+  import { createPdfAnnotations } from "/static/pdf-annotations.js";
+  let identifier = "original";
+  const document = { id: identifier, original_document_id: null };
+  window.saved = [];
+  window.states = [];
+  window.MathPDFSession = {
+    api: async (path, options) => {
+      if (window.failSave) throw new Error("Simulated save failure");
+      const request = JSON.parse(options.body);
+      window.saved.push({ path, request });
+      return {
+        document: { id: "copy", original_document_id: "original" },
+        base_document: { id: "original" },
+        copy_document: { id: "copy" },
+        revision: request.expected_revision + 1,
+        annotations: { schema_version: 1, items: request.items },
+      };
+    },
+  };
+  window.addEventListener("message", (event) => {
+    if (event.data?.type === "annotation-state") window.states.push(event.data);
+  });
+  const editor = createPdfAnnotations({
+    state: {
+      document,
+      base_document: document,
+      copy_document: null,
+      revision: 0,
+      annotations: { schema_version: 1, items: [] },
+    },
+    getDocumentId: () => identifier,
+    saved: (old, result) => {
+      identifier = result.document.id;
+    },
+    report: (text) => {
+      window.error = text;
+    },
+  });
+  const sheet = window.document.querySelector(".sheet");
+  editor.attach(
+    { sheet, number: 1 },
+    {
+      userUnit: 1,
+      getViewport: ({ scale }) => ({
+        width: 600 * scale,
+        height: 800 * scale,
+        scale,
+        transform: [scale, 0, 0, -scale, 0, 800 * scale],
+        convertToPdfPoint: (x, y) => [x / scale, 800 - y / scale],
+      }),
+    },
+  );
+  window.command = (data) =>
+    new Promise((resolve, reject) => {
+      const requestId = crypto.randomUUID();
+      const listener = (event) => {
+        if (
+          event.data?.requestId !== requestId ||
+          event.data.type !== "annotation-result"
+        )
+          return;
+        removeEventListener("message", listener);
+        if (event.data.error) reject(new Error(event.data.error));
+        else resolve();
+      };
+      addEventListener("message", listener);
+      postMessage(
+        {
+          type: "annotation-command",
+          documentId: identifier,
+          requestId,
+          ...data,
+        },
+        location.origin,
+      );
+    });
+  window.ready = true;
+</script>
